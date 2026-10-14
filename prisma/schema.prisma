@@ -1,0 +1,242 @@
+// CodeForensics — Prisma Database Schema
+// PostgreSQL is the primary system of record.
+// Stores normalized repository entities, evidence-backed relationships, sync states, and investigations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SyncStatus {
+  IDLE
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum ClaimCategory {
+  FACT
+  INFERENCE
+  HYPOTHESIS
+  UNKNOWN
+}
+
+enum AssessmentConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  NOT_ASSESSED
+}
+
+enum RelationshipType {
+  DUPLICATES
+  RELATED_TO
+  BLOCKS
+  BLOCKED_BY
+  ADDRESSES
+  PARTIALLY_ADDRESSES
+  SUPERSEDES
+  FOLLOWS_UP_ON
+  REOPENS
+  REGRESSION_OF
+  INTRODUCED_BY
+  FIXED_BY
+  REVERTS
+  BACKPORT_OF
+  CHERRY_PICK_OF
+}
+
+enum EntityType {
+  ISSUE
+  PULL_REQUEST
+  COMMIT
+  FILE
+  SYMBOL
+}
+
+model User {
+  id             String          @id @default(uuid())
+  firebaseUid    String          @unique
+  email          String?
+  displayName    String?
+  photoUrl       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  investigations Investigation[]
+
+  @@index([firebaseUid])
+  @@map("users")
+}
+
+model GitHubInstallation {
+  id             String       @id @default(uuid())
+  installationId Int          @unique
+  accountLogin   String
+  accountType    String
+  targetType     String
+  permissions    Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  repositories   Repository[]
+
+  @@map("github_installations")
+}
+
+model Repository {
+  id              String               @id @default(uuid())
+  githubRepoId    BigInt               @unique
+  installationId  String?
+  installation    GitHubInstallation?  @relation(fields: [installationId], references: [id], onDelete: SetNull)
+  owner           String
+  name            String
+  fullName        String               @unique
+  defaultBranch   String               @default("main")
+  isPrivate       Boolean              @default(false)
+  htmlUrl         String
+  description     String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  syncState       RepositorySyncState?
+  issues          Issue[]
+  pullRequests    PullRequest[]
+  relationships   Relationship[]
+  investigations  Investigation[]
+
+  @@unique([owner, name])
+  @@index([fullName])
+  @@map("repositories")
+}
+
+model RepositorySyncState {
+  id                   String     @id @default(uuid())
+  repositoryId         String     @unique
+  repository           Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  status               SyncStatus @default(IDLE)
+  startedAt            DateTime?
+  completedAt          DateTime?
+  lastSuccessfulSyncAt DateTime?
+  recordsImported      Int        @default(0)
+  issuesCount          Int        @default(0)
+  prsCount             Int        @default(0)
+  checkpoints          Json?
+  errorSummary         String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  @@map("repository_sync_states")
+}
+
+model Issue {
+  id             String     @id @default(uuid())
+  githubIssueId  BigInt     @unique
+  repositoryId   String
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  number         Int
+  title          String
+  body           String?
+  state          String     // "open" | "closed"
+  author         String?
+  labels         Json       @default("[]")
+  htmlUrl        String
+  closedAt       DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([repositoryId, number])
+  @@index([repositoryId, state])
+  @@map("issues")
+}
+
+model PullRequest {
+  id             String     @id @default(uuid())
+  githubPrId     BigInt     @unique
+  repositoryId   String
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  number         Int
+  title          String
+  body           String?
+  state          String     // "open" | "closed"
+  isDraft        Boolean    @default(false)
+  merged         Boolean    @default(false)
+  mergedAt       DateTime?
+  author         String?
+  baseRef        String?
+  headRef        String?
+  htmlUrl        String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([repositoryId, number])
+  @@index([repositoryId, state, merged])
+  @@map("pull_requests")
+}
+
+model Relationship {
+  id               String               @id @default(uuid())
+  repositoryId     String
+  repository       Repository           @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  sourceId         String
+  sourceType       EntityType
+  targetId         String
+  targetType       EntityType
+  relationshipType RelationshipType
+  category         ClaimCategory        @default(INFERENCE)
+  confidence       AssessmentConfidence @default(NOT_ASSESSED)
+  method           String
+  evidenceSummary  String
+  evidenceDetails  Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([repositoryId, sourceId])
+  @@index([repositoryId, targetId])
+  @@index([relationshipType])
+  @@map("relationships")
+}
+
+model Investigation {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  question     String
+  scope        String
+  status       String     // "open" | "in_progress" | "resolved" | "inconclusive"
+  observations Json       @default("[]")
+  hypotheses   Json       @default("[]")
+  findings     Json       @default("[]")
+  limitations  Json       @default("[]")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([repositoryId])
+  @@map("investigations")
+}
+
+model JobRecord {
+  id           String    @id @default(uuid())
+  jobId        String    @unique
+  queueName    String
+  jobName      String
+  status       String    // "waiting" | "active" | "completed" | "failed"
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  progress     Int       @default(0)
+  errorDetails String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([queueName, status])
+  @@map("job_records")
+}

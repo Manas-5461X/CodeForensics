@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --canvas: #f7f6f2;
+  --surface: #ffffff;
+  --surface-subtle: #f0efe9;
+  --surface-selected: #f5e8e1;
+  --text-primary: #202320;
+  --text-secondary: #5d645e;
+  --text-muted: #788078;
+  --border-subtle: #e2dfd7;
+  --border-strong: #c8c3b8;
+  --accent: #a64427;
+  --accent-hover: #87371f;
+  --accent-foreground: #ffffff;
+  --link: #176767;
+  --success: #23704f;
+  --warning: #8e641b;
+  --danger: #b23a32;
+  --focus-ring: #176767;
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --shadow-popover: 0 10px 28px rgb(32 35 32 / 10%);
+}
+
+body {
+  margin: 0;
+  background-color: var(--canvas);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, kbd, samp, pre {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Custom focus ring styling */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
