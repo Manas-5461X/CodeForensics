@@ -18,28 +18,28 @@ export function Badge({
 }: BadgeProps) {
   const categoryConfig: Record<BadgeCategory, { style: string; icon: React.ReactNode }> = {
     FACT: {
-      style: 'bg-[#e3f0e9] text-[#1a573d] border-[#b4dbca]',
-      icon: <CheckCircle2 className="w-3 h-3 text-[#1a573d]" />,
+      style: 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]',
+      icon: <CheckCircle2 className="w-3 h-3 text-[#065f46]" />,
     },
     INFERENCE: {
-      style: 'bg-[#fcf4e6] text-[#8e641b] border-[#ebd6a9]',
-      icon: <Info className="w-3 h-3 text-[#8e641b]" />,
+      style: 'bg-[#fffbeb] text-[#92400e] border-[#fde68a]',
+      icon: <Info className="w-3 h-3 text-[#92400e]" />,
     },
     HYPOTHESIS: {
-      style: 'bg-[#f0efe9] text-[#4d534e] border-[#d7d4c9]',
-      icon: <GitCommit className="w-3 h-3 text-[#4d534e]" />,
+      style: 'bg-[#f1f5f9] text-[#334155] border-[#cbd5e1]',
+      icon: <GitCommit className="w-3 h-3 text-[#334155]" />,
     },
     UNKNOWN: {
-      style: 'bg-[#f0efe9] text-[#788078] border-[#e2dfd7]',
-      icon: <HelpCircle className="w-3 h-3 text-[#788078]" />,
+      style: 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]',
+      icon: <HelpCircle className="w-3 h-3 text-[#64748b]" />,
     },
     RESOLVED: {
-      style: 'bg-[#e3f0e9] text-[#1a573d] border-[#b4dbca]',
-      icon: <CheckCircle2 className="w-3 h-3 text-[#1a573d]" />,
+      style: 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]',
+      icon: <CheckCircle2 className="w-3 h-3 text-[#065f46]" />,
     },
     UNRESOLVED: {
-      style: 'bg-[#faebea] text-[#b23a32] border-[#f0c2be]',
-      icon: <AlertTriangle className="w-3 h-3 text-[#b23a32]" />,
+      style: 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]',
+      icon: <AlertTriangle className="w-3 h-3 text-[#be123c]" />,
     },
     DEFAULT: {
       style: 'bg-surface-subtle text-primary border-border-subtle',

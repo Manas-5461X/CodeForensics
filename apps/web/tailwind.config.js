@@ -40,9 +40,11 @@ export default {
       fontFamily: {
         sans: ['"IBM Plex Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        editorial: ['"Newsreader"', 'Georgia', 'serif'],
       },
       boxShadow: {
         popover: 'var(--shadow-popover)',
+        engine: '12px 12px 0px rgba(15, 23, 42, 0.7)',
       },
     },
   },
