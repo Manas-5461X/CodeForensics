@@ -52,7 +52,7 @@ export function LandingPage() {
 
         <div className="flex items-center gap-3">
           <a
-            href="https://github.com"
+            href="https://github.com/Manas-5461X/CodeForensics"
             target="_blank"
             rel="noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
