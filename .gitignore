@@ -51,3 +51,10 @@ tmp/
 scratch/
 worker-workspace/
 .cache/
+
+# Specification and prompt documents (local only)
+CodeForensics_Phase_Prompts_README.md
+CodeForensics_skills.md
+documentation.md
+skills.md
+
