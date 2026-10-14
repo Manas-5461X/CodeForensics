@@ -29,7 +29,7 @@ export function OverviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/issues">
+          <Link to="/app/issues">
             <Button variant="primary" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
               Explore Issues & PRs
             </Button>
@@ -80,7 +80,7 @@ export function OverviewPage() {
           title="Recent Evidence-Backed Lineage Findings"
           subtitle="Direct links and inferred relationships with provenance"
           action={
-            <Link to="/issues">
+            <Link to="/app/issues">
               <Button size="sm" variant="ghost">View all</Button>
             </Link>
           }
@@ -171,7 +171,7 @@ export function OverviewPage() {
           </div>
 
           <div className="mt-5 pt-4 border-t border-border-subtle">
-            <Link to="/investigations">
+            <Link to="/app/investigations">
               <Button size="sm" variant="outline" className="w-full" leftIcon={<FileSearch className="w-3.5 h-3.5" />}>
                 Start New Investigation
               </Button>

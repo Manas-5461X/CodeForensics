@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   GitPullRequest,
@@ -17,11 +17,11 @@ interface SidebarProps {
 
 export function Sidebar({ className, activeRepo = 'facebook/react' }: SidebarProps) {
   const navItems = [
-    { label: 'Overview', to: '/', icon: LayoutDashboard },
-    { label: 'Issues & PRs', to: '/issues', icon: GitPullRequest },
-    { label: 'Contribution Finder', to: '/contributions', icon: Sparkles },
-    { label: 'Code Archaeology', to: '/archaeology', icon: GitBranch },
-    { label: 'Investigations', to: '/investigations', icon: BookOpen },
+    { label: 'Overview', to: '/app', end: true, icon: LayoutDashboard },
+    { label: 'Issues & PRs', to: '/app/issues', icon: GitPullRequest },
+    { label: 'Contribution Finder', to: '/app/contributions', icon: Sparkles },
+    { label: 'Code Archaeology', to: '/app/archaeology', icon: GitBranch },
+    { label: 'Investigations', to: '/app/investigations', icon: BookOpen },
   ];
 
   return (
@@ -33,7 +33,7 @@ export function Sidebar({ className, activeRepo = 'facebook/react' }: SidebarPro
     >
       {/* Brand Header */}
       <div className="h-14 px-4 border-b border-border-subtle flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 hover:opacity-85 transition-opacity">
           <div className="w-7 h-7 rounded bg-surface-subtle border border-border-strong flex items-center justify-center text-accent font-mono font-bold text-sm">
             CF
           </div>
@@ -45,7 +45,7 @@ export function Sidebar({ className, activeRepo = 'facebook/react' }: SidebarPro
               Workbench
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Global Repository Context Selector */}

@@ -2,29 +2,43 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import App from '../src/App.js';
 
-describe('CodeForensics Web Shell Foundation', () => {
-  it('renders workbench brand and navigation items', () => {
+describe('CodeForensics Public Landing Page', () => {
+  it('renders branding, value proposition, and hero headline', () => {
     render(<App />);
-    expect(screen.getByText('CodeForensics')).toBeDefined();
-    expect(screen.getByText('Workbench')).toBeDefined();
-    expect(screen.getByText('Overview')).toBeDefined();
-    expect(screen.getByText('Issues & PRs')).toBeDefined();
-    expect(screen.getByText('Contribution Finder')).toBeDefined();
-    expect(screen.getByText('Code Archaeology')).toBeDefined();
-    expect(screen.getByText('Investigations')).toBeDefined();
+    expect(screen.getAllByText('CodeForensics').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Stop guessing why code was written.')).toBeDefined();
+    expect(screen.getByText('Inspect the evidence.')).toBeDefined();
+    expect(screen.getByText('Launch Interactive Workbench')).toBeDefined();
   });
 
-  it('renders active repository context', () => {
+  it('renders evidence taxonomy badges (FACT, INFERENCE, HYPOTHESIS, UNKNOWN)', () => {
     render(<App />);
-    expect(screen.getByText('Active Repository')).toBeDefined();
-    expect(screen.getAllByText('facebook/react').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('FACT').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('INFERENCE').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('HYPOTHESIS').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('UNKNOWN').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders repository overview metrics and evidence panels', () => {
+  it('renders the interactive case study benchmark preview', () => {
     render(<App />);
-    expect(screen.getByText('Synchronized Issues')).toBeDefined();
-    expect(screen.getByText('Pull Requests Tracked')).toBeDefined();
-    expect(screen.getByText('Evidenced Relationships')).toBeDefined();
-    expect(screen.getByText('Recent Evidence-Backed Lineage Findings')).toBeDefined();
+    expect(screen.getByText('A closed issue is not a fixed issue.')).toBeDefined();
+    expect(screen.getByText('1. Lineage Chain')).toBeDefined();
+    expect(screen.getByText('2. Forensic Assessment')).toBeDefined();
+    expect(screen.getByText('3. Code Diff Proof')).toBeDefined();
+  });
+
+  it('renders non-negotiable evidentiary principles', () => {
+    render(<App />);
+    expect(screen.getByText('Closed ≠ Fixed')).toBeDefined();
+    expect(screen.getByText('Merged ≠ Complete')).toBeDefined();
+    expect(screen.getByText('Similar Titles ≠ Duplicates')).toBeDefined();
+    expect(screen.getByText('Repository Content is Untrusted Input')).toBeDefined();
+    expect(screen.getByText('Honest Abstention Over False Confidence')).toBeDefined();
+  });
+
+  it('renders footer with valid navigation and MIT license statement', () => {
+    render(<App />);
+    expect(screen.getByText('MIT License')).toBeDefined();
+    expect(screen.getByText('Open Workbench')).toBeDefined();
   });
 });
