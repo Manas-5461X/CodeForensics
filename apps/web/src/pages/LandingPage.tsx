@@ -73,7 +73,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 2. Hero Section (Dramatic Full-Viewport Cinematic Backdrop)           */}
       {/* ---------------------------------------------------------------------- */}
-      <section className="relative min-h-[100dvh] w-full flex items-end overflow-hidden pb-16 sm:pb-24 pt-36 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
+      <section className="relative min-h-[100dvh] w-full flex flex-col justify-center overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-16 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
         {/* Cinematic Backdrop Image */}
         <div className="absolute inset-0 z-0 bg-[#0b1120] overflow-hidden pointer-events-none">
           <img
@@ -97,9 +97,9 @@ export function LandingPage() {
         </div>
 
         {/* Hero Copy Container */}
-        <div className="relative z-10 w-full max-w-6xl mx-auto">
+        <div className="relative z-10 w-full max-w-6xl mx-auto my-auto">
           {/* Small Monospace Eyebrow */}
-          <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded bg-[#1e293b]/80 border border-[#38bdf8]/30 text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-6 backdrop-blur-xs">
+          <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded bg-[#1e293b]/80 border border-[#38bdf8]/30 text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-4 sm:mb-5 backdrop-blur-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8] animate-pulse" />
             <span>FOR MAINTAINERS & CONTRIBUTORS</span>
             <span className="text-slate-500">•</span>
@@ -107,7 +107,7 @@ export function LandingPage() {
           </div>
 
           {/* Oversized Editorial Typography */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[0.95] max-w-5xl">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.0] max-w-4xl">
             Stop guessing why code was written.{' '}
             <span className="block font-editorial italic font-normal text-[#7dd3fc] tracking-tight mt-1 sm:mt-2">
               Inspect the evidence.
@@ -115,13 +115,13 @@ export function LandingPage() {
           </h1>
 
           {/* Value Proposition Tagline */}
-          <p className="mt-6 sm:mt-8 text-base sm:text-lg lg:text-xl text-slate-300 max-w-2xl leading-relaxed font-light">
+          <p className="mt-4 sm:mt-5 text-sm sm:text-base lg:text-lg text-slate-300 max-w-2xl leading-relaxed font-light">
             CodeForensics connects GitHub issues, pull requests, review discussions, and commit diffs into an inspectable evidence graph.
             Distinguish observed provider facts from heuristic inferences—with visible uncertainty and traceable provenance.
           </p>
 
           {/* CTA Action Row */}
-          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
             <Link
               to="/app"
               className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono font-semibold text-xs uppercase tracking-wider rounded transition-all duration-200 shadow-[0_0_20px_rgba(56,189,248,0.25)] hover:-translate-y-0.5"
@@ -139,7 +139,7 @@ export function LandingPage() {
           </div>
 
           {/* Engine Status Line */}
-          <div className="mt-10 sm:mt-12 flex items-center gap-3 text-xs font-mono text-slate-400">
+          <div className="mt-6 sm:mt-8 flex items-center gap-2.5 text-xs font-mono text-slate-400">
             <span className="inline-block w-2 h-2 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]" />
             <span>Forensic intelligence engine live in active benchmark</span>
             <span className="text-slate-600 hidden sm:inline">•</span>
