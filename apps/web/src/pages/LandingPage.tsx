@@ -656,13 +656,12 @@ export function LandingPage() {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto mt-6 pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
+        <div className="max-w-5xl mx-auto mt-6 pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-primary-muted">
           <div>
-            Licensed under the <span className="font-semibold text-primary">MIT License</span>. Designed according to <code className="text-accent">skills.md</code>.
+            © 2026 CodeForensics. Released under the <span className="font-semibold text-primary">MIT License</span>.
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
-            <span>Platform v0.1.0 • React 18 + Vite + Fastify + BullMQ</span>
+            <span>Built for open-source maintainers and engineers.</span>
           </div>
         </div>
       </footer>
