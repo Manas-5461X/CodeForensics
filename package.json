@@ -17,7 +17,11 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "start": "node apps/api/dist/server.js",
+    "start:api": "node apps/api/dist/server.js",
+    "start:worker": "node apps/worker/dist/index.js",
+    "start:combined": "node apps/api/dist/server.js & node apps/worker/dist/index.js"
   },
   "devDependencies": {
     "prisma": "^6.4.0",
