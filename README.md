@@ -1,731 +1,369 @@
 # CodeForensics
 
-**Evidence-backed repository intelligence for understanding code,
-issues, pull requests, and project history.**
-
-CodeForensics is designed to help developers investigate unfamiliar
-repositories without manually stitching together information from GitHub
-issues, pull requests, commits, reviews, source files, and tests. It
-brings those records into one workspace and connects them with traceable
-evidence so engineers can understand prior decisions, investigate
-whether a reported problem was addressed, and assess where a
-contribution would be useful.
-
-The central idea is simple: **repository intelligence should show its
-evidence, distinguish facts from inferences, and make uncertainty
-visible.**
-
-------------------------------------------------------------------------
-
-## Contents
-
--   [Overview](#overview)
--   [The problem](#the-problem)
--   [Core capabilities](#core-capabilities)
--   [How CodeForensics works](#how-codeforensics-works)
--   [Technology stack](#technology-stack)
--   [System architecture](#system-architecture)
--   [Data model and evidence](#data-model-and-evidence)
--   [Security model](#security-model)
--   [Local development](#local-development)
--   [Configuration](#configuration)
--   [Engineering standards](#engineering-standards)
--   [Project documentation](#project-documentation)
--   [License](#license)
-
-## Overview
-
-Modern software repositories contain far more context than the source
-tree alone. The reason a function behaves a certain way may be buried in
-an old issue. A proposed fix may have been abandoned in a pull request.
-A later commit may have reverted an earlier change. A test may document
-the behavior that a discussion never clearly explained.
-
-CodeForensics is intended to connect this information into a navigable,
-evidence-backed view of a repository.
-
-It is built around five product areas:
-
-  -----------------------------------------------------------------------
-  Product area                        Purpose
-  ----------------------------------- -----------------------------------
-  Repository intelligence             Synchronize and explore accessible
-                                      repository records and their
-                                      context
-
-  Issue and PR lineage                Identify and inspect relationships
-                                      between reports, changes, and prior
-                                      attempts
-
-  Resolution intelligence             Assess whether an issue appears
-                                      addressed, partially addressed,
-                                      unresolved, or uncertain
-
-  Contribution finder                 Help contributors evaluate issues
-                                      using context, prior work, relevant
-                                      code, and activity
-
-  Code archaeology and investigations Trace code history and preserve
-                                      evidence-backed technical
-                                      investigations
-  -----------------------------------------------------------------------
-
-CodeForensics is **not intended to be a generic chatbot over a
-repository**. Structured data, Git metadata, deterministic analysis, and
-source-linked evidence form the foundation. AI assistance can help
-explain or explore that evidence, but should not be the source of truth
-for repository facts.
-
-## The problem
-
-Repository investigation is fragmented across different tools and
-records. To understand one issue, a developer may need to:
-
-1.  Read the original issue and its discussion.
-2.  Find linked, duplicate, or related issues.
-3.  Locate pull requests that attempted to address the behavior.
-4.  Inspect reviews, commits, changed files, and tests.
-5.  Determine whether a change was merged, reverted, superseded, or
-    followed by another attempt.
-6.  Check whether the original problem was actually resolved.
-7.  Identify missing context and decide what to investigate next.
-
-This process is slow and easy to get wrong. Closed issues are not
-necessarily fixed, merged pull requests do not necessarily resolve every
-part of an issue, and similar titles do not establish that two reports
-describe the same problem.
-
-CodeForensics aims to make that investigation more efficient,
-consistent, and auditable.
-
-## Core capabilities
-
-### Repository intelligence
-
-Bring accessible repository metadata and development activity into a
-single workspace.
-
-The intended data includes:
-
--   Repository metadata and source links
--   Issues and pull requests
--   Issue and pull-request comments
--   Reviews and review comments
--   Labels, milestones, and cross-references where available
--   Commits, parent relationships, and changed-file metadata
--   Relevant synchronization and permission information
-
-Repository data should be synchronized through the GitHub API with
-pagination, rate-limit handling, retries, and idempotent persistence.
-The application should show synchronization status, last successful
-sync, failures, and known coverage limitations. It must not imply that
-all history was imported if some data was inaccessible or a sync failed.
-
-### Issue and pull-request lineage
-
-CodeForensics models relationships between work items so developers can
-navigate from a report to the work that may explain or address it.
-
-Supported relationship concepts include:
-
--   `DUPLICATES` and `RELATED_TO`
--   `BLOCKS` and `BLOCKED_BY`
--   `ADDRESSES` and `PARTIALLY_ADDRESSES`
--   `SUPERSEDES` and `FOLLOWS_UP_ON`
--   `REOPENS` and `REGRESSION_OF`
--   `INTRODUCED_BY` and `FIXED_BY`
--   `REVERTS`, `BACKPORT_OF`, and `CHERRY_PICK_OF`
-
-Relationships should preserve their origin and supporting evidence. An
-explicit GitHub reference or verifiable Git relationship is different
-from a candidate relationship inferred from text similarity. Heuristic
-matches must remain inspectable and must not be presented as established
-facts.
-
-### Resolution intelligence
-
-Investigate whether an issue appears to be:
-
--   Resolved
--   Partially addressed
--   Unresolved
--   A duplicate
--   Obsolete
--   Unknown because the available evidence is insufficient
-
-These are CodeForensics assessments, not replacements for the official
-GitHub issue or pull-request state. Each assessment should explain its
-supporting evidence and disclose important counterevidence, missing
-records, or limitations.
-
-For example, a closed issue is evidence of a provider state---not proof
-that the underlying bug was fixed. A merged pull request is evidence
-that code was merged---not proof that every reported symptom was
-resolved.
-
-### Contribution finder
-
-Help contributors evaluate potential work before investing time in it.
-
-Useful signals include:
-
--   Issue state and recent activity
--   Related reports and likely duplicates
--   Linked pull requests and signs of active work
--   Previous attempts and their outcomes
--   Relevant files, symbols, commits, and tests
--   Scope, likely complexity, and prerequisites
--   Missing information that should be clarified before implementation
-
-Recommendations should explain why an issue was surfaced. A
-`good first issue` label may be useful context, but is not sufficient by
-itself to determine difficulty or readiness.
-
-### Code archaeology
-
-Trace files and symbols through repository history to understand how
-behavior evolved.
-
-The initial analysis focus is JavaScript and TypeScript, using Git
-history and the TypeScript Compiler API. Where data permits, a code
-location can be connected to:
-
--   Commits and diffs
--   Pull requests and reviews
--   Issues and discussions
--   Tests and related changes
--   Earlier or later implementations
-
-Historical explanations must distinguish documented rationale from
-inferred intent. Additional language support can be added through
-language-specific analyzers or Tree-sitter as the implementation
-requires.
-
-### Investigations and evidence
-
-Preserve an investigation as a structured record rather than leaving its
-reasoning scattered across browser tabs or chat history.
-
-An investigation can capture:
-
--   The question and scope
--   Repository and revision context
--   Observations and source references
--   Competing hypotheses
--   Findings and conclusions
--   Contradictory evidence
--   Uncertainty and limitations
-
-The objective is reproducibility: another engineer should be able to
-revisit the investigation, inspect the cited material, and understand
-how its conclusions were reached.
-
-## How CodeForensics works
-
-The application separates user interaction, authentication and
-authorization, repository synchronization, persistence, and analysis.
-
-1.  **Authenticate the user.** Firebase Authentication establishes the
-    user's CodeForensics identity.
-2.  **Authorize GitHub access.** The GitHub integration grants access
-    only to repositories and data allowed by its configured permissions.
-    Signing in to CodeForensics does not itself grant GitHub access.
-3.  **Synchronize repository data.** Background jobs fetch accessible
-    records and handle pagination, retries, rate limits, and partial
-    failures.
-4.  **Normalize and store records.** PostgreSQL stores normalized
-    repository entities and their provider identifiers. Repeated
-    synchronization should update existing records rather than create
-    duplicates.
-5.  **Analyze relationships.** Deterministic rules and Git/code analysis
-    identify explicit links and candidate relationships. Heuristic
-    results retain provenance and uncertainty.
-6.  **Present evidence.** The interface links findings to the records,
-    commits, or other sources that support them.
-7.  **Preserve investigations.** Users can save the question, evidence,
-    findings, and limitations for later review.
-
-## Technology stack
-
-The selected stack provides a typed frontend, a validated API,
-relational persistence, and asynchronous repository processing.
-
-  -----------------------------------------------------------------------
-  Layer                   Technology              Responsibility
-  ----------------------- ----------------------- -----------------------
-  Frontend                React, TypeScript, Vite Application interface
-                                                  and build tooling
-
-  UI and styling          Tailwind CSS, shadcn/ui Reusable components and
-                                                  consistent styling
-
-  Routing                 React Router            Application navigation
-
-  Server-state management TanStack Query          API data fetching,
-                                                  caching, and
-                                                  invalidation
-
-  Authentication          Firebase Authentication User sign-in and
-                                                  identity
-
-  Backend API             Node.js, TypeScript,    HTTP endpoints and
-                          Fastify                 application services
-
-  Request validation      Zod                     Runtime validation at
-                                                  system boundaries
-
-  Database                PostgreSQL              Repository data,
-                                                  relationships, sync
-                                                  state, investigations
-
-  ORM and migrations      Prisma                  Typed database access
-                                                  and schema migrations
-
-  Background processing   Redis, BullMQ           Synchronization,
-                                                  retries, and analysis
-                                                  jobs
-
-  GitHub integration      GitHub REST/GraphQL     Repository access,
-                          APIs and GitHub App     events, and metadata
-
-  Code analysis           Git and TypeScript      Commit history, diffs,
-                          Compiler API            and symbol analysis
-
-  Testing                 Vitest, React Testing   Unit, component,
-                          Library, Playwright     integration, and
-                                                  browser tests
-
-  Optional artifact       S3-compatible storage   Larger artifacts when a
-  storage                                         concrete feature needs
-                                                  them
-  -----------------------------------------------------------------------
-
-The existing repository configuration is authoritative for exact
-dependency versions and available scripts. Do not replace a working
-implementation merely to make its folder structure match an example.
-
-## System architecture
-
-``` mermaid
-flowchart TD
-    User[User] --> Web[React + TypeScript frontend]
-    Web -->|HTTPS and Firebase ID token| API[Fastify API]
-    API --> Auth[Authentication and authorization]
-    Auth --> DB[(PostgreSQL / Prisma)]
-    API --> GH[GitHub App and GitHub APIs]
-    API --> Queue[Redis + BullMQ]
-    Queue --> Worker[Background worker]
-    Worker --> GH
-    Worker --> Git[Git history and code analysis]
-    Worker --> DB
-    Git --> DB
-    DB --> Web
+**Evidence-backed repository intelligence for understanding code, issues, pull requests, and project history.**
+
+CodeForensics connects software artifacts—source code, Abstract Syntax Trees (AST), issues, pull requests, commits, and contributor activity—into an explainable, navigable evidence graph. It distinguishes provider facts from inferences and makes uncertainty visible.
+
+---
+
+## Table of Contents
+
+1. [Overview & Core Purpose](#1-overview--core-purpose)
+2. [The Problem & Core Differentiators](#2-the-problem--core-differentiators)
+3. [Implemented Capabilities](#3-implemented-capabilities)
+4. [User Interface & Visual Evidence](#4-user-interface--visual-evidence)
+5. [System Architecture](#5-system-architecture)
+6. [Technology Stack & Repository Structure](#6-technology-stack--repository-structure)
+7. [Prerequisites](#7-prerequisites)
+8. [Docker Infrastructure Quickstart](#8-docker-infrastructure-quickstart)
+9. [Environment Variables Reference](#9-environment-variables-reference)
+10. [Firebase Authentication Setup](#10-firebase-authentication-setup)
+11. [GitHub App Integration Setup](#11-github-app-integration-setup)
+12. [Database Setup & Prisma Migrations](#12-database-setup--prisma-migrations)
+13. [Redis & Background Job Worker](#13-redis--background-job-worker)
+14. [Development, Build & Test Commands](#14-development-build--test-commands)
+15. [API Overview & Specification](#15-api-overview--specification)
+16. [Security & Threat Model](#16-security--threat-model)
+17. [Current Limitations & Evidentiary Boundaries](#17-current-limitations--evidentiary-boundaries)
+18. [Troubleshooting Common Issues](#18-troubleshooting-common-issues)
+19. [Production Deployment Prerequisites](#19-production-deployment-prerequisites)
+20. [License & Acknowledgements](#20-license--acknowledgements)
+
+---
+
+## 1. Overview & Core Purpose
+
+Modern software repositories contain far more critical context than the current `HEAD` commit reveals. Why a function was modified is often buried in an abandoned issue thread, a reverted pull request, or a subtle bug regression.
+
+CodeForensics is designed for engineers, security researchers, and maintainers to investigate unfamiliar codebases with verifiable proof. It eliminates guesswork by providing hard citations for every relationship, contributor ranking, and code revision milestone.
+
+---
+
+## 2. The Problem & Core Differentiators
+
+| Traditional AI Assistants | CodeForensics Evidence Platform |
+|---|---|
+| **Opaque Hallucinations**: Confidently fabricates why code was written. | **Traceable Citations**: Every claim links to an issue, PR, commit SHA, or AST line span. |
+| **Flattens Ambiguity**: Forces a conclusion even when data is missing. | **Honest Disclosures**: Returns `UNKNOWN` with confidence ratings (`HIGH`, `MEDIUM`, `LOW`, `NOT_ASSESSED`). |
+| **Unsafe Script Execution**: Runs untrusted build scripts or package hooks. | **Static AST & Isolated Sandboxing**: Analyzes source code without executing repository code. |
+| **Free-Text Notes**: Disjointed text scratchpads. | **Structured Investigations**: Persists observations, hypotheses, and evidence items with user ownership. |
+
+---
+
+## 3. Implemented Capabilities
+
+1. **Repository Intelligence & Observable Ingestion**:
+   - Streams issues, pull requests, labels, and commits via GitHub App API.
+   - Background processing powered by BullMQ and Redis with real-time progress reporting.
+   - Idempotent upserts in PostgreSQL with compound unique constraints preventing duplicates.
+2. **Issue & PR Lineage Explorer**:
+   - Unified work items table with state filters (`OPEN`, `CLOSED`, `MERGED`), author filters, and text search.
+   - Slide-over detail drawer displaying full thread history, resolution assessments, and direct GitHub links.
+3. **Relationship Intelligence & Resolution Assessment**:
+   - Deterministic and heuristic detection of causal connections: `ADDRESSES`, `SUPERSEDES`, `FIXED_BY`.
+   - Explainable "Why Linked?" cards detailing keywords (`fixes #12`, `closes #45`), branch refs, and confidence.
+4. **Contribution Finder & Risk Assessment**:
+   - Ranks maintainers into clear tiers (`DOMAIN EXPERT`, `ACTIVE`, `HISTORICAL`, `OCCASIONAL`).
+   - Identifies single-maintainer risks, bus-factor vulnerability, and abandoned subsystems.
+5. **Code Archaeology & Symbol AST Tracing**:
+   - TypeScript Compiler API in-memory parsing (`ts.createSourceFile`) for `.ts`, `.tsx`, `.js`, `.jsx`.
+   - Extracts functions, React hooks, classes, methods, and interfaces with exact 1-indexed line spans.
+   - Historical commit revision lineage linking commit SHAs and authors to pull requests.
+6. **Saved Investigations Workbench**:
+   - Full CRUD lifecycle for persistent research records.
+   - Structured citations (`FILE`, `SYMBOL`, `COMMIT`, `PULL_REQUEST`, `ISSUE`, `RELATIONSHIP`).
+   - Strict server-side user ownership (`userId === token.uid`) preventing cross-user data leakage.
+7. **In-App Documentation**:
+   - Discoverable, searchable 10-chapter reference guide built right into `/app/docs`.
+
+---
+
+## 4. User Interface & Visual Evidence
+
+The CodeForensics workbench follows a restrained editorial design: deep slate blue, charcoal, muted cyan, intentional whitespace, and zero decorative AI slop.
+
+### Visual Workbenches:
+- **Landing Page (`/`)**: Value proposition, evidence graph visualization, interactive case study preview, and non-negotiable evidentiary principles.
+- **Forensic Workbench Overview (`/app`)**: Repository selector, sync status, work item metrics, and recent activity.
+- **Issues Explorer (`/app/issues`)**: Filterable, searchable data grid with slide-over detail drawer.
+- **Contribution Finder (`/app/contributions`)**: Contributor rankings, score signal breakdowns, and subsystem ownership risk alerts.
+- **Code Archaeology (`/app/archaeology`)**: AST symbol catalog, line ranges, and chronological commit timeline.
+- **Saved Investigations (`/app/investigations`)**: Master-detail investigation editor with interactive hypothesis and observation logging.
+- **In-App Documentation (`/app/docs`)**: Developer guides, API contracts, syntax examples, and troubleshooting.
+
+---
+
+## 5. System Architecture
+
+CodeForensics decouples client presentation, authenticated API gateway, relational storage, and background processing:
+
+```mermaid
+graph TD
+    User([Browser Client]) -->|HTTPS / Port 5173| Web[apps/web: Vite React SPA]
+    Web -->|ID Token Auth| FirebaseClient[Firebase Auth Service]
+    Web -->|REST API / Port 4000| API[apps/api: Fastify Gateway]
+    
+    API -->|Verify Bearer ID Token| FirebaseAdmin[Firebase Admin SDK]
+    API -->|Query & Persist| Postgres[(PostgreSQL 16+ Database)]
+    API -->|Enqueue Ingestion Jobs| Redis[(Redis 7+ Queue Broker)]
+    API -->|Repo Metadata & Webhooks| GitHubApp[GitHub App REST/GraphQL]
+
+    Worker[apps/worker: BullMQ Worker] -->|Poll Sync Jobs| Redis
+    Worker -->|Stream Issues/PRs/Commits| GitHubApp
+    Worker -->|Store Entities & Relationships| Postgres
 ```
 
-### Frontend
+---
 
-The frontend owns presentation, navigation, interaction, and client-side
-server-state handling. It must not contain privileged GitHub
-credentials, database connection strings, Firebase Admin credentials, or
-server-only operations.
+## 6. Technology Stack & Repository Structure
 
-The interface should prioritize evidence inspection, repository
-navigation, readable technical details, and useful filtering over
-decorative dashboards. Every interactive control should perform a real
-action or be clearly presented as unavailable.
-
-### API
-
-The API is responsible for:
-
--   Verifying authentication tokens
--   Enforcing resource-level authorization
--   Validating inputs and outputs
--   Applying domain rules
--   Reading and writing persistent data
--   Scheduling background jobs
--   Returning consistent, actionable errors
-
-Authentication alone is not authorization. Every private repository,
-investigation, job, and artifact must be checked against the requesting
-user's access rights.
-
-### Background processing
-
-Repository synchronization and expensive analysis belong in background
-workers rather than long-running HTTP requests.
-
-Jobs should be observable, retryable, and idempotent where practical.
-They should record progress and failure reasons, respect rate limits,
-and clean up temporary checkouts and artifacts. Repository analysis must
-run in controlled workspaces with appropriate resource limits.
-
-### Persistence
-
-PostgreSQL is the primary system of record. Relationships can initially
-be stored as typed relational records and edges; a separate graph
-database is not required for the initial architecture. Redis supports
-job processing rather than serving as the durable source of repository
-facts.
-
-## Data model and evidence
-
-The domain model is expected to represent these entities. Exact table
-and field names should follow the Prisma schema in the codebase.
-
-  -----------------------------------------------------------------------
-  Entity                              Purpose
-  ----------------------------------- -----------------------------------
-  User                                CodeForensics identity and account
-                                      metadata
-
-  GitHub connection or installation   Authorization context, installation
-                                      state, and permissions
-
-  Repository                          Stable GitHub identifier,
-                                      owner/name, URL, and available
-                                      metadata
-
-  Sync state                          Checkpoints, progress, last
-                                      attempt, last success, errors, and
-                                      coverage
-
-  Issue and pull request              Provider identifiers, number,
-                                      title, body, state, timestamps,
-                                      labels, and source URL
-
-  Comment and review                  Discussion content, author,
-                                      timestamps, and source references
-
-  Commit and changed file             Commit hash, parent information
-                                      where available, file path, change
-                                      metadata, and diff reference
-
-  Relationship                        Typed source and target entities,
-                                      evidence, method, provenance,
-                                      assessment, and freshness
-
-  Investigation                       Scope, revision context,
-                                      observations, hypotheses, findings,
-                                      conclusions, and limitations
-
-  Job                                 Processing state, retries,
-                                      progress, and diagnostics
-  -----------------------------------------------------------------------
-
-### Evidence and assessment rules
-
-CodeForensics should distinguish the following categories:
-
--   **Provider fact:** information explicitly reported by GitHub, such
-    as an issue's current state.
--   **Direct relationship:** a link or relationship supported by
-    explicit metadata or verifiable Git information.
--   **Deterministic result:** a result produced by a documented rule.
--   **Heuristic assessment:** a candidate relationship or ranking based
-    on indirect signals.
--   **AI-assisted hypothesis:** a generated explanation that requires
-    inspection or verification.
--   **Coverage limitation:** relevant evidence that is missing,
-    inaccessible, stale, or not yet synchronized.
-
-Every meaningful assessment should make its source and method
-inspectable. Where confidence is displayed, its meaning should be
-documented and calibrated; avoid false precision. Conflicting evidence
-should remain visible. If the available information cannot support a
-conclusion, the correct result is **unknown**.
-
-## Security model
-
-Repository content is untrusted input. Security applies to ingestion,
-storage, analysis, AI-assisted workflows, and the user interface.
-
-### Authentication and access control
-
--   Verify Firebase ID tokens on the server using Firebase Admin SDK or
-    the configured trusted verification mechanism.
--   Enforce authorization on every private API operation and background
-    job.
--   Keep CodeForensics identity separate from GitHub authorization.
--   Request the minimum GitHub permissions required for each feature.
--   Respect permission revocation and avoid assuming access from a
-    repository URL alone.
--   Scope repository records, investigations, and artifacts to the
-    correct user or authorized installation.
-
-### Safe repository processing
-
--   Do not execute arbitrary repository scripts, build steps, Git hooks,
-    or package installation by default.
--   Isolate Git operations and analyzers in controlled workspaces.
--   Validate paths and defend against path traversal.
--   Apply time, memory, process, and storage limits where practical.
--   Clean up temporary files and define artifact retention behavior.
--   Verify webhook signatures before processing GitHub events.
-
-### AI and prompt-injection safety
-
-Issue descriptions, comments, README files, source code, logs, and
-commit messages may contain malicious or misleading instructions. Treat
-this content as data, not as instructions for the system. AI-assisted
-analysis must not be allowed to bypass authorization, reveal secrets, or
-trigger arbitrary execution based on repository content.
-
-### Secrets and operational safety
-
--   Keep private credentials and API keys on the server.
--   Never commit real environment files or service credentials.
--   Redact secrets from logs and error responses.
--   Use TLS and secure production configuration.
--   Record partial failures accurately; do not label incomplete
-    synchronization as complete.
--   Document data retention and deletion behavior before handling
-    production repositories.
-
-## Local development
-
-The precise commands depend on the scripts and workspace configuration
-in the repository. Use the actual `package.json`, lockfile, Prisma
-configuration, and `.env.example` as the source of truth; do not assume
-that an illustrative command exists in the project.
-
-### Prerequisites
-
-For the intended full-stack setup, prepare:
-
--   Node.js LTS compatible with the project dependencies
--   The package manager specified by the repository lockfile
--   PostgreSQL
--   Redis for BullMQ background jobs
--   A Firebase project for authentication
--   A configured GitHub App or supported GitHub authorization flow
--   Git for code-history analysis
-
-### 1. Clone the repository
-
-``` bash
-git clone <repository-url>
-cd <repository-directory>
+```text
+codeforensics/
+├── apps/
+│   ├── api/             # Fastify 5 REST API, Firebase Admin auth, Zod validation, security hooks
+│   ├── web/             # React 18, Vite 6, Tailwind CSS, TanStack Query, React Router 6
+│   └── worker/          # BullMQ background queue consumer, GitHub ingestion pipeline
+├── packages/
+│   └── shared/          # Universal TypeScript types, Zod schemas, claim taxonomy, contracts
+├── prisma/
+│   ├── schema.prisma    # PostgreSQL relational schema and compound unique indexes
+│   └── migrations/      # Version-controlled SQL migrations
+├── docs/                # Supporting technical documentation
+├── docker-compose.yml   # 1-command local PostgreSQL 16 & Redis 7 orchestration
+├── setup.md             # End-to-end setup and deployment guide
+└── package.json         # Monorepo workspaces manifest
 ```
 
-Replace the placeholders with the actual repository URL and directory.
+---
 
-### 2. Install dependencies
+## 7. Prerequisites
 
-Use the package manager selected by the repository. If the project uses
-npm and an npm lockfile, the usual command is:
+- **Node.js**: `v20.x` or higher
+- **npm**: `v10.x` or higher
+- **Docker Desktop** (or local PostgreSQL 16+ and Redis 7+)
+- **Git**
 
-``` bash
-npm install
+---
+
+## 8. Docker Infrastructure Quickstart
+
+CodeForensics includes a production-aligned `docker-compose.yml` for local development:
+
+```bash
+# Start PostgreSQL 16 and Redis 7 in the background
+docker compose up -d
+
+# Verify container health
+docker ps
 ```
 
-Do not mix package managers or regenerate lockfiles without a reason.
+Containers initialized:
+- `codeforensics-postgres`: Exposed on port `5432` (`codeforensics_dev` database).
+- `codeforensics-redis`: Exposed on port `6379`.
 
-### 3. Configure environment variables
+---
 
-Copy the example environment file if it exists:
+## 9. Environment Variables Reference
 
-``` bash
+Create your local `.env` file from the provided template:
+```bash
 cp .env.example .env
 ```
 
-Fill in the values required by the services being run. Keep `.env` local
-and never commit real secrets. See [Configuration](#configuration) for
-the configuration categories.
+Key environment configuration:
+```bash
+# Server API & Networking
+NODE_ENV=development
+PORT=4000
+HOST=127.0.0.1
+CORS_ORIGIN=http://localhost:5173
 
-### 4. Start required services
+# Database & Background Queue
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/codeforensics_dev?schema=public"
+REDIS_URL="redis://localhost:6379"
 
-Start PostgreSQL and Redis using the repository's documented local
-setup, Compose configuration, or managed development services. Confirm
-that the API and worker can reach them.
+# Frontend Firebase (Public - Bundled into Client)
+VITE_API_BASE_URL="http://localhost:4000"
+VITE_FIREBASE_API_KEY="your-firebase-api-key"
+VITE_FIREBASE_AUTH_DOMAIN="your-app.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="your-project-id"
 
-### 5. Prepare the database
+# Backend Firebase Admin (Server Only - Never Expose to Client)
+FIREBASE_PROJECT_ID="your-project-id"
+FIREBASE_SERVICE_ACCOUNT_PATH="./secrets/firebase-service-account.json"
 
-Use the Prisma commands defined by the current repository. For a
-development database configured for Prisma Migrate, a common command is:
-
-``` bash
-npx prisma migrate dev
+# GitHub App Integration (Server Only)
+GITHUB_APP_ID="123456"
+GITHUB_CLIENT_ID="Iv1.xxxxxxxxxxxx"
+GITHUB_CLIENT_SECRET="your-client-secret"
+GITHUB_WEBHOOK_SECRET="your-32-char-random-secret"
+GITHUB_PRIVATE_KEY_PATH="./secrets/github-private-key.pem"
 ```
 
-Run this only after checking the Prisma schema, migration setup, and
-database URL. Do not point development migration commands at production.
+For complete details on every variable, see [docs/environment-variables.md](docs/environment-variables.md).
 
-### 6. Run the application
+---
 
-Inspect available scripts before starting the frontend, API, or worker:
+## 10. Firebase Authentication Setup
 
-``` bash
-npm run
+1. Open the [Firebase Console](https://console.firebase.google.com/) and create a project.
+2. In **Build > Authentication > Sign-in method**, enable **Email/Password** and **Google**.
+3. Under **Project Settings > General > Your apps**, register a Web App and copy the `firebaseConfig` keys into the `VITE_FIREBASE_*` variables in `.env`.
+4. Under **Project Settings > Service accounts**, click **Generate new private key**. Save the downloaded file as:
+   ```
+   secrets/firebase-service-account.json
+   ```
+5. In **Authentication > Settings > Authorized domains**, ensure `localhost` is listed.
+
+---
+
+## 11. GitHub App Integration Setup
+
+1. In GitHub, go to **Settings > Developer settings > GitHub Apps > New GitHub App**.
+2. Configure URLs:
+   - **Homepage URL**: `http://localhost:5173`
+   - **Callback URL**: `http://localhost:4000/auth/github/callback`
+   - **Webhook URL**: `http://localhost:4000/webhooks/github` (or uncheck Active for local testing)
+3. Set **Repository Permissions**:
+   - `Issues`: Read-only
+   - `Pull requests`: Read-only
+   - `Contents`: Read-only
+   - `Metadata`: Read-only
+4. Generate and download a **Private Key** (`.pem` file). Save it as:
+   ```
+   secrets/github-private-key.pem
+   ```
+5. Install the app on your account via **Install App** in the left sidebar.
+
+For deep configuration details, see [docs/github-integration.md](docs/github-integration.md).
+
+---
+
+## 12. Database Setup & Prisma Migrations
+
+Apply the database migrations to configure all relational tables and compound indexes:
+
+```bash
+# Generate the Prisma Client
+npm run db:generate
+
+# Apply pending migrations to PostgreSQL
+npm run db:migrate
+
+# (Optional) Open Prisma Studio visual inspector
+npx prisma studio
 ```
 
-Use the actual scripts declared in the root and app-level package files.
-If separate processes are required, run each using the documented
-command for that workspace.
+---
 
-### 7. Verify the environment
+## 13. Redis & Background Job Worker
 
-Before connecting a real repository, verify that:
+The background worker consumes sync jobs from Redis queue `repository-sync`:
 
--   The frontend starts and navigation works.
--   The API can connect to PostgreSQL.
--   Database migrations complete successfully.
--   Redis and the worker can process a test job.
--   Private endpoints reject unauthenticated requests.
--   Repository access respects GitHub permissions.
--   Sync failures and incomplete coverage are visible.
+```bash
+# Start worker process
+npm run dev:worker
+```
 
-If a required script, environment example, migration, or local-service
-definition is missing, add and document it as part of setup rather than
-assuming it exists.
+Features:
+- Rate-limit awareness with exponential retry backoff.
+- Redaction of sensitive tokens from logs (`sanitizeLog`).
+- Automatic cleanup of temporary clone workspaces.
 
-## Configuration
+---
 
-Exact environment variable names must be defined by the application and
-documented in `.env.example`. The following table lists configuration
-categories, not literal variable names.
+## 14. Development, Build & Test Commands
 
-  -----------------------------------------------------------------------
-  Category                Purpose                 Where it belongs
-  ----------------------- ----------------------- -----------------------
-  Application             Runtime environment,    Relevant app processes
-                          API origin, allowed web 
-                          origins                 
+```bash
+# Run all automated test suites across the monorepo
+npm test
 
-  PostgreSQL              Database connection     API and worker
+# Run strict type checking across all 4 packages
+npm run typecheck
 
-  Redis                   Queue connection        API and worker
+# Run linting checks
+npm run lint
 
-  Firebase client         Client app              Frontend, limited to
-                          configuration           values intended for
-                                                  client use
+# Compile production bundles
+npm run build
 
-  Firebase Admin          Trusted token           Server only
-                          verification            
-                          credentials or workload 
-                          identity                
+# Start services individually
+npm run dev:api     # Fastify API (http://localhost:4000)
+npm run dev:worker  # BullMQ worker
+npm run dev:web     # React Vite workbench (http://localhost:5173)
+```
 
-  GitHub App              App identity, private   Server and worker only
-                          key or secure key       
-                          reference, webhook      
-                          secret, installation    
-                          configuration           
+---
 
-  AI provider (optional)  Provider selection and  Server only
-                          API key for optional    
-                          assistance              
+## 15. API Overview & Specification
 
-  Artifact storage        Bucket, endpoint, and   Server and worker only
-  (optional)              access credentials      
+Key endpoints (all JSON responses wrapped in the standard envelope):
 
-  Observability           Error reporting and     Relevant app processes
-  (optional)              environment metadata    
-  -----------------------------------------------------------------------
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Liveness probe reporting database and Redis connection states |
+| `GET` | `/ready` | Readiness probe for load balancers |
+| `GET` | `/api/v1/auth/me` | Returns authenticated user record |
+| `GET` | `/api/v1/repositories` | Lists accessible repositories |
+| `POST` | `/api/v1/repositories/:owner/:repo/sync` | Enqueues background sync job |
+| `GET` | `/api/v1/repositories/:owner/:repo/items` | Lists issues and pull requests with filters |
+| `GET` | `/api/v1/repositories/:owner/:repo/relationships` | Returns detected relationships and confidence |
+| `GET` | `/api/v1/repositories/:owner/:repo/contributions` | Returns ranked contributors and maintenance risks |
+| `GET` | `/api/v1/repositories/:owner/:repo/archaeology/trace` | AST symbol catalog and commit history |
+| `GET` | `/api/v1/investigations` | Lists saved investigations for user |
+| `POST` | `/api/v1/investigations` | Creates a new investigation record |
 
-Configuration requirements:
+For the complete API specification, see [docs/api.md](docs/api.md).
 
--   Validate required variables at startup.
--   Fail with a useful error message that does not reveal secret values.
--   Keep `.env` out of version control.
--   Include non-secret placeholders in `.env.example`.
--   Use separate credentials and infrastructure for development,
-    testing, and production.
--   Rotate credentials immediately if they are exposed.
+---
 
-## Engineering standards
+## 16. Security & Threat Model
 
-### Type safety and validation
+- **Zero Arbitrary Execution**: Repository code is treated as untrusted input. Build scripts, npm hooks, and test runners are **never** executed.
+- **Path Traversal Defense**: File paths are strictly validated by `sanitizeFilePath`. Absolute paths, parent directory references (`..`), and null bytes (`\0`) are rejected.
+- **Resource Constraints**: Source analysis is capped at 1MB per file.
+- **Security Headers**: Fastify enforces `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+- **Cross-User Isolation**: Object-level authorization prevents reading, modifying, or deleting another user's investigations.
 
-Use TypeScript across application boundaries where supported. Validate
-untrusted input at runtime with Zod or the validation layer already
-established in the codebase. Share API types and schemas where doing so
-prevents client/server drift.
+For the full security architecture, see [docs/security.md](docs/security.md).
 
-### Reliability
+---
 
--   Make synchronization idempotent where practical.
--   Handle API pagination, rate limits, retries, and partial failures.
--   Use database constraints and transactions for related writes.
--   Record job progress and failure details.
--   Make stale and incomplete data visible to users.
--   Avoid treating a transient error as an empty result.
+## 17. Current Limitations & Evidentiary Boundaries
 
-### User experience
+1. **Static Mock Fallbacks**:
+   - In offline test environments without active database or GitHub credentials, the API automatically falls back to `InMemoryRepositoryStore` and `MockGitHubService`.
+2. **Line Blame & Git History**:
+   - Complete line-by-line blame requires a local clone mounted in the worker workspace. When only GitHub API metadata is available, CodeForensics displays revision milestones and commit links while honestly noting blame limitations.
+3. **Supported AST Languages**:
+   - AST symbol discovery currently supports TypeScript (`.ts`, `.tsx`) and JavaScript (`.js`, `.jsx`). Other extensions gracefully report revision history with an explicit limitation notice that AST parsing is unsupported.
 
-The application should behave like a professional engineering workbench:
+---
 
--   Clear hierarchy for repositories, issues, pull requests, code, and
-    evidence
--   Dense but readable technical information
--   Useful filters, search, sorting, and source links
--   Consistent loading, empty, error, permission-denied, stale, and
-    partial-data states
--   Keyboard accessibility and clear focus states
--   Purposeful motion and restrained visual effects
--   No fabricated metrics, fake testimonials, decorative charts
-    unsupported by data, or controls that do nothing
+## 18. Troubleshooting Common Issues
 
-See [`skills.md`](./skills.md) for the UI and UX design contract.
+- **`auth/invalid-api-key`**: Update `VITE_FIREBASE_API_KEY` in `.env` with your real Firebase web key and restart the Vite server.
+- **`Can't reach database server`**: Ensure the PostgreSQL Docker container is running (`docker compose up -d postgres`).
+- **`Sync job remains in QUEUED`**: Verify the worker process is running (`npm run dev:worker`) and connected to Redis.
+- **`GitHub App not configured`**: Check that `GITHUB_APP_ID` and `secrets/github-private-key.pem` are present in `.env`.
 
-### Testing
+For additional diagnostic procedures, see [docs/troubleshooting.md](docs/troubleshooting.md).
 
-Use tests to verify behavior and evidence quality, not just rendering.
+---
 
-  -----------------------------------------------------------------------
-  Test level                          Areas to cover
-  ----------------------------------- -----------------------------------
-  Unit                                Relationship detection, resolution
-                                      rules, ranking, parsers,
-                                      validation, and evidence
-                                      classification
+## 19. Production Deployment Prerequisites
 
-  Integration                         API authorization, persistence
-                                      constraints, synchronization
-                                      idempotency, job processing, and
-                                      webhooks
+Before deploying to live cloud infrastructure:
+1. **Frontend**: Deploy `apps/web` to Vercel or Cloudflare Pages.
+2. **Backend**: Deploy `apps/api` and `apps/worker` as Node containers on Render, Fly.io, or AWS ECS using the provided Dockerfiles.
+3. **Managed Services**: Provision managed PostgreSQL (e.g. Neon/Supabase) and managed Redis (e.g. Upstash). Run `npx prisma migrate deploy` in your build pipeline.
+4. **Update URLs**: Update GitHub App Homepage, Callback, and Webhook URLs to your production domain, and add the domain to Firebase Authorized Domains.
 
-  Component                           Filters, evidence panels, status
-                                      states, keyboard behavior, and
-                                      error handling
+For step-by-step deployment instructions, see [setup.md](setup.md).
 
-  End-to-end                          Sign-in, repository connection,
-                                      sync status, issue/PR exploration,
-                                      and investigation workflows
+---
 
-  Security                            Cross-user access, invalid webhook
-                                      signatures, path traversal, prompt
-                                      injection, and secret redaction
+## 20. License & Acknowledgements
 
-  Evaluation fixtures                 Confirmed fixes, partial fixes,
-                                      duplicates, reverts, backports,
-                                      superseded pull requests, and
-                                      ambiguous cases
-  -----------------------------------------------------------------------
-
-Include negative and ambiguous examples. An analysis system should be
-tested on cases where the correct answer is unknown, not only on cases
-where a relationship is obvious. Prefer deterministic fixtures for
-repeatability and use live GitHub integration tests where they add
-meaningful coverage.
-
-Before merging a change, run the lint, type-check, test, and build
-commands supported by the repository. Document checks that could not be
-run.
-
-## Project documentation
-
--   [`documentation.md`](./documentation.md) --- product requirements,
-    system architecture, functional behavior, data model, security
-    requirements, testing, and acceptance criteria.
--   [`skills.md`](./skills.md) --- frontend design principles,
-    interaction standards, accessibility, and guidance for avoiding
-    generic AI-generated UI patterns.
-
-Keep these documents aligned with the actual implementation. If the
-implementation differs from the intended design, document the real
-behavior rather than leaving misleading instructions.
-
-## License
-
-This project is licensed under the **MIT License**. See the
-[`LICENSE`](./LICENSE) file for the full license text.
+- **License**: MIT License. See [LICENSE](LICENSE) for details.
+- **Built With**: Fastify, React, Vite, Prisma, BullMQ, Tailwind CSS, TypeScript Compiler API, Octokit, and Firebase.

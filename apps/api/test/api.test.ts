@@ -75,4 +75,40 @@ describe('API Server Foundation', () => {
     expect(body.error.code).toBe('NOT_FOUND');
     expect(body.meta.requestId).toBeDefined();
   });
+
+  it('Injects strict security headers on all responses', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/health',
+    });
+
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
+    expect(response.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(response.headers['permissions-policy']).toBe('camera=(), microphone=(), geolocation=()');
+  });
+
+  it('GET /health reflects degraded status when database is disconnected', async () => {
+    const degradedApp = buildApp(
+      { ...testConfig, DATABASE_URL: 'postgresql://localhost:5432/mock_db' },
+      {
+        dbChecker: async () => ({ isConnected: false, error: 'Connection refused' }),
+      }
+    );
+    await degradedApp.ready();
+
+    const response = await degradedApp.inject({
+      method: 'GET',
+      url: '/health',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.data.status).toBe('degraded');
+    expect(body.data.services.database).toBe('disconnected');
+
+    await degradedApp.close();
+  });
 });
+

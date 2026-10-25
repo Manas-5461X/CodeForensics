@@ -43,6 +43,26 @@ export type SyncStatus =
   | 'FAILED'
   | 'PARTIAL';
 
+export type EntityType = 'ISSUE' | 'PULL_REQUEST' | 'COMMIT' | 'FILE' | 'SYMBOL';
+
+export interface EvidenceReference {
+  type: string;
+  keyword?: string;
+  sourceText: string;
+  matchedText: string;
+  location?: 'BODY' | 'TITLE' | 'COMMIT' | 'BRANCH';
+}
+
+export interface RelationshipEvidence {
+  summary: string;
+  ruleId: string;
+  ruleDescription: string;
+  references: EvidenceReference[];
+  confidenceRationale: string;
+  limitations?: string[];
+  missingEvidence?: string[];
+}
+
 export interface EvidenceItem {
   id: string;
   category: ClaimCategory;
@@ -60,9 +80,9 @@ export interface RelationshipRecord {
   id: string;
   repositoryId: string;
   sourceId: string;
-  sourceType: 'ISSUE' | 'PULL_REQUEST' | 'COMMIT' | 'FILE';
+  sourceType: EntityType;
   targetId: string;
-  targetType: 'ISSUE' | 'PULL_REQUEST' | 'COMMIT' | 'FILE';
+  targetType: EntityType;
   relationshipType: RelationshipType;
   category: ClaimCategory;
   confidence: AssessmentConfidence;
@@ -72,14 +92,38 @@ export interface RelationshipRecord {
   freshness: string;
 }
 
+export interface RelationshipInfo {
+  id: string;
+  repositoryId: string;
+  sourceId: string;
+  sourceType: EntityType;
+  sourceNumber?: number;
+  sourceTitle?: string;
+  targetId: string;
+  targetType: EntityType;
+  targetNumber?: number;
+  targetTitle?: string;
+  relationshipType: RelationshipType;
+  category: ClaimCategory;
+  confidence: AssessmentConfidence;
+  method: string;
+  evidenceSummary: string;
+  evidenceDetails?: RelationshipEvidence | null;
+  evidenceItems?: EvidenceItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ResolutionAssessment {
   issueId: string;
   status: ResolutionStatus;
   category: ClaimCategory;
   confidence: AssessmentConfidence;
   evidence: EvidenceItem[];
-  counterEvidence: EvidenceItem[];
+  counterEvidence?: EvidenceItem[];
+  evidenceSummary?: string;
   assessedAt: string;
   rationale: string;
   coverageNotes: string[];
+  linkedRelationships?: RelationshipInfo[];
 }

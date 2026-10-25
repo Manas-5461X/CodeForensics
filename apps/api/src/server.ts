@@ -1,5 +1,6 @@
 import { loadConfig } from './config/env.js';
 import { buildApp } from './app.js';
+import { disconnectDatabase } from './db/prisma.js';
 
 async function startServer(): Promise<void> {
   const config = loadConfig();
@@ -18,8 +19,8 @@ async function startServer(): Promise<void> {
   for (const signal of signals) {
     process.on(signal, () => {
       app.log.info(`Received ${signal}, closing server gracefully...`);
-      void app.close().then(() => {
-        app.log.info('Server closed successfully.');
+      void Promise.all([app.close(), disconnectDatabase()]).then(() => {
+        app.log.info('Server and database connections closed successfully.');
         process.exit(0);
       });
     });

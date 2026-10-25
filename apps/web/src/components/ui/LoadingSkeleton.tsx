@@ -23,3 +23,5 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
     </div>
   );
 }
+
+export { Skeleton as LoadingSkeleton };

@@ -1,7 +1,19 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import fs from 'node:fs';
 
-// Load local environment variables if available
+// Load local environment variables from current directory or monorepo root
+const candidateEnvPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../../.env'),
+];
+for (const envPath of candidateEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
 dotenv.config();
 
 const EnvSchema = z.object({
@@ -13,6 +25,16 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().optional(),
   REDIS_URL: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
+  FIREBASE_AUTH_EMULATOR_HOST: z.string().optional(),
+  GITHUB_APP_ID: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
+  GITHUB_PRIVATE_KEY: z.string().optional(),
+  GITHUB_PRIVATE_KEY_PATH: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

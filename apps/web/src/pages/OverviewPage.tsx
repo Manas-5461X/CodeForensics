@@ -7,12 +7,38 @@ import {
   FileSearch,
   ArrowRight,
   ShieldAlert,
+  RefreshCw,
+  FolderGit2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useRepository } from '../context/RepositoryContext.js';
 
 export function OverviewPage() {
+  const { activeRepo, syncState, isSyncing, triggerSync, syncError } = useRepository();
+
+  const repoTitle = activeRepo?.fullName || 'No Repository Selected';
+  const repoDesc =
+    activeRepo?.description ||
+    (activeRepo
+      ? `Default branch '${activeRepo.defaultBranch}' • Tracked in CodeForensics`
+      : 'Select or track an authorized repository in the sidebar to begin forensic sync.');
+
+  const issuesCount = syncState?.issuesCount ?? 0;
+  const prsCount = syncState?.prsCount ?? 0;
+  const syncStatus = syncState?.status || 'IDLE';
+
   return (
     <div className="space-y-6">
+      {/* Sync Warning or Error Banner */}
+      {syncError && (
+        <div className="bg-warning-subtle/30 border border-warning/40 p-4 rounded-md flex items-start gap-3 text-xs text-warning">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <strong className="font-semibold">Sync Coverage Notice:</strong> {syncError}
+          </div>
+        </div>
+      )}
+
       {/* Scope and Repository Banner */}
       <div className="bg-surface border border-border-subtle p-5 rounded-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -20,47 +46,83 @@ export function OverviewPage() {
             <span className="text-xs font-mono font-medium text-primary-muted">
               Target Repository
             </span>
-            <Badge category="FACT">VERIFIED REPO</Badge>
+            {activeRepo ? (
+              <Badge category="FACT">VERIFIED REPO</Badge>
+            ) : (
+              <Badge category="UNKNOWN">PENDING SELECTION</Badge>
+            )}
           </div>
-          <h2 className="text-xl font-bold text-primary mt-1">facebook/react</h2>
-          <p className="text-xs text-primary-secondary mt-1">
-            The library for web and native user interfaces • Synchronized commit{' '}
-            <code className="text-xs font-mono text-link">b84f291</code>
-          </p>
+          <h2 className="text-xl font-bold text-primary mt-1 font-mono flex items-center gap-2">
+            <FolderGit2 className="w-5 h-5 text-accent shrink-0" />
+            <span>{repoTitle}</span>
+          </h2>
+          <p className="text-xs text-primary-secondary mt-1 max-w-2xl">{repoDesc}</p>
         </div>
         <div className="flex items-center gap-2">
+          {activeRepo && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => triggerSync()}
+              disabled={isSyncing}
+              leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
+            >
+              {isSyncing ? 'Syncing...' : 'Sync Repository'}
+            </Button>
+          )}
           <Link to="/app/issues">
-            <Button variant="primary" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+            <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
               Explore Issues & PRs
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Forensic Metrics Grid - Restrained, Real-data aligned, No fake KPI bloat */}
+      {/* Forensic Metrics Grid - Restrained, Real-data aligned */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Panel className="p-4">
           <div className="text-xs text-primary-muted font-medium">Synchronized Issues</div>
-          <div className="text-2xl font-bold font-mono text-primary mt-1">1,420</div>
+          <div className="text-2xl font-bold font-mono text-primary mt-1">
+            {issuesCount.toLocaleString()}
+          </div>
           <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1">
-            <span className="text-success font-medium">92%</span> historical coverage
+            {syncStatus === 'COMPLETED' ? (
+              <span className="text-success font-medium">Full coverage verified</span>
+            ) : syncStatus === 'PARTIAL' ? (
+              <span className="text-warning font-medium">Partial coverage</span>
+            ) : syncStatus === 'RUNNING' ? (
+              <span className="text-accent font-medium">Ingesting...</span>
+            ) : (
+              <span className="text-primary-muted">Awaiting sync</span>
+            )}
           </div>
         </Panel>
 
         <Panel className="p-4">
           <div className="text-xs text-primary-muted font-medium">Pull Requests Tracked</div>
-          <div className="text-2xl font-bold font-mono text-primary mt-1">842</div>
+          <div className="text-2xl font-bold font-mono text-primary mt-1">
+            {prsCount.toLocaleString()}
+          </div>
           <div className="text-[11px] text-primary-secondary mt-1">
-            <span className="font-mono text-primary">612</span> merged with commit diffs
+            {prsCount > 0 ? (
+              <span className="font-mono text-primary">Tracked via GitHub REST API</span>
+            ) : (
+              <span className="text-primary-muted">No PRs imported yet</span>
+            )}
           </div>
         </Panel>
 
         <Panel className="p-4">
-          <div className="text-xs text-primary-muted font-medium">Evidenced Relationships</div>
-          <div className="text-2xl font-bold font-mono text-accent mt-1">318</div>
-          <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1">
-            <Badge category="FACT" showIcon={false}>184 Facts</Badge>
-            <Badge category="INFERENCE" showIcon={false}>134 Inferred</Badge>
+          <div className="text-xs text-primary-muted font-medium">Sync Status</div>
+          <div className="text-xl font-bold font-mono text-accent mt-1 uppercase">
+            {isSyncing ? `RUNNING (${syncState?.progress || 0}%)` : syncStatus}
+          </div>
+          <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1 truncate">
+            {syncState?.completedAt ? (
+              <span>Last: {new Date(syncState.completedAt).toLocaleTimeString()}</span>
+            ) : (
+              <span>Not synchronized yet</span>
+            )}
           </div>
         </Panel>
 
