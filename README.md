@@ -43,6 +43,7 @@
 18. [Troubleshooting Common Issues](#18-troubleshooting-common-issues)
 19. [Production Deployment Guidelines](#19-production-deployment-guidelines)
 20. [License & Acknowledgments](#20-license--acknowledgments)
+21. [Demo Video & Walkthrough](#21-demo-video--walkthrough)
 
 ---
 
@@ -469,3 +470,13 @@ For full deployment scripts and recipes, see [setup.md](setup.md).
 
 - **License**: Released under the [MIT License](LICENSE).
 - **Core Technologies**: Built with [Fastify](https://www.fastify.io/), [React](https://react.dev/), [Vite](https://vitejs.dev/), [Prisma](https://www.prisma.io/), [BullMQ](https://bullmq.io/), [Tailwind CSS](https://tailwindcss.com/), [TypeScript Compiler API](https://github.com/microsoft/TypeScript), and [Firebase](https://firebase.google.com/).
+
+---
+
+## 21. Demo Video & Walkthrough
+
+Watch the complete CodeForensics product demo showing multi-tier repository synchronization, AST Code Archaeology, issue/PR lineage tracing, contributor impact scoring, and the forensic investigations vault:
+
+- **Product Demo Video**: [Watch Demo on Google Drive](https://drive.google.com/file/d/1DemoVideoCodeForensicsDriveLink/view?usp=sharing)
+*(Replace with your public drive recording link or view via the live web platform)*
+

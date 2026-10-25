@@ -154,15 +154,19 @@ export function IssuesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
             variant="secondary"
             onClick={() => triggerSync(true)}
             disabled={isSyncing}
-            className="flex items-center gap-1.5"
+            leftIcon={
+              <RotateCw
+                className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-accent' : ''}`}
+              />
+            }
+            className="shrink-0 text-xs px-3"
           >
-            <RotateCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Synchronizing...' : 'Resync Repository'}
           </Button>
         </div>
