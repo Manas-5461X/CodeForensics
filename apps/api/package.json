@@ -1,6 +1,7 @@
 {
   "name": "@codeforensics/api",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "main": "dist/server.js",
   "scripts": {
