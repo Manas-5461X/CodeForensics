@@ -7,6 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000
 export interface ApiClientOptions extends RequestInit {
   token?: string | null;
   params?: Record<string, string | number | boolean | undefined>;
+  timeoutMs?: number;
 }
 
 export class ApiClientError extends Error {
@@ -30,7 +31,7 @@ export async function apiClient<T>(
   endpoint: string,
   options: ApiClientOptions = {}
 ): Promise<ApiResponse<T>> {
-  const { token, params, headers, ...restOptions } = options;
+  const { token, params, headers, timeoutMs = 60000, ...restOptions } = options;
 
   let url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
 
@@ -57,7 +58,7 @@ export async function apiClient<T>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {

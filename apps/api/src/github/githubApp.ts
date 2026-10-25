@@ -187,14 +187,54 @@ export class GitHubAppService implements IGitHubService {
       };
     }
 
-    // 2. High-speed Direct Public REST API Lookup (Resolves in <1 second with zero Octokit retry loops)
+    // 2. High-speed Direct Public Verification
+    // When no GITHUB_TOKEN is provided, bypass rate-limited REST API and verify directly via web & git refs (<800ms)
+    if (!process.env.GITHUB_TOKEN) {
+      const webRepo = await this.verifyPublicRepoWeb(owner, repo);
+      if (webRepo) {
+        return webRepo;
+      }
+
+      // If not public, check if accessible under installed GitHub App
+      if (this.app) {
+        try {
+          const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
+            owner,
+            repo,
+          });
+          if (installation?.id) {
+            const octokit = await this.getInstallationOctokit(installation.id);
+            const { data } = await octokit.rest.repos.get({ owner, repo });
+            return {
+              id: data.id,
+              name: data.name,
+              fullName: data.full_name,
+              owner: data.owner.login,
+              private: data.private,
+              htmlUrl: data.html_url,
+              description: data.description,
+              defaultBranch: data.default_branch,
+              installationId: installation.id,
+            };
+          }
+        } catch {
+          // Not in GitHub App
+        }
+      }
+
+      const notFoundErr = new Error(
+        `Repository '${owner}/${repo}' was not found on GitHub. Please check that the repository is public and spelled correctly.`
+      );
+      (notFoundErr as unknown as { status: number }).status = 404;
+      throw notFoundErr;
+    }
+
+    // 3. High-speed Direct Public REST API Lookup (when GITHUB_TOKEN is configured)
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'CodeForensics/0.1.0',
+      Authorization: `token ${process.env.GITHUB_TOKEN}`,
     };
-    if (process.env.GITHUB_TOKEN) {
-      headers.Authorization = `token ${process.env.GITHUB_TOKEN}`;
-    }
 
     try {
       const controller = new AbortController();
