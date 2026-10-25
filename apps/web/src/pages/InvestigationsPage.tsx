@@ -1,57 +1,297 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { useRepository } from '../context/RepositoryContext.js';
+import { useApiClient } from '../utils/apiClient.js';
+import type {
+  InvestigationRecord,
+  InvestigationStatus,
+  InvestigationEvidenceItem,
+} from '@codeforensics/shared';
 import {
   Plus,
+  Search,
   AlertTriangle,
   GitCommit,
+  Trash2,
+  ExternalLink,
+  FileQuestion,
+  X,
+  FolderGit2,
 } from 'lucide-react';
 
-interface InvestigationItem {
-  id: string;
-  question: string;
-  scope: string;
-  status: 'In Progress' | 'Concluded' | 'Inconclusive';
-  findingsCount: number;
-  evidenceItemsCount: number;
-  updatedAt: string;
-  hypotheses: string[];
+interface LocationState {
+  prefillQuestion?: string;
+  prefillScope?: string;
+  prefillEvidence?: Partial<InvestigationEvidenceItem>;
 }
 
-const mockInvestigations: InvestigationItem[] = [
-  {
-    id: 'inv-1',
-    question: 'Did PR #29012 fully resolve the concurrent tearing issue reported in #28941?',
-    scope: 'React 19 RC • packages/react/src/ReactHooks.js • commit b84f291',
-    status: 'Inconclusive',
-    findingsCount: 3,
-    evidenceItemsCount: 5,
-    updatedAt: 'Yesterday',
-    hypotheses: [
-      'H1: PR #29012 only addressed single-transition tearing, leaving nested transitions vulnerable.',
-      'H2: The issue was superseded by lane scheduler rewrite in commit 8a129f.',
-    ],
-  },
-  {
-    id: 'inv-2',
-    question: 'What historical commit introduced the memory leak in Suspense list unmounting?',
-    scope: 'React 18.2 to 18.3 • ReactSuspenseList.js',
-    status: 'Concluded',
-    findingsCount: 4,
-    evidenceItemsCount: 7,
-    updatedAt: '3 days ago',
-    hypotheses: [
-      'H1: Commit 41e9b2 removed cleanup callback during early abort.',
-    ],
-  },
-];
-
 export function InvestigationsPage() {
-  const [selectedInv, setSelectedInv] = useState<InvestigationItem>(mockInvestigations[0]);
+  const { activeRepo } = useRepository();
+  const { get, post, patch, del } = useApiClient();
+  const location = useLocation();
+  const locationState = location.state as LocationState | undefined;
+
+  const [investigations, setInvestigations] = useState<InvestigationRecord[]>([]);
+  const [selectedInv, setSelectedInv] = useState<InvestigationRecord | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // New Investigation Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [newQuestion, setNewQuestion] = useState<string>('');
+  const [newScope, setNewScope] = useState<string>('');
+  const [newStatus, setNewStatus] = useState<InvestigationStatus>('open');
+  const [newHypothesis, setNewHypothesis] = useState<string>('');
+  const [newObservation, setNewObservation] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Add Item States for Selected Investigation
+  const [addHypothesisInput, setAddHypothesisInput] = useState<string>('');
+  const [addObservationInput, setAddObservationInput] = useState<string>('');
+  const [addFindingInput, setAddFindingInput] = useState<string>('');
+
+  // Delete Confirmation State
+  const [invToDelete, setInvToDelete] = useState<InvestigationRecord | null>(null);
+
+  // Handle location prefill
+  useEffect(() => {
+    if (locationState?.prefillQuestion) {
+      setNewQuestion(locationState.prefillQuestion);
+      setNewScope(locationState.prefillScope || '');
+      setIsCreateModalOpen(true);
+    }
+  }, [locationState]);
+
+  // Fetch investigations
+  const fetchInvestigations = useCallback(async () => {
+    if (!activeRepo) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params: Record<string, string> = {
+        repositoryId: activeRepo.id,
+      };
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      const res = await get<InvestigationRecord[]>('/api/v1/investigations', params);
+      if (res.data) {
+        setInvestigations(res.data);
+        if (res.data.length > 0) {
+          // Keep current selection or default to first
+          setSelectedInv((prev) => {
+            if (prev) {
+              const matched = res.data?.find((i) => i.id === prev.id);
+              if (matched) return matched;
+            }
+            return res.data![0];
+          });
+        } else {
+          setSelectedInv(null);
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch investigations';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeRepo, statusFilter, searchQuery, get]);
+
+  useEffect(() => {
+    void fetchInvestigations();
+  }, [fetchInvestigations]);
+
+  // Handle creation
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeRepo) return;
+    if (!newQuestion.trim()) {
+      setFormError('Question is required');
+      return;
+    }
+    if (!newScope.trim()) {
+      setFormError('Scope is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      const hypotheses = newHypothesis.trim() ? [newHypothesis.trim()] : [];
+      const observations = newObservation.trim() ? [newObservation.trim()] : [];
+      const evidenceItems: InvestigationEvidenceItem[] = [];
+
+      if (locationState?.prefillEvidence) {
+        evidenceItems.push({
+          id: `ev-${Date.now()}`,
+          type: (locationState.prefillEvidence.type as any) || 'commit',
+          identifier: locationState.prefillEvidence.identifier || 'Initial Ref',
+          title: locationState.prefillEvidence.title || 'Referenced Evidence',
+          url: locationState.prefillEvidence.url,
+          category: locationState.prefillEvidence.category || 'FACT',
+          summary: locationState.prefillEvidence.summary,
+          addedAt: new Date().toISOString(),
+        });
+      }
+
+      const res = await post<InvestigationRecord>('/api/v1/investigations', {
+        repositoryId: activeRepo.id,
+        question: newQuestion.trim(),
+        scope: newScope.trim(),
+        status: newStatus,
+        hypotheses,
+        observations,
+        evidenceItems,
+      });
+
+      if (res.data) {
+        setIsCreateModalOpen(false);
+        setNewQuestion('');
+        setNewScope('');
+        setNewHypothesis('');
+        setNewObservation('');
+        setSelectedInv(res.data);
+        void fetchInvestigations();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create investigation';
+      setFormError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle update status
+  const handleStatusChange = async (newStat: InvestigationStatus) => {
+    if (!selectedInv) return;
+    try {
+      const res = await patch<InvestigationRecord>(`/api/v1/investigations/${selectedInv.id}`, {
+        status: newStat,
+      });
+      if (res.data) {
+        setSelectedInv(res.data);
+        setInvestigations((prev) =>
+          prev.map((i) => (i.id === res.data!.id ? res.data! : i))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to update status', err);
+    }
+  };
+
+  // Handle add hypothesis
+  const handleAddHypothesis = async () => {
+    if (!selectedInv || !addHypothesisInput.trim()) return;
+    const updatedHypotheses = [...selectedInv.hypotheses, addHypothesisInput.trim()];
+    try {
+      const res = await patch<InvestigationRecord>(`/api/v1/investigations/${selectedInv.id}`, {
+        hypotheses: updatedHypotheses,
+      });
+      if (res.data) {
+        setSelectedInv(res.data);
+        setInvestigations((prev) =>
+          prev.map((i) => (i.id === res.data!.id ? res.data! : i))
+        );
+        setAddHypothesisInput('');
+      }
+    } catch (err) {
+      console.error('Failed to add hypothesis', err);
+    }
+  };
+
+  // Handle add observation
+  const handleAddObservation = async () => {
+    if (!selectedInv || !addObservationInput.trim()) return;
+    const updatedObservations = [...selectedInv.observations, addObservationInput.trim()];
+    try {
+      const res = await patch<InvestigationRecord>(`/api/v1/investigations/${selectedInv.id}`, {
+        observations: updatedObservations,
+      });
+      if (res.data) {
+        setSelectedInv(res.data);
+        setInvestigations((prev) =>
+          prev.map((i) => (i.id === res.data!.id ? res.data! : i))
+        );
+        setAddObservationInput('');
+      }
+    } catch (err) {
+      console.error('Failed to add observation', err);
+    }
+  };
+
+  // Handle add finding
+  const handleAddFinding = async () => {
+    if (!selectedInv || !addFindingInput.trim()) return;
+    const updatedFindings = [...selectedInv.findings, addFindingInput.trim()];
+    try {
+      const res = await patch<InvestigationRecord>(`/api/v1/investigations/${selectedInv.id}`, {
+        findings: updatedFindings,
+      });
+      if (res.data) {
+        setSelectedInv(res.data);
+        setInvestigations((prev) =>
+          prev.map((i) => (i.id === res.data!.id ? res.data! : i))
+        );
+        setAddFindingInput('');
+      }
+    } catch (err) {
+      console.error('Failed to add finding', err);
+    }
+  };
+
+  // Handle deletion
+  const handleDeleteConfirm = async () => {
+    if (!invToDelete) return;
+    try {
+      await del(`/api/v1/investigations/${invToDelete.id}`);
+      setInvToDelete(null);
+      void fetchInvestigations();
+    } catch (err) {
+      console.error('Failed to delete investigation', err);
+    }
+  };
+
+  const getStatusBadge = (status: InvestigationStatus) => {
+    switch (status) {
+      case 'resolved':
+        return <Badge category="FACT">RESOLVED</Badge>;
+      case 'in_progress':
+        return <Badge category="INFERENCE">IN PROGRESS</Badge>;
+      case 'inconclusive':
+        return <Badge category="UNKNOWN">INCONCLUSIVE</Badge>;
+      default:
+        return <Badge category="HYPOTHESIS">OPEN</Badge>;
+    }
+  };
+
+  if (!activeRepo) {
+    return (
+      <EmptyState
+        icon={<FolderGit2 className="w-8 h-8 text-primary-muted" />}
+        title="No Repository Selected"
+        description="Select an authorized repository from the workspace header to view and manage persistent investigation records."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-primary tracking-tight">
@@ -61,134 +301,520 @@ export function InvestigationsPage() {
             Preserve questions, hypotheses, observations, and source citations as reproducible forensic records.
           </p>
         </div>
-        <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => {
+            setFormError(null);
+            setIsCreateModalOpen(true);
+          }}
+          leftIcon={<Plus className="w-3.5 h-3.5" />}
+        >
           New Investigation
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Saved Investigations List */}
-        <div className="space-y-3 lg:col-span-1">
-          <label className="text-xs font-semibold text-primary-muted uppercase tracking-wider block px-1">
-            Active Records ({mockInvestigations.length})
-          </label>
-          {mockInvestigations.map((inv) => (
-            <div
-              key={inv.id}
-              onClick={() => setSelectedInv(inv)}
-              className={`p-3.5 rounded-md border cursor-pointer transition-all ${
-                selectedInv.id === inv.id
-                  ? 'bg-surface border-accent shadow-xs'
-                  : 'bg-surface border-border-subtle hover:border-border-strong'
+      {/* Error Banner */}
+      {error && (
+        <div className="p-3.5 rounded-md bg-[#fdf2f2] border border-[#f8b4b4] text-xs text-[#9b1c1c] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => void fetchInvestigations()}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 sm:pb-0">
+          {(['all', 'open', 'in_progress', 'resolved', 'inconclusive'] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1.5 rounded-md font-medium capitalize transition-colors ${
+                statusFilter === st
+                  ? 'bg-accent text-white font-semibold'
+                  : 'bg-surface text-primary-secondary hover:text-primary border border-border-subtle'
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <Badge
-                  category={
-                    inv.status === 'Concluded'
-                      ? 'RESOLVED'
-                      : inv.status === 'Inconclusive'
-                      ? 'UNKNOWN'
-                      : 'INFERENCE'
-                  }
-                >
-                  {inv.status}
-                </Badge>
-                <span className="text-[11px] font-mono text-primary-muted">
-                  {inv.updatedAt}
-                </span>
-              </div>
-              <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
-                {inv.question}
-              </h4>
-              <p className="text-[11px] font-mono text-primary-secondary mt-1.5 line-clamp-1">
-                Scope: {inv.scope}
-              </p>
-            </div>
+              {st === 'in_progress' ? 'In Progress' : st}
+            </button>
           ))}
         </div>
 
-        {/* Selected Investigation Detail Workbench */}
-        <div className="lg:col-span-2 space-y-4">
-          <Panel
-            title="Forensic Record"
-            subtitle={`ID: ${selectedInv.id} • Last updated ${selectedInv.updatedAt}`}
-            action={
-              <Badge category={selectedInv.status === 'Concluded' ? 'RESOLVED' : 'UNKNOWN'}>
-                {selectedInv.status}
-              </Badge>
-            }
-          >
-            <div className="space-y-5">
-              {/* Question & Scope Header */}
-              <div>
-                <h3 className="text-sm font-bold text-primary">
-                  {selectedInv.question}
-                </h3>
-                <div className="mt-1.5 p-2 bg-surface-subtle rounded border border-border-subtle font-mono text-xs text-primary-secondary">
-                  <strong>Scope:</strong> {selectedInv.scope}
-                </div>
-              </div>
-
-              {/* Competing Hypotheses */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
-                  Competing Hypotheses
-                </h4>
-                <div className="space-y-2">
-                  {selectedInv.hypotheses.map((h, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded bg-surface border border-border-subtle text-xs text-primary flex items-start gap-2.5"
-                    >
-                      <GitCommit className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
-                      <span>{h}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Evidentiary Citations */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
-                  Traceable Evidence Items
-                </h4>
-                <div className="divide-y divide-border-subtle border border-border-subtle rounded-md bg-surface overflow-hidden">
-                  <div className="p-3 text-xs space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge category="FACT">GITHUB PR #29012</Badge>
-                      <span className="font-mono text-primary-muted text-[11px]">Merged commit b84f291</span>
-                    </div>
-                    <p className="text-primary-secondary text-[11px]">
-                      Title: "Fix tearing in useDeferredValue by snapshotting transition lanes".
-                    </p>
-                  </div>
-                  <div className="p-3 text-xs space-y-1 bg-surface-subtle/20">
-                    <div className="flex items-center gap-2">
-                      <Badge category="INFERENCE">TEST GAP</Badge>
-                      <span className="font-mono text-primary-muted text-[11px]">packages/react/src/__tests__/ReactHooks-test.js</span>
-                    </div>
-                    <p className="text-primary-secondary text-[11px]">
-                      Test suite covers synchronous fallback only; no assertions for concurrent nested transitions.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Honest Uncertainty & Limitations */}
-              <div className="p-3 rounded-md bg-[#fcf4e6] border border-[#ebd6a9] text-xs text-[#8e641b] space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Uncertainty & Coverage Limitations</span>
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  Without an end-to-end regression fixture in CI, CodeForensics assesses resolution as <strong>PARTIALLY_ADDRESSED</strong> rather than confirmed fixed.
-                </p>
-              </div>
-            </div>
-          </Panel>
+        <div className="relative sm:w-64">
+          <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search questions or scope..."
+            className="w-full bg-surface text-xs text-primary rounded-md pl-9 pr-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+          />
         </div>
       </div>
+
+      {/* Main Workbench Layout */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <LoadingSkeleton className="h-96 w-full" />
+          <div className="lg:col-span-2">
+            <LoadingSkeleton className="h-96 w-full" />
+          </div>
+        </div>
+      ) : investigations.length === 0 ? (
+        <EmptyState
+          icon={<FileQuestion className="w-8 h-8 text-primary-muted" />}
+          title="No Investigations Found"
+          description="Formulate a forensic question and preserve traceable evidence records for this repository."
+          action={
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(true)}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Start Investigation
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Saved Investigations List Column */}
+          <div className="space-y-3 lg:col-span-1">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-xs font-semibold text-primary-muted uppercase tracking-wider block">
+                Saved Records ({investigations.length})
+              </label>
+            </div>
+
+            <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
+              {investigations.map((inv) => (
+                <div
+                  key={inv.id}
+                  onClick={() => setSelectedInv(inv)}
+                  className={`p-3.5 rounded-md border cursor-pointer transition-all ${
+                    selectedInv?.id === inv.id
+                      ? 'bg-surface border-accent shadow-xs'
+                      : 'bg-surface border-border-subtle hover:border-border-strong'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    {getStatusBadge(inv.status)}
+                    <span className="text-[11px] font-mono text-primary-muted">
+                      {new Date(inv.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
+                    {inv.question}
+                  </h4>
+                  <p className="text-[11px] font-mono text-primary-secondary mt-1.5 line-clamp-1">
+                    Scope: {inv.scope}
+                  </p>
+                  <div className="mt-2.5 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-primary-muted font-mono">
+                    <span>{inv.evidenceItems.length} evidence citation(s)</span>
+                    <span>{inv.hypotheses.length} hypotheses</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Selected Investigation Detail Workbench */}
+          {selectedInv ? (
+            <div className="lg:col-span-2 space-y-4">
+              <Panel
+                title="Forensic Investigation Record"
+                subtitle={`ID: ${selectedInv.id} • Updated ${new Date(selectedInv.updatedAt).toLocaleDateString()}`}
+                action={
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedInv.status}
+                      onChange={(e) => handleStatusChange(e.target.value as InvestigationStatus)}
+                      className="bg-surface-subtle text-xs font-semibold text-primary rounded border border-border-strong px-2 py-1 focus:outline-none"
+                    >
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="inconclusive">Inconclusive</option>
+                    </select>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setInvToDelete(selectedInv)}
+                      leftIcon={<Trash2 className="w-3.5 h-3.5 text-danger" />}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                }
+              >
+                <div className="space-y-6">
+                  {/* Question & Scope Header */}
+                  <div>
+                    <h3 className="text-sm font-bold text-primary leading-snug">
+                      {selectedInv.question}
+                    </h3>
+                    <div className="mt-2 p-2.5 bg-surface-subtle rounded border border-border-subtle font-mono text-xs text-primary-secondary">
+                      <strong className="text-primary">Scope:</strong> {selectedInv.scope}
+                    </div>
+                  </div>
+
+                  {/* Competing Hypotheses */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                        Competing Hypotheses ({selectedInv.hypotheses.length})
+                      </h4>
+                    </div>
+                    {selectedInv.hypotheses.length === 0 ? (
+                      <p className="text-xs text-primary-muted font-mono italic">
+                        No hypotheses formulated yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedInv.hypotheses.map((h, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded bg-surface border border-border-subtle text-xs text-primary flex items-start gap-2.5"
+                          >
+                            <GitCommit className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{h}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Add Hypothesis Input */}
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={addHypothesisInput}
+                        onChange={(e) => setAddHypothesisInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void handleAddHypothesis();
+                        }}
+                        placeholder="Add candidate hypothesis..."
+                        className="flex-1 bg-surface-subtle text-xs text-primary rounded px-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddHypothesis}
+                        disabled={!addHypothesisInput.trim()}
+                      >
+                        Add Hypothesis
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Observations */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                      Recorded Observations ({selectedInv.observations.length})
+                    </h4>
+                    {selectedInv.observations.length === 0 ? (
+                      <p className="text-xs text-primary-muted font-mono italic">
+                        No observations noted yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedInv.observations.map((obs, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded bg-surface-subtle border border-border-subtle text-xs text-primary-secondary leading-relaxed"
+                          >
+                            {obs}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Add Observation Input */}
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={addObservationInput}
+                        onChange={(e) => setAddObservationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void handleAddObservation();
+                        }}
+                        placeholder="Note new factual observation..."
+                        className="flex-1 bg-surface-subtle text-xs text-primary rounded px-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddObservation}
+                        disabled={!addObservationInput.trim()}
+                      >
+                        Add Observation
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Evidence Citations */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                      Evidentiary Citations ({selectedInv.evidenceItems.length})
+                    </h4>
+                    {selectedInv.evidenceItems.length === 0 ? (
+                      <p className="text-xs text-primary-muted font-mono italic">
+                        No structured evidence items linked yet. Trace symbols on the Code Archaeology page or examine issues in Explorer to cite evidence.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-border-subtle border border-border-subtle rounded-md bg-surface overflow-hidden">
+                        {selectedInv.evidenceItems.map((ev) => (
+                          <div key={ev.id} className="p-3 text-xs space-y-1.5 hover:bg-surface-subtle/50 transition-colors">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Badge category={ev.category}>{ev.type.toUpperCase()}</Badge>
+                                <span className="font-mono font-bold text-primary">
+                                  {ev.identifier}
+                                </span>
+                              </div>
+                              {ev.url && (
+                                <a
+                                  href={ev.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-link hover:underline font-mono text-[11px] inline-flex items-center gap-1"
+                                >
+                                  <span>Source Link</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-primary font-medium">{ev.title}</p>
+                            {ev.summary && (
+                              <p className="text-primary-secondary text-[11px]">{ev.summary}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Findings */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                      Forensic Findings ({selectedInv.findings.length})
+                    </h4>
+                    {selectedInv.findings.length === 0 ? (
+                      <p className="text-xs text-primary-muted font-mono italic">
+                        No findings published yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedInv.findings.map((f, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded bg-surface border border-accent/30 text-xs text-primary leading-relaxed"
+                          >
+                            {f}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Add Finding Input */}
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={addFindingInput}
+                        onChange={(e) => setAddFindingInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void handleAddFinding();
+                        }}
+                        placeholder="Publish verified finding..."
+                        className="flex-1 bg-surface-subtle text-xs text-primary rounded px-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddFinding}
+                        disabled={!addFindingInput.trim()}
+                      >
+                        Publish Finding
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Honest Uncertainty & Coverage Limitations */}
+                  <div className="p-3.5 rounded-md bg-[#fcf4e6] border border-[#ebd6a9] text-xs text-[#8e641b] space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Uncertainty & Coverage Limitations</span>
+                    </div>
+                    {selectedInv.limitations.length === 0 ? (
+                      <p className="text-[11px] leading-relaxed">
+                        Assessments reflect ingested repository records. In the absence of an automated regression fixture in CI, resolution remains classified conservatively.
+                      </p>
+                    ) : (
+                      <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                        {selectedInv.limitations.map((lim, idx) => (
+                          <li key={idx}>{lim}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </Panel>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* New Investigation Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-lg border border-border-strong shadow-lg max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h3 className="text-sm font-bold text-primary">
+                New Forensic Investigation
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-primary-muted hover:text-primary"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="p-2.5 rounded bg-[#fdf2f2] border border-[#f8b4b4] text-xs text-[#9b1c1c]">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Investigation Question *
+                </label>
+                <textarea
+                  rows={2}
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  placeholder="e.g. Did PR #29012 fully resolve the concurrent tearing issue reported in #28941?"
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Target Scope *
+                </label>
+                <input
+                  type="text"
+                  value={newScope}
+                  onChange={(e) => setNewScope(e.target.value)}
+                  placeholder="e.g. React 19 RC • packages/react/src/ReactHooks.js • commit b84f291"
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Initial Status
+                </label>
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value as InvestigationStatus)}
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="inconclusive">Inconclusive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Initial Hypothesis (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newHypothesis}
+                  onChange={(e) => setNewHypothesis(e.target.value)}
+                  placeholder="e.g. PR only addressed single-transition tearing, leaving nested transitions vulnerable"
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Initial Observation (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newObservation}
+                  onChange={(e) => setNewObservation(e.target.value)}
+                  placeholder="e.g. Snapshotting logic introduced without nested transition assertion"
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsCreateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Investigation'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {invToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-lg border border-border-strong shadow-lg max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-danger">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-bold text-primary">
+                Delete Investigation?
+              </h3>
+            </div>
+            <p className="text-xs text-primary-secondary leading-relaxed">
+              Are you sure you want to delete investigation <strong>"{invToDelete.question}"</strong>? This will permanently remove all associated hypotheses, observations, and findings.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setInvToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDeleteConfirm}
+                className="bg-danger hover:bg-danger/90 border-danger"
+              >
+                Confirm Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
