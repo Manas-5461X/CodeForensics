@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   RefreshCw,
   BookmarkPlus,
+  History,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -120,13 +121,18 @@ export function ArchaeologyPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-primary tracking-tight">
-            Code Archaeology
-          </h2>
-          <p className="text-xs text-primary-secondary mt-0.5">
-            Trace JavaScript and TypeScript symbols, functions, and files through Git revisions to understand historical rationale and linked decisions.
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-primary tracking-tight">
+              Code Archaeology
+            </h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/15 text-accent border border-accent/20">
+              PR & Commit History Trace
+            </span>
+          </div>
+          <p className="text-xs text-primary-secondary mt-1 max-w-3xl leading-relaxed">
+            In simple words: <strong>search for any keyword, function, or file in this repo to find which PRs and commits touched it over time and get its full historical evolution and rationale.</strong>
           </p>
         </div>
         {traceResult && (
@@ -139,6 +145,56 @@ export function ArchaeologyPage() {
             Preserve in Investigation
           </Button>
         )}
+      </div>
+
+      {/* In Simple Words: How It Works Guide */}
+      <div className="p-4 rounded-lg bg-surface border border-border-subtle shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-accent" />
+            <h3 className="text-xs font-bold text-primary tracking-tight">
+              What is Code Archaeology used for?
+            </h3>
+          </div>
+          <span className="text-[11px] text-primary-muted font-mono">
+            Repo: {activeRepo.fullName}
+          </span>
+        </div>
+        <p className="text-xs text-primary-secondary leading-relaxed">
+          Standard <code className="px-1.5 py-0.5 rounded bg-surface-subtle font-mono text-[11px] text-primary border border-border-subtle">git blame</code> only shows the last person who edited a line (often just a formatting change or bulk rename). <strong>Code Archaeology connects the whole story:</strong> it searches pull requests, commit revisions, and AST code symbols to reveal <em>why</em> code was written, who originally designed it, and which PRs modified it over time.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-accent/15 text-accent font-bold text-[11px] flex items-center justify-center shrink-0">1</span>
+              <span className="text-xs font-semibold text-primary">Search Any Keyword</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              Type any keyword, function name, hook, class, or file path you want to investigate in this repo.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-accent/15 text-accent font-bold text-[11px] flex items-center justify-center shrink-0">2</span>
+              <span className="text-xs font-semibold text-primary">Find Which PRs Touched It</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              The engine matches commits and merged pull requests that introduced, modified, or discussed that code.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-accent/15 text-accent font-bold text-[11px] flex items-center justify-center shrink-0">3</span>
+              <span className="text-xs font-semibold text-primary">Get the Full History & Context</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              Explore the chronological timeline, review linked PRs, and understand technical decisions in minutes.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Unsynced Banner */}
@@ -165,7 +221,7 @@ export function ArchaeologyPage() {
       {/* Symbol / File Search Input Panel */}
       <Panel className="p-3.5 sm:p-4 bg-surface space-y-3">
         <label className="text-xs font-semibold text-primary block">
-          Symbol or File Path to Trace
+          Keyword, Function Name, or File Path to Search
         </label>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
