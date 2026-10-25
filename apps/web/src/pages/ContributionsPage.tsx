@@ -152,10 +152,10 @@ export function ContributionsPage() {
   return (
     <div className="space-y-6">
       {/* Header and Scope Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border-subtle pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-primary tracking-tight">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-lg sm:text-xl font-bold text-primary tracking-tight">
               Contribution Finder
             </h1>
             <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary-muted">
@@ -167,7 +167,7 @@ export function ContributionsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button
             size="sm"
             variant="outline"
@@ -181,12 +181,12 @@ export function ContributionsPage() {
       </div>
 
       {/* Target Item & Subsystem Filter Bar */}
-      <Panel className="p-4 bg-surface-subtle/40">
+      <Panel className="p-3.5 sm:p-4 bg-surface-subtle/40">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Target Issue Search */}
-          <form onSubmit={handleApplyItemSearch} className="flex items-center gap-2 flex-1 max-w-md">
+          <form onSubmit={handleApplyItemSearch} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 max-w-md">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-primary-muted" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-primary-muted pointer-events-none" />
               <input
                 type="text"
                 placeholder="Target Issue or PR number (e.g. 28719)..."
@@ -195,25 +195,27 @@ export function ContributionsPage() {
                 className="w-full pl-9 pr-3 py-1.5 text-xs bg-surface border border-border-strong rounded-md text-primary placeholder:text-primary-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
-            <Button size="sm" type="submit" variant="secondary">
-              Set Target
-            </Button>
-            {selectedItemNumber !== undefined && (
-              <Button size="sm" variant="ghost" onClick={handleClearTarget}>
-                Clear
+            <div className="flex items-center gap-2">
+              <Button size="sm" type="submit" variant="secondary" className="flex-1 sm:flex-initial justify-center">
+                Set Target
               </Button>
-            )}
+              {selectedItemNumber !== undefined && (
+                <Button size="sm" variant="ghost" onClick={handleClearTarget} className="flex-1 sm:flex-initial justify-center">
+                  Clear
+                </Button>
+              )}
+            </div>
           </form>
 
           {/* Subsystem Quick Filter */}
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="text-primary-muted font-medium">Subsystem:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs no-scrollbar">
+            <span className="text-primary-muted font-medium shrink-0">Subsystem:</span>
             {['all', 'devtools', 'reconciler', 'compiler', 'react-dom'].map((sub) => (
               <button
                 key={sub}
                 type="button"
                 onClick={() => setSelectedSubsystem(sub)}
-                className={`px-2.5 py-1 rounded text-xs font-mono transition-colors border ${
+                className={`px-2.5 py-1 rounded text-xs font-mono transition-colors border shrink-0 ${
                   selectedSubsystem === sub
                     ? 'bg-accent/15 border-accent text-accent font-semibold'
                     : 'bg-surface border-border-subtle text-primary-secondary hover:border-border-strong'
@@ -369,23 +371,23 @@ export function ContributionsPage() {
                   key={rec.login}
                   className="p-4 hover:border-border-strong transition-colors space-y-3"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     {/* Left: Rank, Avatar, Login, Badges */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded bg-surface-subtle border border-border-subtle flex items-center justify-center font-mono font-bold text-xs text-accent shrink-0">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="w-7 h-7 rounded bg-surface-subtle border border-border-subtle flex items-center justify-center font-mono font-bold text-xs text-accent shrink-0 mt-0.5 sm:mt-0">
                         #{rec.rank}
                       </div>
 
                       <img
                         src={rec.avatarUrl || `https://github.com/${rec.login}.png?size=64`}
                         alt={rec.login}
-                        className="w-8 h-8 rounded-full border border-border-subtle bg-surface-subtle shrink-0"
+                        className="w-8 h-8 rounded-full border border-border-subtle bg-surface-subtle shrink-0 mt-0.5 sm:mt-0"
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = 'none';
                         }}
                       />
 
-                      <div className="space-y-0.5">
+                      <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono font-bold text-sm text-primary">
                             @{rec.login}
@@ -431,8 +433,8 @@ export function ContributionsPage() {
                     </div>
 
                     {/* Right: Score Gauge & GitHub Link */}
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle/60">
+                      <div className="text-left sm:text-right">
                         <div className="font-mono font-bold text-sm text-accent">
                           Score: {rec.normalizedScore}
                           <span className="text-primary-muted text-xs">/100</span>
@@ -449,7 +451,7 @@ export function ContributionsPage() {
                         href={`https://github.com/${rec.login}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 text-primary-muted hover:text-primary rounded border border-border-subtle hover:border-border-strong transition-colors"
+                        className="p-1.5 text-primary-muted hover:text-primary rounded border border-border-subtle hover:border-border-strong transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                         title="Open GitHub Profile"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />

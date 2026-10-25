@@ -163,13 +163,13 @@ export function ArchaeologyPage() {
       )}
 
       {/* Symbol / File Search Input Panel */}
-      <Panel className="p-4 bg-surface space-y-3">
+      <Panel className="p-3.5 sm:p-4 bg-surface space-y-3">
         <label className="text-xs font-semibold text-primary block">
           Symbol or File Path to Trace
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="relative sm:col-span-2">
-            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={symbolQuery}
@@ -190,7 +190,7 @@ export function ArchaeologyPage() {
                 if (e.key === 'Enter') void performTrace();
               }}
               placeholder="Optional file path"
-              className="w-full bg-surface-subtle text-xs font-mono text-primary rounded-md px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
+              className="flex-1 sm:w-56 bg-surface-subtle text-xs font-mono text-primary rounded-md px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
             />
             <Button
               variant="primary"
@@ -198,6 +198,7 @@ export function ArchaeologyPage() {
               onClick={() => performTrace()}
               disabled={isLoading || !symbolQuery.trim()}
               leftIcon={isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : undefined}
+              className="shrink-0"
             >
               Trace
             </Button>
@@ -205,14 +206,14 @@ export function ArchaeologyPage() {
         </div>
 
         {/* Quick Suggestion Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px]">
-          <span className="text-primary-muted font-medium">Quick suggestions:</span>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 pt-1 text-[11px] no-scrollbar">
+          <span className="text-primary-muted font-medium shrink-0">Quick suggestions:</span>
           {DEFAULT_SUGGESTIONS.map((sug) => (
             <button
               key={sug}
               type="button"
               onClick={() => handleSuggestionClick(sug)}
-              className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle font-mono text-primary-secondary hover:text-primary hover:border-accent transition-colors"
+              className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle font-mono text-primary-secondary hover:text-primary hover:border-accent transition-colors shrink-0"
             >
               {sug}
             </button>

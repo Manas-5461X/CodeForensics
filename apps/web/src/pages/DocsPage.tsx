@@ -273,6 +273,7 @@ export function DocsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filterQuery, setFilterQuery] = useState('');
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [isMobileChaptersOpen, setIsMobileChaptersOpen] = useState(false);
 
   const activeChapterId = searchParams.get('chapter') || 'overview';
 
@@ -303,26 +304,27 @@ export function DocsPage() {
 
   const handleSelectChapter = (id: string) => {
     setSearchParams({ chapter: id });
+    setIsMobileChaptersOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
       {/* Top Breadcrumb & Header */}
       <div className="mb-6 pb-4 border-b border-border-subtle">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-primary-muted mb-2">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-primary-muted mb-2 flex-wrap">
           <Link to="/app" className="hover:text-primary transition-colors">
             Workbench
           </Link>
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-primary font-medium">In-App Documentation</span>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-accent font-semibold">{activeChapter.title}</span>
+          <span className="text-accent font-semibold truncate max-w-[200px] sm:max-w-none">{activeChapter.title}</span>
         </nav>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2.5">
-              <BookOpen className="w-6 h-6 text-accent" />
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center gap-2.5">
+              <BookOpen className="w-5 sm:w-6 h-5 sm:h-6 text-accent shrink-0" />
               <span>Developer Reference & System Guide</span>
             </h1>
             <p className="text-xs text-primary-secondary mt-1">
@@ -337,10 +339,28 @@ export function DocsPage() {
         </div>
       </div>
 
+      {/* Mobile Chapter Selector Toggle (<lg) */}
+      <div className="lg:hidden mb-4">
+        <button
+          type="button"
+          onClick={() => setIsMobileChaptersOpen((prev) => !prev)}
+          className="w-full flex items-center justify-between p-3 rounded-lg bg-surface border border-border-strong text-xs font-medium text-primary shadow-xs"
+        >
+          <div className="flex items-center gap-2 truncate">
+            <activeChapter.icon className="w-4 h-4 text-accent shrink-0" />
+            <span className="text-primary-muted font-mono">Chapter:</span>
+            <span className="font-semibold text-primary truncate">{activeChapter.title}</span>
+          </div>
+          <span className="text-xs text-accent font-mono ml-2 shrink-0">
+            {isMobileChaptersOpen ? 'Hide Menu ▲' : 'Browse All ▼'}
+          </span>
+        </button>
+      </div>
+
       {/* Main Layout: Sidebar & Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Navigation Sidebar */}
-        <aside className="lg:col-span-4 bg-surface border border-border-subtle rounded-lg p-4 space-y-4">
+        <aside className={cn('lg:col-span-4 bg-surface border border-border-subtle rounded-lg p-4 space-y-4', !isMobileChaptersOpen && 'hidden lg:block')}>
           {/* Quick Search Input */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-primary-muted absolute left-2.5 top-1/2 -translate-y-1/2" />

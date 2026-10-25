@@ -40,9 +40,9 @@ export function OverviewPage() {
       )}
 
       {/* Scope and Repository Banner */}
-      <div className="bg-surface border border-border-subtle p-5 rounded-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface border border-border-subtle p-4 sm:p-5 rounded-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-mono font-medium text-primary-muted">
               Target Repository
             </span>
@@ -52,13 +52,13 @@ export function OverviewPage() {
               <Badge category="UNKNOWN">PENDING SELECTION</Badge>
             )}
           </div>
-          <h2 className="text-xl font-bold text-primary mt-1 font-mono flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-primary mt-1 font-mono flex items-center gap-2 break-all sm:break-normal">
             <FolderGit2 className="w-5 h-5 text-accent shrink-0" />
             <span>{repoTitle}</span>
           </h2>
           <p className="text-xs text-primary-secondary mt-1 max-w-2xl">{repoDesc}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto shrink-0">
           {activeRepo && (
             <Button
               variant="secondary"
@@ -66,12 +66,13 @@ export function OverviewPage() {
               onClick={() => triggerSync()}
               disabled={isSyncing}
               leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
+              className="w-full sm:w-auto justify-center"
             >
               {isSyncing ? 'Syncing...' : 'Sync Repository'}
             </Button>
           )}
-          <Link to="/app/issues">
-            <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+          <Link to="/app/issues" className="w-full sm:w-auto">
+            <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />} className="w-full sm:w-auto justify-center">
               Explore Issues & PRs
             </Button>
           </Link>
@@ -79,10 +80,10 @@ export function OverviewPage() {
       </div>
 
       {/* Forensic Metrics Grid - Restrained, Real-data aligned */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Panel className="p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Synchronized Issues</div>
-          <div className="text-2xl font-bold font-mono text-primary mt-1">
+          <div className="text-xl sm:text-2xl font-bold font-mono text-primary mt-1">
             {issuesCount.toLocaleString()}
           </div>
           <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1">
@@ -98,9 +99,9 @@ export function OverviewPage() {
           </div>
         </Panel>
 
-        <Panel className="p-4">
+        <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Pull Requests Tracked</div>
-          <div className="text-2xl font-bold font-mono text-primary mt-1">
+          <div className="text-xl sm:text-2xl font-bold font-mono text-primary mt-1">
             {prsCount.toLocaleString()}
           </div>
           <div className="text-[11px] text-primary-secondary mt-1">
@@ -112,9 +113,9 @@ export function OverviewPage() {
           </div>
         </Panel>
 
-        <Panel className="p-4">
+        <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Sync Status</div>
-          <div className="text-xl font-bold font-mono text-accent mt-1 uppercase">
+          <div className="text-lg sm:text-xl font-bold font-mono text-accent mt-1 uppercase">
             {isSyncing ? `RUNNING (${syncState?.progress || 0}%)` : syncStatus}
           </div>
           <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1 truncate">
@@ -126,9 +127,9 @@ export function OverviewPage() {
           </div>
         </Panel>
 
-        <Panel className="p-4">
+        <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Actionable Opportunities</div>
-          <div className="text-2xl font-bold font-mono text-link mt-1">24</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-link mt-1">24</div>
           <div className="text-[11px] text-primary-secondary mt-1">
             Evaluated by Contribution Finder
           </div>
@@ -148,9 +149,9 @@ export function OverviewPage() {
           }
         >
           <div className="divide-y divide-border-subtle">
-            <div className="py-3.5 first:pt-0 last:pb-0 flex items-start justify-between gap-4">
+            <div className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-mono font-semibold text-primary">#28941</span>
                   <Badge category="INFERENCE">PARTIALLY_ADDRESSES</Badge>
                   <span className="text-xs text-primary-muted font-mono">via PR #29012</span>
@@ -162,12 +163,14 @@ export function OverviewPage() {
                   Evidence: Matching stack frame in packages/react/src/ReactHooks.js • Closed without verification
                 </div>
               </div>
-              <Badge category="UNKNOWN">Resolution Uncertain</Badge>
+              <div className="shrink-0 self-start sm:self-auto">
+                <Badge category="UNKNOWN">Resolution Uncertain</Badge>
+              </div>
             </div>
 
-            <div className="py-3.5 flex items-start justify-between gap-4">
+            <div className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-mono font-semibold text-primary">#28810</span>
                   <Badge category="FACT">FIXED_BY</Badge>
                   <span className="text-xs text-primary-muted font-mono">commit f9281a</span>
@@ -179,12 +182,14 @@ export function OverviewPage() {
                   Evidence: Explicit GitHub closing keyword in commit • Added regression test
                 </div>
               </div>
-              <Badge category="RESOLVED">Verified Fix</Badge>
+              <div className="shrink-0 self-start sm:self-auto">
+                <Badge category="RESOLVED">Verified Fix</Badge>
+              </div>
             </div>
 
-            <div className="py-3.5 flex items-start justify-between gap-4">
+            <div className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-mono font-semibold text-primary">#28755</span>
                   <Badge category="INFERENCE">SUPERSEDES</Badge>
                   <span className="text-xs text-primary-muted font-mono">PR #28412</span>
@@ -196,7 +201,9 @@ export function OverviewPage() {
                   Evidence: 89% changed file overlap and explicit maintainer comment citation
                 </div>
               </div>
-              <Badge category="FACT">Merged</Badge>
+              <div className="shrink-0 self-start sm:self-auto">
+                <Badge category="FACT">Merged</Badge>
+              </div>
             </div>
           </div>
         </Panel>

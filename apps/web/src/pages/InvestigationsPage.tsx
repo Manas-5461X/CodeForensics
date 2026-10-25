@@ -42,6 +42,7 @@ export function InvestigationsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   // New Investigation Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -382,76 +383,118 @@ export function InvestigationsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Saved Investigations List Column */}
-          <div className="space-y-3 lg:col-span-1">
-            <div className="flex items-center justify-between px-1">
-              <label className="text-xs font-semibold text-primary-muted uppercase tracking-wider block">
-                Saved Records ({investigations.length})
-              </label>
-            </div>
-
-            <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
-              {investigations.map((inv) => (
-                <div
-                  key={inv.id}
-                  onClick={() => setSelectedInv(inv)}
-                  className={`p-3.5 rounded-md border cursor-pointer transition-all ${
-                    selectedInv?.id === inv.id
-                      ? 'bg-surface border-accent shadow-xs'
-                      : 'bg-surface border-border-subtle hover:border-border-strong'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    {getStatusBadge(inv.status)}
-                    <span className="text-[11px] font-mono text-primary-muted">
-                      {new Date(inv.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
-                    {inv.question}
-                  </h4>
-                  <p className="text-[11px] font-mono text-primary-secondary mt-1.5 line-clamp-1">
-                    Scope: {inv.scope}
-                  </p>
-                  <div className="mt-2.5 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-primary-muted font-mono">
-                    <span>{inv.evidenceItems.length} evidence citation(s)</span>
-                    <span>{inv.hypotheses.length} hypotheses</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="space-y-4">
+          {/* Mobile View Switcher (<lg) */}
+          <div className="flex lg:hidden items-center p-0.5 bg-surface-subtle border border-border-subtle rounded-md text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => setMobileView('list')}
+              className={`flex-1 py-1.5 rounded transition-colors text-center font-medium ${
+                mobileView === 'list'
+                  ? 'bg-surface text-primary shadow-xs font-bold'
+                  : 'text-primary-muted hover:text-primary'
+              }`}
+            >
+              Records ({investigations.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView('detail')}
+              disabled={!selectedInv}
+              className={`flex-1 py-1.5 rounded transition-colors text-center font-medium ${
+                mobileView === 'detail'
+                  ? 'bg-surface text-primary shadow-xs font-bold'
+                  : 'text-primary-muted hover:text-primary disabled:opacity-40'
+              }`}
+            >
+              Record Detail
+            </button>
           </div>
 
-          {/* Selected Investigation Detail Workbench */}
-          {selectedInv ? (
-            <div className="lg:col-span-2 space-y-4">
-              <Panel
-                title="Forensic Investigation Record"
-                subtitle={`ID: ${selectedInv.id} • Updated ${new Date(selectedInv.updatedAt).toLocaleDateString()}`}
-                action={
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={selectedInv.status}
-                      onChange={(e) => handleStatusChange(e.target.value as InvestigationStatus)}
-                      className="bg-surface-subtle text-xs font-semibold text-primary rounded border border-border-strong px-2 py-1 focus:outline-none"
-                    >
-                      <option value="open">Open</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="inconclusive">Inconclusive</option>
-                    </select>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setInvToDelete(selectedInv)}
-                      leftIcon={<Trash2 className="w-3.5 h-3.5 text-danger" />}
-                    >
-                      Delete
-                    </Button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Saved Investigations List Column */}
+            <div className={`space-y-3 lg:col-span-1 ${mobileView === 'detail' ? 'hidden lg:block' : 'block'}`}>
+              <div className="flex items-center justify-between px-1">
+                <label className="text-xs font-semibold text-primary-muted uppercase tracking-wider block">
+                  Saved Records ({investigations.length})
+                </label>
+              </div>
+
+              <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
+                {investigations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    onClick={() => {
+                      setSelectedInv(inv);
+                      setMobileView('detail');
+                    }}
+                    className={`p-3.5 rounded-md border cursor-pointer transition-all ${
+                      selectedInv?.id === inv.id
+                        ? 'bg-surface border-accent shadow-xs'
+                        : 'bg-surface border-border-subtle hover:border-border-strong'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      {getStatusBadge(inv.status)}
+                      <span className="text-[11px] font-mono text-primary-muted">
+                        {new Date(inv.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
+                      {inv.question}
+                    </h4>
+                    <p className="text-[11px] font-mono text-primary-secondary mt-1.5 line-clamp-1">
+                      Scope: {inv.scope}
+                    </p>
+                    <div className="mt-2.5 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-primary-muted font-mono">
+                      <span>{inv.evidenceItems.length} evidence citation(s)</span>
+                      <span>{inv.hypotheses.length} hypotheses</span>
+                    </div>
                   </div>
-                }
-              >
+                ))}
+              </div>
+            </div>
+
+            {/* Selected Investigation Detail Workbench */}
+            {selectedInv ? (
+              <div className={`lg:col-span-2 space-y-4 ${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}>
+                {/* Mobile Back Link */}
+                <div className="lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('list')}
+                    className="inline-flex items-center gap-1.5 text-xs text-link hover:underline font-mono py-1"
+                  >
+                    ← Back to Records List
+                  </button>
+                </div>
+
+                <Panel
+                  title="Forensic Investigation Record"
+                  subtitle={`ID: ${selectedInv.id} • Updated ${new Date(selectedInv.updatedAt).toLocaleDateString()}`}
+                  action={
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={selectedInv.status}
+                        onChange={(e) => handleStatusChange(e.target.value as InvestigationStatus)}
+                        className="bg-surface-subtle text-xs font-semibold text-primary rounded border border-border-strong px-2 py-1 focus:outline-none"
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="inconclusive">Inconclusive</option>
+                      </select>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setInvToDelete(selectedInv)}
+                        leftIcon={<Trash2 className="w-3.5 h-3.5 text-danger" />}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  }
+                >
                 <div className="space-y-6">
                   {/* Question & Scope Header */}
                   <div>
@@ -663,7 +706,8 @@ export function InvestigationsPage() {
             </div>
           ) : null}
         </div>
-      )}
+      </div>
+    )}
 
       {/* New Investigation Modal */}
       {isCreateModalOpen && (

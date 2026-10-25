@@ -129,10 +129,10 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-xl bg-surface border border-border-strong rounded-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="w-full max-w-xl bg-surface border border-border-strong rounded-lg shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FolderGit2 className="w-5 h-5 text-accent" />
             <h2 className="text-sm font-bold text-primary tracking-tight">Select Repository</h2>
@@ -140,7 +140,8 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-primary-muted hover:text-primary rounded-md transition-colors"
+            className="p-1.5 text-primary-muted hover:text-primary rounded-md transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+            aria-label="Close repository modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -148,14 +149,14 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
 
         {/* Error Alert */}
         {modalError && (
-          <div className="px-5 py-2.5 bg-danger-subtle/30 border-b border-danger/30 text-xs text-danger flex items-center gap-2">
+          <div className="px-4 sm:px-5 py-2.5 bg-danger-subtle/30 border-b border-danger/30 text-xs text-danger flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span className="flex-1">{modalError}</span>
           </div>
         )}
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto space-y-5">
+        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 sm:space-y-5">
           {/* Search Bar */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -284,30 +285,33 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
             <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block mb-2 px-1">
               Track Custom Repository
             </label>
-            <form onSubmit={handleAddCustom} className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Owner (e.g. facebook)"
-                value={customOwner}
-                onChange={(e) => setCustomOwner(e.target.value)}
-                className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
-                required
-              />
-              <span className="text-primary-muted">/</span>
-              <input
-                type="text"
-                placeholder="Repo (e.g. react)"
-                value={customRepo}
-                onChange={(e) => setCustomRepo(e.target.value)}
-                className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
-                required
-              />
+            <form onSubmit={handleAddCustom} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  placeholder="Owner (e.g. facebook)"
+                  value={customOwner}
+                  onChange={(e) => setCustomOwner(e.target.value)}
+                  className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
+                  required
+                />
+                <span className="text-primary-muted">/</span>
+                <input
+                  type="text"
+                  placeholder="Repo (e.g. react)"
+                  value={customRepo}
+                  onChange={(e) => setCustomRepo(e.target.value)}
+                  className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
+                  required
+                />
+              </div>
               <Button
                 type="submit"
                 size="sm"
                 variant="primary"
                 disabled={isSubmittingCustom || !customOwner.trim() || !customRepo.trim()}
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
+                className="justify-center sm:justify-start"
               >
                 {isSubmittingCustom ? 'Verifying...' : 'Add'}
               </Button>

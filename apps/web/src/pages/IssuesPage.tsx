@@ -198,9 +198,9 @@ export function IssuesPage() {
 
       {/* Filter and Search Bar */}
       <div className="bg-surface border border-border-subtle p-3 rounded-md space-y-3 shadow-xs">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search Box */}
-          <div className="relative w-full md:w-96">
+          <div className="relative w-full sm:w-80 md:w-96">
             <label htmlFor={searchInputId} className="sr-only">Search issues and pull requests</label>
             <Search className="w-3.5 h-3.5 text-primary-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -224,7 +224,7 @@ export function IssuesPage() {
           </div>
 
           {/* Sort Selector */}
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
             <label htmlFor={sortSelectId} className="text-xs text-primary-muted font-mono shrink-0">Sort:</label>
             <select
               id={sortSelectId}
@@ -243,15 +243,15 @@ export function IssuesPage() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border-subtle/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border-subtle/60">
           {/* Type Filters */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-primary-muted mr-1 font-mono">Type:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0">
+            <span className="text-xs text-primary-muted mr-1 font-mono shrink-0">Type:</span>
             <Button
               size="sm"
               variant={typeFilter === 'all' ? 'primary' : 'ghost'}
               onClick={() => handleTypeChange('all')}
-              className="text-xs h-7 px-2.5"
+              className="text-xs h-7 px-2.5 shrink-0"
             >
               All Items
             </Button>
@@ -259,7 +259,7 @@ export function IssuesPage() {
               size="sm"
               variant={typeFilter === 'issue' ? 'primary' : 'ghost'}
               onClick={() => handleTypeChange('issue')}
-              className="text-xs h-7 px-2.5 flex items-center gap-1"
+              className="text-xs h-7 px-2.5 flex items-center gap-1 shrink-0"
             >
               <CircleDot className="w-3 h-3 text-emerald-600" />
               Issues
@@ -268,7 +268,7 @@ export function IssuesPage() {
               size="sm"
               variant={typeFilter === 'pull_request' ? 'primary' : 'ghost'}
               onClick={() => handleTypeChange('pull_request')}
-              className="text-xs h-7 px-2.5 flex items-center gap-1"
+              className="text-xs h-7 px-2.5 flex items-center gap-1 shrink-0"
             >
               <GitPullRequest className="w-3 h-3 text-purple-600" />
               Pull Requests
@@ -276,13 +276,13 @@ export function IssuesPage() {
           </div>
 
           {/* State Filters */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-primary-muted mr-1 font-mono">State:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0">
+            <span className="text-xs text-primary-muted mr-1 font-mono shrink-0">State:</span>
             <Button
               size="sm"
               variant={stateFilter === 'all' ? 'secondary' : 'ghost'}
               onClick={() => handleStateChange('all')}
-              className={`text-xs h-7 px-2.5 ${stateFilter === 'all' ? 'bg-surface-selected font-semibold' : ''}`}
+              className={`text-xs h-7 px-2.5 shrink-0 ${stateFilter === 'all' ? 'bg-surface-selected font-semibold' : ''}`}
             >
               All States
             </Button>
@@ -290,7 +290,7 @@ export function IssuesPage() {
               size="sm"
               variant={stateFilter === 'open' ? 'secondary' : 'ghost'}
               onClick={() => handleStateChange('open')}
-              className={`text-xs h-7 px-2.5 ${stateFilter === 'open' ? 'bg-surface-selected font-semibold text-emerald-700' : ''}`}
+              className={`text-xs h-7 px-2.5 shrink-0 ${stateFilter === 'open' ? 'bg-surface-selected font-semibold text-emerald-700' : ''}`}
             >
               Open
             </Button>
@@ -298,7 +298,7 @@ export function IssuesPage() {
               size="sm"
               variant={stateFilter === 'closed' ? 'secondary' : 'ghost'}
               onClick={() => handleStateChange('closed')}
-              className={`text-xs h-7 px-2.5 ${stateFilter === 'closed' ? 'bg-surface-selected font-semibold text-purple-700' : ''}`}
+              className={`text-xs h-7 px-2.5 shrink-0 ${stateFilter === 'closed' ? 'bg-surface-selected font-semibold text-purple-700' : ''}`}
             >
               Closed / Merged
             </Button>
@@ -373,12 +373,12 @@ export function IssuesPage() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border-subtle bg-surface-subtle/80 text-primary-muted font-mono font-medium">
-                    <th scope="col" className="py-2.5 px-4 w-28">Item</th>
-                    <th scope="col" className="py-2.5 px-4">Title & Context</th>
-                    <th scope="col" className="py-2.5 px-4 w-32">Author</th>
-                    <th scope="col" className="py-2.5 px-4 w-36">Timestamps</th>
-                    <th scope="col" className="py-2.5 px-4 w-28 text-right">State</th>
-                    <th scope="col" className="py-2.5 px-4 w-12 text-center">
+                    <th scope="col" className="py-2.5 px-3 sm:px-4 w-20 sm:w-28">Item</th>
+                    <th scope="col" className="py-2.5 px-3 sm:px-4">Title & Context</th>
+                    <th scope="col" className="hidden md:table-cell py-2.5 px-4 w-32">Author</th>
+                    <th scope="col" className="hidden sm:table-cell py-2.5 px-4 w-36">Timestamps</th>
+                    <th scope="col" className="py-2.5 px-3 sm:px-4 w-24 sm:w-28 text-right">State</th>
+                    <th scope="col" className="py-2.5 px-2 sm:px-4 w-10 sm:w-12 text-center">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
@@ -393,7 +393,7 @@ export function IssuesPage() {
                         className="hover:bg-surface-subtle/60 transition-colors cursor-pointer group"
                       >
                         {/* Type & Number */}
-                        <td className="py-3 px-4 font-mono whitespace-nowrap">
+                        <td className="py-3 px-3 sm:px-4 font-mono whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             {isPR ? (
                               <GitPullRequest className="w-3.5 h-3.5 text-purple-600 shrink-0" aria-label="Pull Request" />
@@ -407,7 +407,7 @@ export function IssuesPage() {
                         </td>
 
                         {/* Title & Description Excerpt + Labels */}
-                        <td className="py-3 px-4 max-w-md">
+                        <td className="py-3 px-3 sm:px-4 max-w-md">
                           <div className="font-medium text-primary leading-snug group-hover:text-link transition-colors line-clamp-1">
                             {item.title}
                           </div>
@@ -416,6 +416,14 @@ export function IssuesPage() {
                               {item.body}
                             </p>
                           )}
+
+                          {/* Mobile-only author & timestamp chip */}
+                          <div className="flex sm:hidden items-center gap-2 text-[10px] text-primary-muted font-mono mt-1">
+                            {item.author && <span>@{item.author}</span>}
+                            <span>•</span>
+                            <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                          </div>
+
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {/* Resolution Status Badge (for issues) */}
                             {!isPR && item.resolutionStatus && (
@@ -461,12 +469,12 @@ export function IssuesPage() {
                         </td>
 
                         {/* Author */}
-                        <td className="py-3 px-4 text-primary-secondary font-mono whitespace-nowrap">
+                        <td className="hidden md:table-cell py-3 px-4 text-primary-secondary font-mono whitespace-nowrap">
                           {item.author || <span className="text-primary-muted">—</span>}
                         </td>
 
                         {/* Timestamps */}
-                        <td className="py-3 px-4 text-primary-muted font-mono whitespace-nowrap text-[11px]">
+                        <td className="hidden sm:table-cell py-3 px-4 text-primary-muted font-mono whitespace-nowrap text-[11px]">
                           <div>Created {new Date(item.createdAt).toLocaleDateString()}</div>
                           {item.closedAt && (
                             <div className="text-[10px] text-primary-muted/80">
@@ -476,7 +484,7 @@ export function IssuesPage() {
                         </td>
 
                         {/* State Indicator */}
-                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <td className="py-3 px-3 sm:px-4 text-right whitespace-nowrap">
                           {isPR ? (
                             item.state === 'merged' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 font-mono">
@@ -511,13 +519,13 @@ export function IssuesPage() {
                         </td>
 
                         {/* GitHub External Link */}
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-3 px-2 sm:px-4 text-center">
                           <a
                             href={item.htmlUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-primary-muted hover:text-link inline-flex p-1 rounded hover:bg-surface transition-colors"
+                            className="text-primary-muted hover:text-link inline-flex p-1.5 rounded hover:bg-surface transition-colors min-w-[32px] min-h-[32px] items-center justify-center"
                             title="Open on GitHub"
                             aria-label={`Open #${item.number} on GitHub`}
                           >

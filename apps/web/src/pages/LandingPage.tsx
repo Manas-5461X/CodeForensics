@@ -23,22 +23,25 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 1. Global Navigation Bar (CAPEX-style glass overlay)                  */}
       {/* ---------------------------------------------------------------------- */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-[#0b1120]/90 border-white/10 backdrop-blur-md border-b px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between transition-all">
-        <Link to="/" className="flex items-center gap-3.5 group">
-          <div className="w-8 h-8 rounded bg-[#1e293b] border-[#38bdf8]/40 text-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.2)] border flex items-center justify-center font-mono font-bold text-sm tracking-tight transition-colors">
+      {/* ---------------------------------------------------------------------- */}
+      {/* 1. Global Navigation Bar (CAPEX-style glass overlay)                  */}
+      {/* ---------------------------------------------------------------------- */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-[#0b1120]/90 border-white/10 backdrop-blur-md border-b px-3 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between transition-all">
+        <Link to="/" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#1e293b] border-[#38bdf8]/40 text-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.2)] border flex items-center justify-center font-mono font-bold text-xs sm:text-sm tracking-tight transition-colors">
             CF
           </div>
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-base font-bold tracking-tight text-white group-hover:text-[#38bdf8] transition-colors">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm sm:text-base font-bold tracking-tight text-white group-hover:text-[#38bdf8] transition-colors">
               CodeForensics
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-widest text-[#38bdf8]/80 border-l border-white/15 pl-2.5">
+            <span className="hidden md:inline-block text-[10px] font-mono uppercase tracking-widest text-[#38bdf8]/80 border-l border-white/15 pl-2.5">
               Evidence Graph
             </span>
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-[11px] font-mono uppercase tracking-wider text-slate-400">
+        <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-[11px] font-mono uppercase tracking-wider text-slate-400">
           <a href="#how-it-works" className="hover:text-white transition-colors">
             How It Works
           </a>
@@ -56,41 +59,44 @@ export function LandingPage() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* 3-Way Background Comparison Selector */}
-          <div className="inline-flex items-center p-0.5 bg-slate-900/90 border border-slate-700/80 rounded-full text-[10px] font-mono shadow-inner">
+          <div className="hidden xs:inline-flex items-center p-0.5 bg-slate-900/90 border border-slate-700/80 rounded-full text-[10px] font-mono shadow-inner">
             <button
               onClick={() => setHeroTheme('moon-dots')}
               title="Wireframe Moon with coordinate dots matrix"
-              className={`px-2.5 py-1 rounded-full transition-all ${
+              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
                 heroTheme === 'moon-dots'
                   ? 'bg-[#00f0ff] text-[#030712] font-bold shadow-[0_0_10px_rgba(0,240,255,0.6)]'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              ✦ Moon (Dots)
+              <span className="hidden sm:inline">✦ Moon (Dots)</span>
+              <span className="sm:hidden">Dots</span>
             </button>
             <button
               onClick={() => setHeroTheme('moon-grid')}
               title="Wireframe Moon with cyber grid"
-              className={`px-2.5 py-1 rounded-full transition-all ${
+              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
                 heroTheme === 'moon-grid'
                   ? 'bg-[#38bdf8] text-[#030712] font-bold shadow-[0_0_10px_rgba(56,189,248,0.6)]'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🌐 Moon (Grid)
+              <span className="hidden sm:inline">🌐 Moon (Grid)</span>
+              <span className="sm:hidden">Grid</span>
             </button>
             <button
               onClick={() => setHeroTheme('systems')}
               title="Deep Systems Architecture background"
-              className={`px-2.5 py-1 rounded-full transition-all ${
+              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
                 heroTheme === 'systems'
                   ? 'bg-slate-200 text-[#0b1120] font-bold shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🏛 Systems
+              <span className="hidden sm:inline">🏛 Systems</span>
+              <span className="sm:hidden">Systems</span>
             </button>
           </div>
 
@@ -98,16 +104,17 @@ export function LandingPage() {
             href="https://github.com/Manas-5461X/CodeForensics"
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
           >
             <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
             <span>GitHub</span>
           </a>
           <Link
             to="/app"
-            className="inline-flex items-center gap-2 border border-[#38bdf8]/60 bg-[#38bdf8]/10 hover:bg-[#38bdf8] hover:text-[#0b1120] text-slate-100 font-mono text-xs px-3.5 py-2 rounded transition-all duration-200 group"
+            className="inline-flex items-center gap-1.5 sm:gap-2 border border-[#38bdf8]/60 bg-[#38bdf8]/10 hover:bg-[#38bdf8] hover:text-[#0b1120] text-slate-100 font-mono text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded transition-all duration-200 group"
           >
-            <span>Open Workbench</span>
+            <span className="hidden xs:inline">Open Workbench</span>
+            <span className="xs:hidden">Workbench</span>
             <span className="text-[#38bdf8] group-hover:text-[#0b1120] transition-colors">↗</span>
           </Link>
         </div>

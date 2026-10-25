@@ -87,7 +87,7 @@ export function LoginPage() {
   const displayError = localError || error;
 
   return (
-    <div className="h-screen max-h-screen w-full bg-[#030712] text-slate-100 flex flex-col lg:flex-row selection:bg-[#38bdf8]/30 overflow-hidden font-sans">
+    <div className="min-h-[100dvh] lg:h-screen w-full bg-[#030712] text-slate-100 flex flex-col lg:flex-row selection:bg-[#38bdf8]/30 overflow-y-auto lg:overflow-hidden font-sans">
       {/* ---------------------------------------------------------------------- */}
       {/* LEFT COLUMN: Editorial Branding & Forensic Architecture (Desktop)     */}
       {/* ---------------------------------------------------------------------- */}
@@ -227,7 +227,7 @@ export function LoginPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* RIGHT COLUMN: Authentication Console Form (Mobile & Desktop)          */}
       {/* ---------------------------------------------------------------------- */}
-      <div className="w-full lg:w-1/2 xl:w-[50%] h-full flex flex-col justify-between p-4 sm:p-5 lg:p-6 xl:p-8 bg-[#030712] relative overflow-hidden">
+      <div className="w-full lg:w-1/2 xl:w-[50%] min-h-[100dvh] lg:h-full flex flex-col justify-between p-4 sm:p-5 lg:p-6 xl:p-8 bg-[#030712] relative overflow-y-auto lg:overflow-hidden">
         {/* Top Row: Navigation and Mobile Brand */}
         <div className="flex items-center justify-between w-full max-w-sm sm:max-w-md mx-auto mb-2 shrink-0">
           {/* Mobile Brand (hidden on desktop) */}
@@ -254,7 +254,7 @@ export function LoginPage() {
         </div>
 
         {/* Main Authentication Box */}
-        <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto space-y-2.5 shrink-0">
+        <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto py-3 space-y-2.5 shrink-0">
           {/* Precision Mode Toggle Switcher */}
           <div className="grid grid-cols-2 p-0.5 bg-slate-900/90 border border-slate-800 rounded-lg text-xs font-mono">
             <button

@@ -111,10 +111,10 @@ export function WorkItemDetailDrawer({
       />
 
       {/* Slide-over panel */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-2xl bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+        <div className="w-screen max-w-full sm:max-w-xl md:max-w-2xl bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="p-5 border-b border-border-subtle bg-surface-subtle/40 flex items-start justify-between gap-4">
+          <div className="p-4 sm:p-5 border-b border-border-subtle bg-surface-subtle/40 flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
                 <span className="inline-flex items-center gap-1 text-xs font-mono font-semibold px-2 py-0.5 rounded bg-surface border border-border-subtle text-primary">
@@ -198,13 +198,13 @@ export function WorkItemDetailDrawer({
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               {item?.htmlUrl && (
                 <a
                   href={item.htmlUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 text-primary-muted hover:text-link hover:bg-surface rounded-md border border-transparent hover:border-border-subtle transition-colors"
+                  className="p-2 text-primary-muted hover:text-link hover:bg-surface rounded-md border border-transparent hover:border-border-subtle transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                   title="Open on GitHub"
                   aria-label="Open on GitHub"
                 >
@@ -214,7 +214,7 @@ export function WorkItemDetailDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 text-primary-muted hover:text-primary hover:bg-surface rounded-md border border-transparent hover:border-border-subtle transition-colors"
+                className="p-2 text-primary-muted hover:text-primary hover:bg-surface rounded-md border border-transparent hover:border-border-subtle transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                 aria-label="Close drawer"
               >
                 <X className="w-4 h-4" />
@@ -223,7 +223,7 @@ export function WorkItemDetailDrawer({
           </div>
 
           {/* Forensic Evidence Provenance Banner */}
-          <div className="bg-[#f0f9ff] border-b border-[#bae6fd] px-5 py-2.5 flex items-start gap-2.5 text-xs text-[#0369a1]">
+          <div className="bg-[#f0f9ff] border-b border-[#bae6fd] px-4 sm:px-5 py-2.5 flex items-start gap-2.5 text-xs text-[#0369a1]">
             <ShieldAlert className="w-4 h-4 text-[#0284c7] shrink-0 mt-0.5" />
             <div className="leading-relaxed">
               <span className="font-semibold text-[#0c4a6e]">Forensic Provenance:</span> Observed GitHub provider state. State markers (closed/merged) indicate repository lifecycle events, not confirmed defect resolution or code verification.
@@ -231,7 +231,7 @@ export function WorkItemDetailDrawer({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="border-b border-border-subtle px-5 bg-surface flex items-center gap-6 text-xs font-medium overflow-x-auto">
+          <div className="border-b border-border-subtle px-4 sm:px-5 bg-surface flex items-center gap-4 sm:gap-6 text-xs font-medium overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
