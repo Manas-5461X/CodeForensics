@@ -144,6 +144,9 @@ export class GitHubAppService implements IGitHubService {
   }
 
   public async listRepositoriesForInstallation(installationId: number): Promise<GitHubRepoSummary[]> {
+    if (!this.app) {
+      return [];
+    }
     const octokit = await this.getInstallationOctokit(installationId);
     const { data } = await octokit.rest.apps.listReposAccessibleToInstallation({
       per_page: 100,
@@ -167,36 +170,86 @@ export class GitHubAppService implements IGitHubService {
     repo: string,
     installationId?: number
   ): Promise<GitHubRepoSummary> {
-    let octokit: Octokit;
-
+    // 1. If explicit installationId provided, use installation Octokit
     if (installationId) {
-      octokit = await this.getInstallationOctokit(installationId);
-    } else {
-      if (!this.app) {
-        throw new Error('GitHub App is not configured.');
-      }
-      // Look up installation ID for the specified repository
-      const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
-        owner,
-        repo,
-      });
-      installationId = installation.id;
-      octokit = await this.getInstallationOctokit(installationId);
+      const octokit = await this.getInstallationOctokit(installationId);
+      const { data } = await octokit.rest.repos.get({ owner, repo });
+      return {
+        id: data.id,
+        name: data.name,
+        fullName: data.full_name,
+        owner: data.owner.login,
+        private: data.private,
+        htmlUrl: data.html_url,
+        description: data.description,
+        defaultBranch: data.default_branch,
+        installationId,
+      };
     }
 
-    const { data } = await octokit.rest.repos.get({ owner, repo });
+    // 2. If GitHub App is configured, attempt to find an authorized installation for this repo
+    if (this.app) {
+      try {
+        const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
+          owner,
+          repo,
+        });
+        if (installation?.id) {
+          const octokit = await this.getInstallationOctokit(installation.id);
+          const { data } = await octokit.rest.repos.get({ owner, repo });
+          return {
+            id: data.id,
+            name: data.name,
+            fullName: data.full_name,
+            owner: data.owner.login,
+            private: data.private,
+            htmlUrl: data.html_url,
+            description: data.description,
+            defaultBranch: data.default_branch,
+            installationId: installation.id,
+          };
+        }
+      } catch {
+        // Repository is not installed under the GitHub App. Fall through to public repository verification!
+      }
+    }
 
-    return {
-      id: data.id,
-      name: data.name,
-      fullName: data.full_name,
-      owner: data.owner.login,
-      private: data.private,
-      htmlUrl: data.html_url,
-      description: data.description,
-      defaultBranch: data.default_branch,
-      installationId,
-    };
+    // 3. Public Repository Access (No GitHub App configuration required)
+    const publicOctokit = new Octokit({
+      auth: process.env.GITHUB_TOKEN || undefined,
+    });
+
+    try {
+      const { data } = await publicOctokit.rest.repos.get({ owner, repo });
+      return {
+        id: data.id,
+        name: data.name,
+        fullName: data.full_name,
+        owner: data.owner.login,
+        private: data.private,
+        htmlUrl: data.html_url,
+        description: data.description,
+        defaultBranch: data.default_branch,
+        installationId: undefined,
+      };
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 404) {
+        const notFoundErr = new Error(
+          `Repository '${owner}/${repo}' was not found on GitHub. Please check that the repository is public and spelled correctly.`
+        );
+        (notFoundErr as unknown as { status: number }).status = 404;
+        throw notFoundErr;
+      }
+      if (status === 403 || status === 401) {
+        const permErr = new Error(
+          `Repository '${owner}/${repo}' is private or rate-limited. To inspect private repositories, please install the GitHub App.`
+        );
+        (permErr as unknown as { status: number }).status = 403;
+        throw permErr;
+      }
+      throw err;
+    }
   }
 
   public verifyWebhookSignature(payload: string, signature: string): boolean {

@@ -69,26 +69,35 @@ export async function processSyncJob(
     const appId = process.env.GITHUB_APP_ID;
     const privateKey = process.env.GITHUB_PRIVATE_KEY;
     if (appId && privateKey) {
-      const { App } = await import('octokit');
+      const { App, Octokit } = await import('octokit');
       const app = new App({ appId, privateKey });
       if (installationId) {
         octokit = await app.getInstallationOctokit(installationId);
       } else {
-        const { data } = await app.octokit.rest.apps.getRepoInstallation({ owner, repo });
-        octokit = await app.getInstallationOctokit(data.id);
+        try {
+          const { data } = await app.octokit.rest.apps.getRepoInstallation({ owner, repo });
+          octokit = await app.getInstallationOctokit(data.id);
+        } catch {
+          octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || undefined });
+        }
       }
     } else {
-      // In offline/test mode without credentials, mock or fast-path
-      await job.updateProgress(10);
-      await job.updateProgress(50);
-      await job.updateProgress(100);
-      return {
-        repositoryId,
-        status: 'COMPLETED',
-        recordsImported: 0,
-        coverageComplete: true,
-        notes: [`Synchronized ${owner}/${repo} (offline mode)`],
-      };
+      if (process.env.NODE_ENV === 'test') {
+        // In unit test environment without credentials, fast-path mock
+        await job.updateProgress(10);
+        await job.updateProgress(50);
+        await job.updateProgress(100);
+        return {
+          repositoryId,
+          status: 'COMPLETED',
+          recordsImported: 0,
+          coverageComplete: true,
+          notes: [`Synchronized ${owner}/${repo} (offline mode)`],
+        };
+      }
+      // In live environment without GitHub App credentials, use public Octokit!
+      const { Octokit } = await import('octokit');
+      octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || undefined });
     }
   }
 

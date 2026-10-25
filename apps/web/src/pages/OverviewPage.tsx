@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
@@ -12,16 +13,18 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRepository } from '../context/RepositoryContext.js';
+import { RepositorySelectModal } from '../components/repository/RepositorySelectModal.js';
 
 export function OverviewPage() {
   const { activeRepo, syncState, isSyncing, triggerSync, syncError } = useRepository();
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
 
   const repoTitle = activeRepo?.fullName || 'No Repository Selected';
   const repoDesc =
     activeRepo?.description ||
     (activeRepo
       ? `Default branch '${activeRepo.defaultBranch}' • Tracked in CodeForensics`
-      : 'Select or track an authorized repository in the sidebar to begin forensic sync.');
+      : 'Select or track an authorized repository to begin forensic sync.');
 
   const issuesCount = syncState?.issuesCount ?? 0;
   const prsCount = syncState?.prsCount ?? 0;
@@ -59,6 +62,17 @@ export function OverviewPage() {
           <p className="text-xs text-primary-secondary mt-1 max-w-2xl">{repoDesc}</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto shrink-0">
+          {!activeRepo && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsSelectModalOpen(true)}
+              leftIcon={<FolderGit2 className="w-3.5 h-3.5 text-accent" />}
+              className="w-full sm:w-auto justify-center"
+            >
+              Select / Track Repository
+            </Button>
+          )}
           {activeRepo && (
             <Button
               variant="secondary"
@@ -248,6 +262,11 @@ export function OverviewPage() {
           </div>
         </Panel>
       </div>
+
+      <RepositorySelectModal
+        isOpen={isSelectModalOpen}
+        onClose={() => setIsSelectModalOpen(false)}
+      />
     </div>
   );
 }

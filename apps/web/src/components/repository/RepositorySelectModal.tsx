@@ -9,6 +9,9 @@ import {
   AlertCircle,
   Lock,
   Globe,
+  ExternalLink,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { Button } from '../ui/Button.js';
 import { useRepository } from '../../context/RepositoryContext.js';
@@ -19,6 +22,13 @@ interface RepositorySelectModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const POPULAR_REPOS = [
+  { owner: 'Manas-5461X', repo: 'shopkart', label: 'Manas-5461X/shopkart' },
+  { owner: 'facebook', repo: 'react', label: 'facebook/react' },
+  { owner: 'vercel', repo: 'next.js', label: 'vercel/next.js' },
+  { owner: 'expressjs', repo: 'express', label: 'expressjs/express' },
+];
 
 export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
   isOpen,
@@ -49,13 +59,12 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
     }
   }, [installations, selectedInstallationId]);
 
-  // Fetch discovered repos when installation changes
+  // Fetch discovered repos when installation changes (silently if app not configured)
   useEffect(() => {
     if (!selectedInstallationId) return;
 
     let isMounted = true;
     setIsLoadingDiscovered(true);
-    setModalError(null);
 
     request<RepositoryInfo[]>(`/api/v1/github/installations/${selectedInstallationId}/repositories`)
       .then((res) => {
@@ -63,9 +72,10 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
           setDiscoveredRepos(res.data);
         }
       })
-      .catch((err) => {
+      .catch(() => {
+        // Silently clear discovered repos if installation discovery fails
         if (isMounted) {
-          setModalError(err instanceof Error ? err.message : 'Failed to discover repositories');
+          setDiscoveredRepos([]);
         }
       })
       .finally(() => {
@@ -121,6 +131,12 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
     }
   };
 
+  const handleSelectPreset = (owner: string, repo: string) => {
+    setCustomOwner(owner);
+    setCustomRepo(repo);
+    setModalError(null);
+  };
+
   // Filter tracked repositories by search
   const filteredTracked = repositories.filter(
     (r) =>
@@ -149,34 +165,116 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
 
         {/* Error Alert */}
         {modalError && (
-          <div className="px-4 sm:px-5 py-2.5 bg-danger-subtle/30 border-b border-danger/30 text-xs text-danger flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span className="flex-1">{modalError}</span>
+          <div className="px-4 sm:px-5 py-2.5 bg-danger-subtle/30 border-b border-danger/30 text-xs text-danger flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="flex-1">{modalError}</div>
+            <button
+              type="button"
+              onClick={() => setModalError(null)}
+              className="text-danger hover:opacity-80 p-0.5"
+              aria-label="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 
         {/* Content */}
-        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 sm:space-y-5">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter tracked repositories..."
-              className="w-full bg-surface-subtle text-xs text-primary rounded-md pl-9 pr-3 py-2 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
-            />
+        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-5">
+          {/* 1. Track Custom Repository (Public Access, No App Needed) */}
+          <div className="p-3.5 sm:p-4 bg-surface-subtle/40 rounded-lg border border-border-subtle space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-accent" />
+                <span>Track Custom Repository</span>
+              </label>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-success-subtle/30 text-success border border-success/30 font-semibold">
+                No GitHub App Required
+              </span>
+            </div>
+
+            <p className="text-[11px] text-primary-secondary leading-relaxed">
+              Analyze any public repository on GitHub — including your personal projects or open-source libraries. Verified directly via GitHub REST API.
+            </p>
+
+            {/* Quick Preset Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-primary-muted font-mono flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-accent" /> Suggestions:
+              </span>
+              {POPULAR_REPOS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset.owner, preset.repo)}
+                  className="px-2 py-0.5 rounded text-[11px] font-mono bg-surface hover:bg-surface-subtle border border-border-subtle hover:border-accent text-primary transition-colors"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleAddCustom} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  placeholder="Owner (e.g. facebook)"
+                  value={customOwner}
+                  onChange={(e) => setCustomOwner(e.target.value)}
+                  className="flex-1 bg-surface text-xs text-primary rounded-md px-3 py-2 border border-border-strong placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
+                  required
+                />
+                <span className="text-primary-muted font-mono">/</span>
+                <input
+                  type="text"
+                  placeholder="Repo (e.g. react)"
+                  value={customRepo}
+                  onChange={(e) => setCustomRepo(e.target.value)}
+                  className="flex-1 bg-surface text-xs text-primary rounded-md px-3 py-2 border border-border-strong placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                variant="primary"
+                disabled={isSubmittingCustom || !customOwner.trim() || !customRepo.trim()}
+                leftIcon={isSubmittingCustom ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                className="justify-center sm:justify-start"
+              >
+                {isSubmittingCustom ? 'Verifying...' : 'Add'}
+              </Button>
+            </form>
           </div>
 
-          {/* Tracked Repositories Section */}
-          <div>
-            <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block mb-2 px-1">
-              Tracked Repositories ({filteredTracked.length})
-            </label>
+          {/* 2. Tracked Repositories Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block">
+                Tracked Repositories ({filteredTracked.length})
+              </label>
+              {repositories.length > 3 && (
+                <span className="text-[10px] text-primary-muted font-mono">
+                  {repositories.length} total
+                </span>
+              )}
+            </div>
+
+            {/* Search Filter for Tracked Repositories */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter tracked repositories..."
+                className="w-full bg-surface-subtle text-xs text-primary rounded-md pl-9 pr-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
+              />
+            </div>
+
             {filteredTracked.length === 0 ? (
               <div className="p-4 border border-dashed border-border-subtle rounded-md text-center text-xs text-primary-muted">
-                No tracked repositories match your search.
+                {searchQuery ? 'No tracked repositories match your search.' : 'No repositories tracked yet. Track your first public repository above.'}
               </div>
             ) : (
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
@@ -197,7 +295,7 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
                         {repo.isPrivate ? (
                           <Lock className="w-3.5 h-3.5 text-primary-muted shrink-0" />
                         ) : (
-                          <Globe className="w-3.5 h-3.5 text-primary-muted shrink-0" />
+                          <Globe className="w-3.5 h-3.5 text-accent shrink-0" />
                         )}
                         <span className="truncate">{repo.fullName}</span>
                       </div>
@@ -209,14 +307,27 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
             )}
           </div>
 
-          {/* GitHub App Discovered Repositories */}
-          {installations.length > 0 && (
-            <div className="pt-3 border-t border-border-subtle">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block">
-                  GitHub App Discovered Repositories
-                </label>
-                <div className="flex items-center gap-2 text-xs">
+          {/* 3. GitHub App Discovered Repositories & Private Access */}
+          <div className="pt-3 border-t border-border-subtle space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block">
+                Private Repositories & GitHub App
+              </label>
+              <a
+                href="https://github.com/settings/apps"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-mono text-link hover:underline"
+              >
+                <span>Install / Connect App</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            {installations.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-primary-muted text-[11px]">Selected Installation:</span>
                   <select
                     value={selectedInstallationId || ''}
                     onChange={(e) => setSelectedInstallationId(Number(e.target.value))}
@@ -229,93 +340,76 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {isLoadingDiscovered ? (
-                <div className="p-4 flex items-center justify-center gap-2 text-xs text-primary-muted">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Discovering accessible repositories...</span>
-                </div>
-              ) : discoveredRepos.length === 0 ? (
-                <div className="p-3 border border-border-subtle rounded text-center text-xs text-primary-muted">
-                  No accessible repositories found for this installation.
-                </div>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {discoveredRepos.map((repo) => {
-                    const isTracked = repositories.some((r) => r.fullName === repo.fullName);
-                    return (
-                      <div
-                        key={repo.fullName}
-                        className="flex items-center justify-between p-2.5 bg-surface-subtle/40 border border-border-subtle rounded-md text-xs font-mono"
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          {repo.isPrivate ? (
-                            <Lock className="w-3.5 h-3.5 text-primary-muted shrink-0" />
+                {isLoadingDiscovered ? (
+                  <div className="p-4 flex items-center justify-center gap-2 text-xs text-primary-muted">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Discovering accessible repositories...</span>
+                  </div>
+                ) : discoveredRepos.length === 0 ? (
+                  <div className="p-3 border border-border-subtle rounded text-center text-xs text-primary-muted">
+                    No additional repositories discovered for this installation.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {discoveredRepos.map((repo) => {
+                      const isTracked = repositories.some((r) => r.fullName === repo.fullName);
+                      return (
+                        <div
+                          key={repo.fullName}
+                          className="flex items-center justify-between p-2.5 bg-surface-subtle/40 border border-border-subtle rounded-md text-xs font-mono"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            {repo.isPrivate ? (
+                              <Lock className="w-3.5 h-3.5 text-primary-muted shrink-0" />
+                            ) : (
+                              <Globe className="w-3.5 h-3.5 text-primary-muted shrink-0" />
+                            )}
+                            <span className="text-primary truncate">{repo.fullName}</span>
+                          </div>
+                          {isTracked ? (
+                            <span className="text-[10px] text-primary-muted uppercase font-sans font-semibold">
+                              Tracked
+                            </span>
                           ) : (
-                            <Globe className="w-3.5 h-3.5 text-primary-muted shrink-0" />
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleSelectDiscovered(repo)}
+                              disabled={isSubmittingCustom}
+                              leftIcon={<Plus className="w-3 h-3" />}
+                            >
+                              Track
+                            </Button>
                           )}
-                          <span className="text-primary truncate">{repo.fullName}</span>
                         </div>
-                        {isTracked ? (
-                          <span className="text-[10px] text-primary-muted uppercase font-sans">
-                            Tracked
-                          </span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleSelectDiscovered(repo)}
-                            disabled={isSubmittingCustom}
-                            leftIcon={<Plus className="w-3 h-3" />}
-                          >
-                            Track
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Add Repository by Owner/Name */}
-          <div className="pt-3 border-t border-border-subtle">
-            <label className="text-[10px] font-semibold text-primary-muted uppercase tracking-wider block mb-2 px-1">
-              Track Custom Repository
-            </label>
-            <form onSubmit={handleAddCustom} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  type="text"
-                  placeholder="Owner (e.g. facebook)"
-                  value={customOwner}
-                  onChange={(e) => setCustomOwner(e.target.value)}
-                  className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
-                  required
-                />
-                <span className="text-primary-muted">/</span>
-                <input
-                  type="text"
-                  placeholder="Repo (e.g. react)"
-                  value={customRepo}
-                  onChange={(e) => setCustomRepo(e.target.value)}
-                  className="flex-1 bg-surface-subtle text-xs text-primary rounded-md px-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link font-mono"
-                  required
-                />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <Button
-                type="submit"
-                size="sm"
-                variant="primary"
-                disabled={isSubmittingCustom || !customOwner.trim() || !customRepo.trim()}
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                className="justify-center sm:justify-start"
-              >
-                {isSubmittingCustom ? 'Verifying...' : 'Add'}
-              </Button>
-            </form>
+            ) : (
+              <div className="p-3 bg-surface-subtle/30 border border-border-subtle rounded-md text-xs text-primary-muted space-y-1.5">
+                <div className="flex items-center gap-1.5 font-medium text-primary text-[11px]">
+                  <Info className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span>Looking to analyze private repositories?</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Install our GitHub App on your GitHub account or organization to unlock private repository investigations and real-time webhook updates.
+                </p>
+                <div className="pt-1">
+                  <a
+                    href="https://github.com/settings/apps"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface hover:bg-surface-subtle border border-border-strong rounded text-[11px] font-mono text-primary transition-colors"
+                  >
+                    <span>Connect GitHub App</span>
+                    <ExternalLink className="w-3 h-3 text-accent" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
