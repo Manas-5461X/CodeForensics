@@ -1,5 +1,5 @@
 import { Queue, Job, JobsOptions } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 
 export const SYNC_QUEUE_NAME = 'repository-sync';
 
@@ -30,8 +30,8 @@ export const defaultJobOptions: JobsOptions = {
  * Creates a standalone Redis connection configured for BullMQ.
  * Enables lazyConnect and disables maxRetriesPerRequest as required by BullMQ.
  */
-export function createRedisConnection(redisUrl: string): IORedis {
-  return new IORedis(redisUrl, {
+export function createRedisConnection(redisUrl: string): Redis {
+  return new Redis(redisUrl, {
     maxRetriesPerRequest: null,
     lazyConnect: true,
     enableReadyCheck: true,
@@ -41,7 +41,7 @@ export function createRedisConnection(redisUrl: string): IORedis {
 /**
  * Instantiates the repository sync BullMQ queue.
  */
-export function createSyncQueue(redisUrlOrConnection: string | IORedis): Queue<RepositorySyncJobData> {
+export function createSyncQueue(redisUrlOrConnection: string | Redis): Queue<RepositorySyncJobData> {
   const connection =
     typeof redisUrlOrConnection === 'string'
       ? createRedisConnection(redisUrlOrConnection)

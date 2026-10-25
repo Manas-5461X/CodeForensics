@@ -1,31 +1,31 @@
 import { Worker, Job } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 import { SYNC_QUEUE_NAME, createRedisConnection, type RepositorySyncJobData } from './queues/syncQueue.js';
 import { processSyncJob, sanitizeLog, type SyncJobResult } from './processors/syncProcessor.js';
 import type { WorkerConfig } from './config.js';
 
 export interface SyncWorkerOptions {
-  connection?: IORedis;
+  connection?: Redis;
   concurrency?: number;
   processor?: (job: Job<RepositorySyncJobData, SyncJobResult>) => Promise<SyncJobResult>;
   workerFactory?: (
     queueName: string,
     processor: (job: Job<RepositorySyncJobData, SyncJobResult>) => Promise<SyncJobResult>,
-    opts: { connection: IORedis; concurrency: number }
+    opts: { connection: Redis; concurrency: number }
   ) => Worker<RepositorySyncJobData, SyncJobResult>;
   closeConnectionOnStop?: boolean;
 }
 
 export class SyncWorkerService {
   private worker: Worker<RepositorySyncJobData, SyncJobResult> | null = null;
-  private connection: IORedis;
+  private connection: Redis;
   private shouldCloseConnection: boolean;
   private concurrency: number;
   private processor: (job: Job<RepositorySyncJobData, SyncJobResult>) => Promise<SyncJobResult>;
   private workerFactory: (
     queueName: string,
     processor: (job: Job<RepositorySyncJobData, SyncJobResult>) => Promise<SyncJobResult>,
-    opts: { connection: IORedis; concurrency: number }
+    opts: { connection: Redis; concurrency: number }
   ) => Worker<RepositorySyncJobData, SyncJobResult>;
 
   constructor(config: WorkerConfig, options?: SyncWorkerOptions) {
@@ -132,7 +132,7 @@ export class SyncWorkerService {
     return this.worker;
   }
 
-  public getConnection(): IORedis {
+  public getConnection(): Redis {
     return this.connection;
   }
 }

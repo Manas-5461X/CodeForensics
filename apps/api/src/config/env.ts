@@ -35,6 +35,7 @@ const EnvSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
   GITHUB_PRIVATE_KEY: z.string().optional(),
   GITHUB_PRIVATE_KEY_PATH: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

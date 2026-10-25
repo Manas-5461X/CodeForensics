@@ -266,25 +266,58 @@ export class GitHubAppService implements IGitHubService {
         throw notFoundErr;
       }
 
-      if (resp.status === 403 || resp.status === 401) {
-        const rateLimitRemaining = resp.headers.get('x-ratelimit-remaining');
-        if (rateLimitRemaining === '0') {
-          const limitErr = new Error(
-            'GitHub API rate limit reached. Please configure a GITHUB_TOKEN or install the GitHub App.'
-          );
-          (limitErr as unknown as { status: number }).status = 403;
-          throw limitErr;
+      if (resp.status === 403 || resp.status === 401 || resp.status === 429) {
+        // High-speed fallback: Directly verify public repository via web HTML + git info refs
+        const webRepo = await this.verifyPublicRepoWeb(owner, repo);
+        if (webRepo) {
+          return webRepo;
         }
 
-        const permErr = new Error(
-          `Repository '${owner}/${repo}' is private. To analyze private repositories, please install the GitHub App.`
+        // If web lookup returns 404/null, check if it's a private repository under installed GitHub App
+        if (this.app) {
+          try {
+            const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
+              owner,
+              repo,
+            });
+            if (installation?.id) {
+              const octokit = await this.getInstallationOctokit(installation.id);
+              const { data } = await octokit.rest.repos.get({ owner, repo });
+              return {
+                id: data.id,
+                name: data.name,
+                fullName: data.full_name,
+                owner: data.owner.login,
+                private: data.private,
+                htmlUrl: data.html_url,
+                description: data.description,
+                defaultBranch: data.default_branch,
+                installationId: installation.id,
+              };
+            }
+          } catch {
+            // Not in GitHub App
+          }
+        }
+
+        const notFoundErr = new Error(
+          `Repository '${owner}/${repo}' was not found on GitHub. Please check that the repository is public and spelled correctly.`
         );
-        (permErr as unknown as { status: number }).status = 403;
-        throw permErr;
+        (notFoundErr as unknown as { status: number }).status = 404;
+        throw notFoundErr;
       }
     } catch (err: unknown) {
       if ((err as { status?: number })?.status) {
         throw err;
+      }
+      // If direct fetch timed out or network error, attempt direct web verification
+      try {
+        const webRepo = await this.verifyPublicRepoWeb(owner, repo);
+        if (webRepo) {
+          return webRepo;
+        }
+      } catch {
+        // Ignore
       }
       // If direct fetch timed out or failed, attempt GitHub App installation fallback
       if (this.app) {
@@ -316,6 +349,112 @@ export class GitHubAppService implements IGitHubService {
     }
 
     throw new Error(`Failed to verify repository ${owner}/${repo}`);
+  }
+
+  /**
+   * Directly verifies a public GitHub repository via web HTML and git info refs.
+   * Completely bypasses GitHub REST API IP rate limits (60 requests/hr).
+   */
+  public async verifyPublicRepoWeb(
+    owner: string,
+    repo: string
+  ): Promise<GitHubRepoSummary | null> {
+    const cleanOwner = owner.trim();
+    const cleanRepo = repo.trim();
+    const repoUrl = `https://github.com/${encodeURIComponent(cleanOwner)}/${encodeURIComponent(cleanRepo)}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const [pageResp, gitResp] = await Promise.all([
+        fetch(repoUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          signal: controller.signal,
+          redirect: 'follow',
+        }),
+        fetch(`${repoUrl}/info/refs?service=git-upload-pack`, {
+          headers: {
+            'User-Agent': 'git/2.40.0',
+          },
+          signal: controller.signal,
+        }).catch(() => null),
+      ]);
+
+      if (pageResp.status !== 200) {
+        return null;
+      }
+
+      const html = await pageResp.text();
+
+      // Extract repository ID from GitHub's octolytics meta tags or data attributes
+      const idMatch =
+        html.match(/octolytics-dimension-repository_id"\s+content="(\d+)"/i) ||
+        html.match(/data-scope-id="(\d+)"/i) ||
+        html.match(/"repository":\{"id":(\d+)/i);
+
+      let repoId: number;
+      if (idMatch && idMatch[1]) {
+        repoId = parseInt(idMatch[1], 10);
+      } else {
+        let hash = 0;
+        const str = `${cleanOwner.toLowerCase()}/${cleanRepo.toLowerCase()}`;
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0;
+        }
+        repoId = Math.abs(hash) + 1000000;
+      }
+
+      // Extract canonical owner and name if present
+      const nwoMatch = html.match(/octolytics-dimension-repository_nwo"\s+content="([^"]+)"/i);
+      let resolvedOwner = cleanOwner;
+      let resolvedRepo = cleanRepo;
+      if (nwoMatch && nwoMatch[1] && nwoMatch[1].includes('/')) {
+        const parts = nwoMatch[1].split('/');
+        resolvedOwner = parts[0];
+        resolvedRepo = parts[1];
+      }
+
+      // Extract description
+      const descMatch =
+        html.match(/<meta\s+name="description"\s+content="([^"]+)"/i) ||
+        html.match(/<p\s+class="f4\s+my-3"[^>]*>([^<]+)<\/p>/i);
+      let description: string | null = null;
+      if (descMatch && descMatch[1]) {
+        description = descMatch[1].replace(/^GitHub\s*-\s*[^:]+:\s*/i, '').trim();
+      }
+
+      // Extract default branch from git info refs
+      let defaultBranch = 'main';
+      if (gitResp && gitResp.status === 200) {
+        const gitInfo = await gitResp.text();
+        const branchMatch = gitInfo.match(/symref=HEAD:refs\/heads\/([^\s]+)/);
+        if (branchMatch && branchMatch[1]) {
+          defaultBranch = branchMatch[1];
+        }
+      }
+
+      return {
+        id: repoId,
+        name: resolvedRepo,
+        fullName: `${resolvedOwner}/${resolvedRepo}`,
+        owner: resolvedOwner,
+        private: false,
+        htmlUrl: `https://github.com/${resolvedOwner}/${resolvedRepo}`,
+        description,
+        defaultBranch,
+        installationId: undefined,
+      };
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   public verifyWebhookSignature(payload: string, signature: string): boolean {
