@@ -14,6 +14,7 @@
     "@codeforensics/shared": "*",
     "@fastify/cors": "^10.1.0",
     "@prisma/client": "^6.19.3",
+    "@types/node": "^22.13.4",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "fastify-plugin": "^5.1.0",
@@ -23,9 +24,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/node": "^22.13.4",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
     "vitest": "^3.0.7"
   }
 }

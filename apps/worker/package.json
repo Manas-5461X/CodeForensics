@@ -13,16 +13,16 @@
   "dependencies": {
     "@codeforensics/shared": "*",
     "@prisma/client": "^6.19.3",
+    "@types/node": "^22.13.4",
     "bullmq": "^5.41.6",
     "dotenv": "^16.4.7",
     "ioredis": "^5.6.0",
     "octokit": "^5.0.5",
+    "typescript": "^5.7.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/node": "^22.13.4",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3",
     "vitest": "^3.0.7"
   }
 }

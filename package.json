@@ -12,7 +12,8 @@
     "dev:web": "npm run dev --workspace=@codeforensics/web",
     "dev:api": "npm run dev --workspace=@codeforensics/api",
     "dev:worker": "npm run dev --workspace=@codeforensics/worker",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build:backend",
+    "build:all": "npm run build:backend && npm run build:web",
     "build:backend": "npm run db:generate && npm run build --workspace=@codeforensics/shared && npm run build --workspace=@codeforensics/api && npm run build --workspace=@codeforensics/worker",
     "build:web": "npm run build --workspace=@codeforensics/shared && npm run build --workspace=@codeforensics/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -25,11 +26,9 @@
     "start:worker": "node apps/worker/dist/index.js",
     "start:combined": "node apps/api/dist/server.js & node apps/worker/dist/index.js"
   },
-  "devDependencies": {
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
     "prisma": "^6.4.0",
     "typescript": "^5.7.3"
-  },
-  "dependencies": {
-    "@prisma/client": "^6.19.3"
   }
 }
