@@ -24,6 +24,9 @@ import {
   HelpCircle,
   FolderGit2,
   ShieldAlert,
+  Calculator,
+  CheckCircle2,
+  GitPullRequest,
 } from 'lucide-react';
 
 export function ContributionsPage() {
@@ -38,6 +41,7 @@ export function ContributionsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedContributor, setExpandedContributor] = useState<string | null>(null);
+  const [showFormula, setShowFormula] = useState<boolean>(true);
 
   // 1. Fetch available open issues for target selection
   const fetchCandidateIssues = useCallback(async () => {
@@ -316,6 +320,122 @@ export function ContributionsPage() {
           </div>
         </div>
       )}
+
+      {/* Forensic Scoring Metric & Formula Card */}
+      <Panel className="p-4 sm:p-5 border-accent/30 bg-accent/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-md bg-accent/10 border border-accent/30 flex items-center justify-center text-accent shrink-0">
+              <Calculator className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-primary">Forensic Routing Metric & Scoring Formula</h3>
+                <Badge category="FACT">Deterministic 0–100</Badge>
+              </div>
+              <p className="text-xs text-primary-secondary mt-0.5">
+                Multi-signal algorithm prioritizing proven domain verification and issue resolution over raw commit volume.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowFormula((prev) => !prev)}
+            className="self-start sm:self-auto text-xs shrink-0"
+          >
+            {showFormula ? (
+              <>Hide Formula <ChevronUp className="w-3.5 h-3.5 ml-1" /></>
+            ) : (
+              <>View Formula & Breakdown <ChevronDown className="w-3.5 h-3.5 ml-1" /></>
+            )}
+          </Button>
+        </div>
+
+        {showFormula && (
+          <div className="mt-4 pt-4 border-t border-border-subtle space-y-4">
+            {/* Mathematical Formula Box */}
+            <div className="bg-surface p-3 sm:p-3.5 rounded border border-border-subtle font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-2 overflow-x-auto">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-primary-muted font-bold">FORMULA:</span>
+                <span className="text-accent font-bold">Score</span>
+                <span className="text-primary-secondary">=</span>
+                <span className="text-primary">min(100,</span>
+                <span className="text-purple-600 dark:text-purple-400 font-semibold">S_resolution</span>
+                <span className="text-primary-secondary">+</span>
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">S_domain</span>
+                <span className="text-primary-secondary">+</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">S_volume</span>
+                <span className="text-primary-secondary">+</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">S_recency</span>
+                <span className="text-primary">)</span>
+              </div>
+              <div className="text-[11px] text-primary-muted shrink-0">
+                Logarithmic dampening active
+              </div>
+            </div>
+
+            {/* 4 Dimension Weights Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded bg-surface border border-border-subtle space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Resolution Impact
+                  </span>
+                  <span className="text-xs font-mono font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">
+                    +25 to +35 pts
+                  </span>
+                </div>
+                <div className="text-[11px] text-primary-secondary leading-snug">
+                  <strong>Direct Fix (+35)</strong> for target issue, or <strong>Verified Fixes (+25)</strong> for proven track record of closing repository issues.
+                </div>
+              </div>
+
+              <div className="p-3 rounded bg-surface border border-border-subtle space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                    <FolderGit2 className="w-3.5 h-3.5" /> Domain Expertise
+                  </span>
+                  <span className="text-xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
+                    +15 to +30 pts
+                  </span>
+                </div>
+                <div className="text-[11px] text-primary-secondary leading-snug">
+                  <strong>Subsystem Expertise (+30)</strong> in target module (e.g. <code>compiler</code>), or <strong>Breadth (+15)</strong> across multiple subsystems.
+                </div>
+              </div>
+
+              <div className="p-3 rounded bg-surface border border-border-subtle space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <GitPullRequest className="w-3.5 h-3.5" /> Merged PR Volume
+                  </span>
+                  <span className="text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                    up to +35 pts
+                  </span>
+                </div>
+                <div className="text-[11px] text-primary-secondary leading-snug">
+                  Log-dampened frequency: <code>35 × log2(1+N)/log2(1+8)</code>. Prevents high-volume cosmetic PRs from drowning out genuine technical depth.
+                </div>
+              </div>
+
+              <div className="p-3 rounded bg-surface border border-border-subtle space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Recency & Decay
+                  </span>
+                  <span className="text-xs font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                    up to +20 pts
+                  </span>
+                </div>
+                <div className="text-[11px] text-primary-secondary leading-snug">
+                  Immediate 0–30d (<strong>+20</strong>), High 31–90d (<strong>+15</strong>), Moderate 91–180d (<strong>+8</strong>), Historical &gt;180d (<strong>0</strong>).
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Panel>
 
       {/* Main Recommendations List */}
       <div className="space-y-3">

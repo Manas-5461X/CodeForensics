@@ -28,6 +28,10 @@ interface ContributorStats {
   subsystemIssues: RawIssueRecord[];
   otherMergedPRs: RawPullRequestRecord[];
   otherIssues: RawIssueRecord[];
+  allMergedPRs: RawPullRequestRecord[];
+  allIssues: RawIssueRecord[];
+  subsystemsTouched: Set<string>;
+  fixedAnyIssuePRs: RawPullRequestRecord[];
   isTargetIssueAuthor: boolean;
   latestActivityAt: Date;
   allRelevantItems: RelevantWorkItem[];
@@ -143,9 +147,27 @@ export class ContributionEngine {
       }
     }
 
-    // 2. Identify Direct Relationships to Target Item
+    // 2. Identify Direct Relationships to Target Item and Global Fixes
     const directFixPrNumbers = new Set<number>();
     const directAddressPrNumbers = new Set<number>();
+    const prsThatFixSomething = new Set<number>();
+
+    for (const rel of relationships) {
+      if (
+        (rel.relationshipType === 'FIXED_BY' || rel.relationshipType === 'ADDRESSES') &&
+        rel.targetType === 'PULL_REQUEST' &&
+        rel.targetNumber
+      ) {
+        prsThatFixSomething.add(rel.targetNumber);
+      }
+      if (
+        (rel.relationshipType === 'FIXED_BY' || rel.relationshipType === 'ADDRESSES') &&
+        rel.sourceType === 'PULL_REQUEST' &&
+        rel.sourceNumber
+      ) {
+        prsThatFixSomething.add(rel.sourceNumber);
+      }
+    }
 
     if (itemNumber !== undefined) {
       for (const rel of relationships) {
@@ -181,6 +203,10 @@ export class ContributionEngine {
           subsystemIssues: [],
           otherMergedPRs: [],
           otherIssues: [],
+          allMergedPRs: [],
+          allIssues: [],
+          subsystemsTouched: new Set<string>(),
+          fixedAnyIssuePRs: [],
           isTargetIssueAuthor: false,
           latestActivityAt: initialDate,
           allRelevantItems: [],
@@ -202,6 +228,10 @@ export class ContributionEngine {
       }
 
       const prSubsystem = this.extractSubsystem(pr);
+      if (prSubsystem) {
+        stats.subsystemsTouched.add(prSubsystem);
+      }
+
       const isSubsystemMatch = Boolean(
         targetSubsystem && prSubsystem && prSubsystem === targetSubsystem
       );
@@ -223,6 +253,13 @@ export class ContributionEngine {
         updatedAt: new Date(pr.updatedAt).toISOString(),
         subsystem: prSubsystem || undefined,
       };
+
+      if (isMerged) {
+        stats.allMergedPRs.push(pr);
+      }
+      if (prsThatFixSomething.has(pr.number)) {
+        stats.fixedAnyIssuePRs.push(pr);
+      }
 
       if (directFixPrNumbers.has(pr.number)) {
         stats.directFixPRs.push(pr);
@@ -247,6 +284,10 @@ export class ContributionEngine {
         if (isMerged) {
           stats.otherMergedPRs.push(pr);
         }
+        // In general view, include merged PRs in relevant items
+        if (!targetSubsystem && isMerged) {
+          stats.allRelevantItems.push(workItem);
+        }
       }
     }
 
@@ -261,11 +302,17 @@ export class ContributionEngine {
         stats.latestActivityAt = issueDate;
       }
 
+      stats.allIssues.push(issue);
+
       if (itemNumber !== undefined && issue.number === itemNumber) {
         stats.isTargetIssueAuthor = true;
       }
 
       const issueSubsystem = this.extractSubsystem(issue);
+      if (issueSubsystem) {
+        stats.subsystemsTouched.add(issueSubsystem);
+      }
+
       const isSubsystemMatch = Boolean(
         targetSubsystem && issueSubsystem && issueSubsystem === targetSubsystem
       );
@@ -293,83 +340,167 @@ export class ContributionEngine {
       const signals: ContributorSignal[] = [];
       let rawScore = 0;
 
-      // Signal A: Direct Fix Pull Request (+35)
-      if (stats.directFixPRs.length > 0) {
-        const count = stats.directFixPRs.length;
-        const weight = 35;
-        rawScore += weight;
-        signals.push({
-          type: 'DIRECT_FIX',
-          label: 'Direct Fix Pull Request',
-          description: `Authored pull request #${stats.directFixPRs[0].number} with verified closing directives targeting this issue.`,
-          weight,
-          count,
-          lastActiveAt: new Date(stats.directFixPRs[0].mergedAt || stats.directFixPRs[0].updatedAt).toISOString(),
-          referenceNumbers: stats.directFixPRs.map((p) => p.number),
-        });
+      const hasTargetContext =
+        itemNumber !== undefined ||
+        (targetSubsystem !== null && targetSubsystem !== undefined && targetSubsystem !== 'all');
+
+      if (hasTargetContext) {
+        // --- TARGETED ISSUE OR SPECIFIC SUBSYSTEM MODE ---
+        // Signal A: Direct Fix Pull Request (+35)
+        if (stats.directFixPRs.length > 0) {
+          const count = stats.directFixPRs.length;
+          const weight = 35;
+          rawScore += weight;
+          signals.push({
+            type: 'DIRECT_FIX',
+            label: 'Direct Fix Pull Request',
+            description: `Authored pull request #${stats.directFixPRs[0].number} with verified closing directives targeting this issue.`,
+            weight,
+            count,
+            lastActiveAt: new Date(stats.directFixPRs[0].mergedAt || stats.directFixPRs[0].updatedAt).toISOString(),
+            referenceNumbers: stats.directFixPRs.map((p) => p.number),
+          });
+        }
+
+        // Signal B: Direct Addresses Pull Request (+20)
+        if (stats.directAddressPRs.length > 0 && stats.directFixPRs.length === 0) {
+          const count = stats.directAddressPRs.length;
+          const weight = 20;
+          rawScore += weight;
+          signals.push({
+            type: 'DIRECT_ADDRESS',
+            label: 'Direct Addressing Work Item',
+            description: `Authored pull request #${stats.directAddressPRs[0].number} explicitly referencing this issue.`,
+            weight,
+            count,
+            lastActiveAt: new Date(stats.directAddressPRs[0].updatedAt).toISOString(),
+            referenceNumbers: stats.directAddressPRs.map((p) => p.number),
+          });
+        }
+
+        // Signal C: Subsystem Merged Pull Requests (Log-dampened, max 30)
+        const mergedCount = stats.subsystemMergedPRs.length;
+        if (mergedCount > 0) {
+          const weight = Math.min(30, Math.round(30 * (Math.log2(1 + mergedCount) / Math.log2(1 + 5))));
+          rawScore += weight;
+          signals.push({
+            type: 'SUBSYSTEM_PR',
+            label: 'Subsystem Pull Requests',
+            description: `Authored ${mergedCount} merged pull request${mergedCount > 1 ? 's' : ''} in the '${targetSubsystem}' subsystem.`,
+            weight,
+            count: mergedCount,
+            referenceNumbers: stats.subsystemMergedPRs.slice(0, 5).map((p) => p.number),
+          });
+        }
+
+        // Signal D: Subsystem Issues Authored (+5 per issue, max 10)
+        if (stats.subsystemIssues.length > 0) {
+          const issueCount = stats.subsystemIssues.length;
+          const weight = Math.min(10, issueCount * 5);
+          rawScore += weight;
+          signals.push({
+            type: 'SUBSYSTEM_ISSUE',
+            label: 'Subsystem Issue Context',
+            description: `Documented or authored ${issueCount} issue${issueCount > 1 ? 's' : ''} in the '${targetSubsystem}' subsystem.`,
+            weight,
+            count: issueCount,
+            referenceNumbers: stats.subsystemIssues.slice(0, 5).map((i) => i.number),
+          });
+        }
+
+        // General Repository Activity (up to 5 points)
+        if (stats.otherMergedPRs.length > 0 && signals.length <= 2) {
+          const generalWeight = Math.min(5, stats.otherMergedPRs.length * 2);
+          rawScore += generalWeight;
+        }
+      } else {
+        // --- GENERAL REPOSITORY LEVEL MODE ---
+        // 1. Merged PR Volume (Log-dampened, max 35 points)
+        const totalMerged = stats.allMergedPRs.length;
+        if (totalMerged > 0) {
+          const weight = Math.min(35, Math.round(35 * (Math.log2(1 + totalMerged) / Math.log2(1 + 8))));
+          rawScore += weight;
+          signals.push({
+            type: 'SUBSYSTEM_PR',
+            label: 'Merged Pull Requests',
+            description: `Delivered ${totalMerged} merged pull request${totalMerged > 1 ? 's' : ''} in this repository (log-dampened impact).`,
+            weight,
+            count: totalMerged,
+            referenceNumbers: stats.allMergedPRs.slice(0, 5).map((p) => p.number),
+          });
+        }
+
+        // 2. Issue Resolution Track Record (up to 25 points)
+        const fixCount = stats.fixedAnyIssuePRs.length;
+        if (fixCount > 0) {
+          const weight = Math.min(25, fixCount * 10);
+          rawScore += weight;
+          signals.push({
+            type: 'DIRECT_FIX',
+            label: 'Verified Issue Resolution',
+            description: `Authored ${fixCount} pull request${fixCount > 1 ? 's' : ''} with verified links to repository issues.`,
+            weight,
+            count: fixCount,
+            referenceNumbers: stats.fixedAnyIssuePRs.slice(0, 5).map((p) => p.number),
+          });
+        }
+
+        // 3. Subsystem Domain Breadth (up to 15 points)
+        const breadth = stats.subsystemsTouched.size;
+        if (breadth >= 2) {
+          const weight = Math.min(15, breadth * 5);
+          rawScore += weight;
+          signals.push({
+            type: 'DIRECT_ADDRESS',
+            label: 'Subsystem Breadth',
+            description: `Contributed code across ${breadth} distinct subsystems (${Array.from(stats.subsystemsTouched).slice(0, 3).join(', ')}).`,
+            weight,
+            count: breadth,
+          });
+        }
+
+        // 4. Issue Documentation & Triage (up to 10 points)
+        const issueCount = stats.allIssues.length;
+        if (issueCount > 0) {
+          const weight = Math.min(10, issueCount * 3);
+          rawScore += weight;
+          signals.push({
+            type: 'SUBSYSTEM_ISSUE',
+            label: 'Issue Triage Context',
+            description: `Authored or reported ${issueCount} documented issue${issueCount > 1 ? 's' : ''}.`,
+            weight,
+            count: issueCount,
+            referenceNumbers: stats.allIssues.slice(0, 5).map((i) => i.number),
+          });
+        }
       }
 
-      // Signal B: Direct Addresses Pull Request (+20)
-      if (stats.directAddressPRs.length > 0 && stats.directFixPRs.length === 0) {
-        const count = stats.directAddressPRs.length;
-        const weight = 20;
-        rawScore += weight;
-        signals.push({
-          type: 'DIRECT_ADDRESS',
-          label: 'Direct Addressing Work Item',
-          description: `Authored pull request #${stats.directAddressPRs[0].number} explicitly referencing this issue.`,
-          weight,
-          count,
-          lastActiveAt: new Date(stats.directAddressPRs[0].updatedAt).toISOString(),
-          referenceNumbers: stats.directAddressPRs.map((p) => p.number),
-        });
-      }
-
-      // Signal C: Subsystem Merged Pull Requests (Log-dampened, max 30)
-      const mergedCount = stats.subsystemMergedPRs.length;
-      if (mergedCount > 0) {
-        // Log-dampened frequency so volume does not dominate
-        const weight = Math.min(30, Math.round(30 * (Math.log2(1 + mergedCount) / Math.log2(1 + 5))));
-        rawScore += weight;
-        signals.push({
-          type: 'SUBSYSTEM_PR',
-          label: 'Subsystem Pull Requests',
-          description: `Authored ${mergedCount} merged pull request${mergedCount > 1 ? 's' : ''} in the '${targetSubsystem}' subsystem.`,
-          weight,
-          count: mergedCount,
-          referenceNumbers: stats.subsystemMergedPRs.slice(0, 5).map((p) => p.number),
-        });
-      }
-
-      // Signal D: Subsystem Issues Authored (+5 per issue, max 10)
-      if (stats.subsystemIssues.length > 0) {
-        const issueCount = stats.subsystemIssues.length;
-        const weight = Math.min(10, issueCount * 5);
-        rawScore += weight;
-        signals.push({
-          type: 'SUBSYSTEM_ISSUE',
-          label: 'Subsystem Issue Context',
-          description: `Documented or authored ${issueCount} issue${issueCount > 1 ? 's' : ''} in the '${targetSubsystem}' subsystem.`,
-          weight,
-          count: issueCount,
-          referenceNumbers: stats.subsystemIssues.slice(0, 5).map((i) => i.number),
-        });
-      }
-
-      // Signal E: Recency Evaluation
+      // Signal E: Recency Evaluation (Both modes, up to 20 points)
       const daysAgo = Math.max(
         0,
         Math.floor((now.getTime() - stats.latestActivityAt.getTime()) / (1000 * 60 * 60 * 24))
       );
 
       let recencySignal: RecencySignal = 'DORMANT';
-      if (daysAgo <= 90) {
+      if (daysAgo <= 30) {
         recencySignal = 'RECENT';
         const weight = 20;
         rawScore += weight;
         signals.push({
           type: 'RECENCY_BOOST',
-          label: 'Recent Activity',
+          label: 'Immediate Recency (0-30d)',
+          description: `Active within the last ${daysAgo} days (${stats.latestActivityAt.toISOString().split('T')[0]}).`,
+          weight,
+          count: 1,
+          lastActiveAt: stats.latestActivityAt.toISOString(),
+        });
+      } else if (daysAgo <= 90) {
+        recencySignal = 'RECENT';
+        const weight = 15;
+        rawScore += weight;
+        signals.push({
+          type: 'RECENCY_BOOST',
+          label: 'High Recency (31-90d)',
           description: `Active within the last ${daysAgo} days (${stats.latestActivityAt.toISOString().split('T')[0]}).`,
           weight,
           count: 1,
@@ -381,7 +512,7 @@ export class ContributionEngine {
         rawScore += weight;
         signals.push({
           type: 'RECENCY_BOOST',
-          label: 'Moderate Recency',
+          label: 'Moderate Recency (91-180d)',
           description: `Last active ${daysAgo} days ago (${stats.latestActivityAt.toISOString().split('T')[0]}).`,
           weight,
           count: 1,
@@ -391,7 +522,7 @@ export class ContributionEngine {
         recencySignal = 'DORMANT';
         signals.push({
           type: 'HISTORICAL_EXPERIENCE',
-          label: 'Historical Activity',
+          label: 'Historical Activity (>180d)',
           description: `Historical contributor with activity older than 180 days (${stats.latestActivityAt.toISOString().split('T')[0]}).`,
           weight: 0,
           count: 1,
@@ -399,22 +530,17 @@ export class ContributionEngine {
         });
       }
 
-      // General Repository Activity (up to 5 points)
-      if (stats.otherMergedPRs.length > 0 && signals.length <= 2) {
-        const generalWeight = Math.min(5, stats.otherMergedPRs.length * 2);
-        rawScore += generalWeight;
-      }
-
-      // Normalize score between 1 and 100
+      // Normalize score between 0 and 100
       const normalizedScore = Math.min(100, Math.max(0, rawScore));
 
       // Classify Experience Tier
+      const effectiveMerged = hasTargetContext ? stats.subsystemMergedPRs.length : stats.allMergedPRs.length;
       let experienceTier: ContributorExperienceTier = 'INCIDENTAL';
-      if (normalizedScore >= 65 && mergedCount >= 2 && daysAgo <= 180) {
+      if (normalizedScore >= 60 && effectiveMerged >= 2 && daysAgo <= 180) {
         experienceTier = 'PRIMARY_MAINTAINER';
-      } else if (daysAgo <= 90 && (mergedCount >= 1 || stats.directFixPRs.length > 0)) {
+      } else if (daysAgo <= 90 && (effectiveMerged >= 1 || stats.directFixPRs.length > 0)) {
         experienceTier = 'ACTIVE_CONTRIBUTOR';
-      } else if (mergedCount >= 1 && daysAgo > 180) {
+      } else if (effectiveMerged >= 1 && daysAgo > 180) {
         experienceTier = 'HISTORICAL_CONTRIBUTOR';
       } else {
         experienceTier = 'INCIDENTAL';
