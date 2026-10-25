@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
@@ -24,6 +24,126 @@ import {
   FolderGit2,
 } from 'lucide-react';
 
+export interface ScopePresetOption {
+  id: string;
+  icon: string;
+  label: string;
+  description: string;
+  format: (repo: string) => string;
+}
+
+export const SCOPE_PRESETS: ScopePresetOption[] = [
+  {
+    id: 'whole_repo',
+    icon: '📁',
+    label: 'Entire Repository',
+    description: 'Whole codebase, broad architecture, or general audit',
+    format: (repo: string) => `${repo} (Whole Repo)`,
+  },
+  {
+    id: 'bug_defect',
+    icon: '🐛',
+    label: 'Bug / Defect Root-Cause',
+    description: 'Investigating broken behavior, error throws, or regressions',
+    format: (repo: string) => `${repo} • Bug / Defect Analysis`,
+  },
+  {
+    id: 'pr_review',
+    icon: '🔀',
+    label: 'Pull Request & Commit Review',
+    description: 'Investigating changes, merge impact, or regressions from a PR',
+    format: (repo: string) => `${repo} • PR / Commit Review`,
+  },
+  {
+    id: 'performance',
+    icon: '⚡',
+    label: 'Performance & Memory',
+    description: 'Memory leaks, latency spikes, re-renders, or bundle size',
+    format: (repo: string) => `${repo} • Performance & Latency`,
+  },
+  {
+    id: 'security',
+    icon: '🔒',
+    label: 'Security & Auth Audit',
+    description: 'Authentication, token handling, permissions, or security flaws',
+    format: (repo: string) => `${repo} • Security & Auth`,
+  },
+  {
+    id: 'backend_api',
+    icon: '🧩',
+    label: 'Backend & API Subsystem',
+    description: 'Server endpoints, business logic, middleware, routes',
+    format: (repo: string) => `${repo} • API & Backend`,
+  },
+  {
+    id: 'frontend_ui',
+    icon: '🎨',
+    label: 'Frontend & UI Subsystem',
+    description: 'React components, client state, styling, user interactions',
+    format: (repo: string) => `${repo} • Frontend & UI`,
+  },
+  {
+    id: 'database',
+    icon: '🗄️',
+    label: 'Database & Models',
+    description: 'Schemas, ORM models, migrations, queries, caching',
+    format: (repo: string) => `${repo} • Database & Storage`,
+  },
+  {
+    id: 'build_ci',
+    icon: '⚙️',
+    label: 'Build, CI/CD & Tooling',
+    description: 'Build configs, bundlers, GitHub Actions, workflows',
+    format: (repo: string) => `${repo} • Build & CI/CD`,
+  },
+  {
+    id: 'dependencies',
+    icon: '📦',
+    label: 'Dependencies & Upgrades',
+    description: 'External packages, breaking library updates, CVE patches',
+    format: (repo: string) => `${repo} • Dependencies`,
+  },
+  {
+    id: 'custom',
+    icon: '📝',
+    label: 'Custom Specific Scope',
+    description: 'Target a specific source code file, function, or PR #',
+    format: (repo: string) => `${repo} • Custom Scope`,
+  },
+];
+
+export function getScopeCategoryInfo(scope: string): { icon: string; label: string } {
+  const s = scope.toLowerCase();
+  if (s.includes('bug') || s.includes('defect') || s.includes('error')) {
+    return { icon: '🐛', label: 'Bug Analysis' };
+  }
+  if (s.includes('pr') || s.includes('pull') || s.includes('commit') || s.includes('review')) {
+    return { icon: '🔀', label: 'PR Review' };
+  }
+  if (s.includes('perf') || s.includes('latency') || s.includes('leak') || s.includes('memory')) {
+    return { icon: '⚡', label: 'Performance' };
+  }
+  if (s.includes('sec') || s.includes('auth') || s.includes('token') || s.includes('vulnerab')) {
+    return { icon: '🔒', label: 'Security' };
+  }
+  if (s.includes('api') || s.includes('backend') || s.includes('server') || s.includes('route')) {
+    return { icon: '🧩', label: 'API Backend' };
+  }
+  if (s.includes('ui') || s.includes('front') || s.includes('component') || s.includes('render')) {
+    return { icon: '🎨', label: 'Frontend UI' };
+  }
+  if (s.includes('data') || s.includes('db') || s.includes('model') || s.includes('schema') || s.includes('query')) {
+    return { icon: '🗄️', label: 'Database' };
+  }
+  if (s.includes('ci') || s.includes('build') || s.includes('workflow') || s.includes('action')) {
+    return { icon: '⚙️', label: 'Build CI/CD' };
+  }
+  if (s.includes('dep') || s.includes('package') || s.includes('upgrade') || s.includes('version')) {
+    return { icon: '📦', label: 'Dependencies' };
+  }
+  return { icon: '📁', label: 'Whole Repo' };
+}
+
 interface LocationState {
   prefillQuestion?: string;
   prefillScope?: string;
@@ -33,12 +153,14 @@ interface LocationState {
 export function InvestigationsPage() {
   const { activeRepo } = useRepository();
   const { get, post, patch, del } = useApiClient();
+  const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as LocationState | undefined;
 
   const [investigations, setInvestigations] = useState<InvestigationRecord[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvestigationRecord | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +168,7 @@ export function InvestigationsPage() {
 
   // New Investigation Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [selectedScopePreset, setSelectedScopePreset] = useState<string>('whole_repo');
   const [newQuestion, setNewQuestion] = useState<string>('');
   const [newScope, setNewScope] = useState<string>('');
   const [newStatus, setNewStatus] = useState<InvestigationStatus>('open');
@@ -62,11 +185,39 @@ export function InvestigationsPage() {
   // Delete Confirmation State
   const [invToDelete, setInvToDelete] = useState<InvestigationRecord | null>(null);
 
+  const handleScopePresetChange = (presetKey: string) => {
+    setSelectedScopePreset(presetKey);
+    const repoName = activeRepo?.fullName || 'Repository';
+    const found = SCOPE_PRESETS.find((p) => p.id === presetKey);
+    if (found) {
+      setNewScope(found.format(repoName));
+    } else {
+      setNewScope(`${repoName} (Whole Repo)`);
+    }
+  };
+
+  const filteredInvestigations = investigations.filter((inv) => {
+    if (scopeFilter === 'all') return true;
+    const s = inv.scope.toLowerCase();
+    if (scopeFilter === 'bug') return s.includes('bug') || s.includes('defect') || s.includes('error');
+    if (scopeFilter === 'pr') return s.includes('pr') || s.includes('pull') || s.includes('commit') || s.includes('review');
+    if (scopeFilter === 'perf') return s.includes('perf') || s.includes('latency') || s.includes('leak') || s.includes('memory');
+    if (scopeFilter === 'security') return s.includes('sec') || s.includes('auth') || s.includes('token') || s.includes('vulnerab');
+    if (scopeFilter === 'api') return s.includes('api') || s.includes('backend') || s.includes('server') || s.includes('route');
+    if (scopeFilter === 'ui') return s.includes('ui') || s.includes('front') || s.includes('component') || s.includes('render');
+    if (scopeFilter === 'database') return s.includes('data') || s.includes('db') || s.includes('model') || s.includes('schema') || s.includes('query');
+    if (scopeFilter === 'ci') return s.includes('ci') || s.includes('build') || s.includes('workflow') || s.includes('action');
+    if (scopeFilter === 'deps') return s.includes('dep') || s.includes('package') || s.includes('upgrade') || s.includes('version');
+    if (scopeFilter === 'whole') return s.includes('whole') || s.includes('repo');
+    return true;
+  });
+
   // Handle location prefill
   useEffect(() => {
     if (locationState?.prefillQuestion) {
       setNewQuestion(locationState.prefillQuestion);
       setNewScope(locationState.prefillScope || '');
+      setSelectedScopePreset('custom');
       setIsCreateModalOpen(true);
     }
   }, [locationState]);
@@ -308,6 +459,7 @@ export function InvestigationsPage() {
             setFormError(null);
             if (!newScope && activeRepo) {
               setNewScope(`${activeRepo.fullName} (Whole Repo)`);
+              setSelectedScopePreset('whole_repo');
             }
             setIsCreateModalOpen(true);
           }}
@@ -315,6 +467,53 @@ export function InvestigationsPage() {
         >
           New Investigation
         </Button>
+      </div>
+
+      {/* Explainer Banner */}
+      <div className="p-4 rounded-lg bg-surface border border-border-subtle shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderGit2 className="w-4 h-4 text-accent" />
+            <h3 className="text-xs font-bold text-primary">
+              How Investigations & Target Scopes Work
+            </h3>
+          </div>
+          <span className="text-[11px] text-primary-muted font-mono">
+            Repo: {activeRepo.fullName}
+          </span>
+        </div>
+        <p className="text-xs text-primary-secondary leading-relaxed">
+          An <strong>Investigation</strong> is a structured workspace for diagnosing a tricky bug, understanding a controversial PR, or preserving architectural evidence. <strong>Target Scope</strong> categorizes the boundary of your investigation (e.g. 🐛 Bug Defect, 🔀 PR Review, ⚡ Performance, or 🧩 API Backend) so your hypotheses, facts, and code citations stay organized and filterable.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          <div className="p-2.5 rounded bg-surface-subtle border border-border-subtle space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-primary text-xs">
+              <span className="w-4 h-4 rounded-full bg-accent/15 text-accent text-[10px] font-bold flex items-center justify-center">1</span>
+              <span>Pick Scope Category</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              Select whether this case is about a bug, PR review, performance, or subsystem.
+            </p>
+          </div>
+          <div className="p-2.5 rounded bg-surface-subtle border border-border-subtle space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-primary text-xs">
+              <span className="w-4 h-4 rounded-full bg-accent/15 text-accent text-[10px] font-bold flex items-center justify-center">2</span>
+              <span>Collect Clues & Hypotheses</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              Formulate competing theories and record facts found during code inspection.
+            </p>
+          </div>
+          <div className="p-2.5 rounded bg-surface-subtle border border-border-subtle space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-primary text-xs">
+              <span className="w-4 h-4 rounded-full bg-accent/15 text-accent text-[10px] font-bold flex items-center justify-center">3</span>
+              <span>Cite Evidence & Conclude</span>
+            </div>
+            <p className="text-[11px] text-primary-muted leading-relaxed">
+              Attach commits and PRs from Archaeology. Publish the verified finding once solved.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -331,8 +530,8 @@ export function InvestigationsPage() {
       )}
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 sm:pb-0">
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 md:pb-0">
           {(['all', 'open', 'in_progress', 'resolved', 'inconclusive'] as const).map((st) => (
             <button
               key={st}
@@ -348,15 +547,34 @@ export function InvestigationsPage() {
           ))}
         </div>
 
-        <div className="relative sm:w-64">
-          <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search questions or scope..."
-            className="w-full bg-surface text-xs text-primary rounded-md pl-9 pr-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <select
+            value={scopeFilter}
+            onChange={(e) => setScopeFilter(e.target.value)}
+            className="bg-surface text-xs text-primary rounded-md px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link font-medium"
+          >
+            <option value="all">Filter: All Scopes</option>
+            <option value="bug">🐛 Bugs & Defects</option>
+            <option value="pr">🔀 PR & Commits</option>
+            <option value="perf">⚡ Performance</option>
+            <option value="security">🔒 Security & Auth</option>
+            <option value="api">🧩 API & Backend</option>
+            <option value="ui">🎨 UI & Frontend</option>
+            <option value="database">🗄️ Database</option>
+            <option value="ci">⚙️ Build & CI/CD</option>
+            <option value="deps">📦 Dependencies</option>
+            <option value="whole">📁 Whole Repository</option>
+          </select>
+          <div className="relative sm:w-56">
+            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search question or scope..."
+              className="w-full bg-surface text-xs text-primary rounded-md pl-9 pr-3 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+            />
+          </div>
         </div>
       </div>
 
@@ -418,42 +636,48 @@ export function InvestigationsPage() {
             <div className={`space-y-3 lg:col-span-1 ${mobileView === 'detail' ? 'hidden lg:block' : 'block'}`}>
               <div className="flex items-center justify-between px-1">
                 <label className="text-xs font-semibold text-primary-muted uppercase tracking-wider block">
-                  Saved Records ({investigations.length})
+                  Saved Records ({filteredInvestigations.length})
                 </label>
               </div>
 
               <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
-                {investigations.map((inv) => (
-                  <div
-                    key={inv.id}
-                    onClick={() => {
-                      setSelectedInv(inv);
-                      setMobileView('detail');
-                    }}
-                    className={`p-3.5 rounded-md border cursor-pointer transition-all ${
-                      selectedInv?.id === inv.id
-                        ? 'bg-surface border-accent shadow-xs'
-                        : 'bg-surface border-border-subtle hover:border-border-strong'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      {getStatusBadge(inv.status)}
-                      <span className="text-[11px] font-mono text-primary-muted">
-                        {new Date(inv.updatedAt).toLocaleDateString()}
-                      </span>
+                {filteredInvestigations.map((inv) => {
+                  const scopeInfo = getScopeCategoryInfo(inv.scope);
+                  return (
+                    <div
+                      key={inv.id}
+                      onClick={() => {
+                        setSelectedInv(inv);
+                        setMobileView('detail');
+                      }}
+                      className={`p-3.5 rounded-md border cursor-pointer transition-all ${
+                        selectedInv?.id === inv.id
+                          ? 'bg-surface border-accent shadow-xs'
+                          : 'bg-surface border-border-subtle hover:border-border-strong'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        {getStatusBadge(inv.status)}
+                        <span className="text-[11px] font-mono text-primary-muted">
+                          {new Date(inv.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
+                        {inv.question}
+                      </h4>
+                      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-subtle border border-border-subtle text-primary truncate max-w-full inline-flex items-center gap-1">
+                          <span>{scopeInfo.icon}</span>
+                          <span className="truncate">{inv.scope}</span>
+                        </span>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-primary-muted font-mono">
+                        <span>{inv.evidenceItems.length} evidence citation(s)</span>
+                        <span>{inv.hypotheses.length} hypotheses</span>
+                      </div>
                     </div>
-                    <h4 className="text-xs font-semibold text-primary mt-2 line-clamp-2 leading-snug">
-                      {inv.question}
-                    </h4>
-                    <p className="text-[11px] font-mono text-primary-secondary mt-1.5 line-clamp-1">
-                      Scope: {inv.scope}
-                    </p>
-                    <div className="mt-2.5 pt-2 border-t border-border-subtle flex items-center justify-between text-[11px] text-primary-muted font-mono">
-                      <span>{inv.evidenceItems.length} evidence citation(s)</span>
-                      <span>{inv.hypotheses.length} hypotheses</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -499,12 +723,23 @@ export function InvestigationsPage() {
                 >
                 <div className="space-y-6">
                   {/* Question & Scope Header */}
-                  <div>
+                  <div className="space-y-2">
                     <h3 className="text-sm font-bold text-primary leading-snug">
                       {selectedInv.question}
                     </h3>
-                    <div className="mt-2 p-2.5 bg-surface-subtle rounded border border-border-subtle font-mono text-xs text-primary-secondary">
-                      <strong className="text-primary">Scope:</strong> {selectedInv.scope}
+                    <div className="p-3 bg-surface-subtle rounded-md border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-primary-muted uppercase font-mono tracking-wider">
+                          Scope:
+                        </span>
+                        <span className="px-2.5 py-1 rounded bg-surface border border-border-subtle font-mono text-xs font-semibold text-primary inline-flex items-center gap-1.5 shadow-2xs">
+                          <span>{getScopeCategoryInfo(selectedInv.scope).icon}</span>
+                          <span>{selectedInv.scope}</span>
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-primary-muted">
+                        Boundaries & focus area for evidence collection
+                      </span>
                     </div>
                   </div>
 
@@ -516,9 +751,19 @@ export function InvestigationsPage() {
                       </h4>
                     </div>
                     {selectedInv.hypotheses.length === 0 ? (
-                      <p className="text-xs text-primary-muted font-mono italic">
-                        No hypotheses formulated yet.
-                      </p>
+                      <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle text-xs space-y-1.5">
+                        <p className="text-primary font-medium">💡 What is a Hypothesis?</p>
+                        <p className="text-primary-muted text-[11px] leading-relaxed">
+                          A candidate theory for why this issue happened. For example: <em>"The store throws because getState() is invoked before hydration completes."</em>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAddHypothesisInput(`H1: Potential root-cause in ${selectedInv.scope}`)}
+                          className="text-xs text-link hover:underline font-mono inline-flex items-center gap-1 pt-0.5"
+                        >
+                          + Autofill Starter Hypothesis
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {selectedInv.hypotheses.map((h, idx) => (
@@ -561,9 +806,12 @@ export function InvestigationsPage() {
                       Recorded Observations ({selectedInv.observations.length})
                     </h4>
                     {selectedInv.observations.length === 0 ? (
-                      <p className="text-xs text-primary-muted font-mono italic">
-                        No observations noted yet.
-                      </p>
+                      <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle text-xs space-y-1.5">
+                        <p className="text-primary font-medium">📋 What is an Observation?</p>
+                        <p className="text-primary-muted text-[11px] leading-relaxed">
+                          A verified factual clue discovered while inspecting code, running tests, or analyzing logs (e.g. <em>"Error occurs in store.ts line 84 when auto-detection runs"</em>).
+                        </p>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {selectedInv.observations.map((obs, idx) => (
@@ -605,9 +853,20 @@ export function InvestigationsPage() {
                       Evidentiary Citations ({selectedInv.evidenceItems.length})
                     </h4>
                     {selectedInv.evidenceItems.length === 0 ? (
-                      <p className="text-xs text-primary-muted font-mono italic">
-                        No structured evidence items linked yet. Trace symbols on the Code Archaeology page or examine issues in Explorer to cite evidence.
-                      </p>
+                      <div className="p-3.5 rounded-md bg-surface-subtle border border-border-subtle text-xs space-y-2">
+                        <p className="text-primary font-medium">🔍 No Evidence Linked Yet</p>
+                        <p className="text-primary-muted text-[11px] leading-relaxed">
+                          Forensic investigations rely on concrete proof (commits, pull requests, and file traces). You can search any keyword or symbol in Code Archaeology and click <strong>"Preserve in Investigation"</strong> to link evidence here.
+                        </p>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate('/app/archaeology')}
+                          leftIcon={<Search className="w-3.5 h-3.5 text-accent" />}
+                        >
+                          Search Code Archaeology for Evidence
+                        </Button>
+                      </div>
                     ) : (
                       <div className="divide-y divide-border-subtle border border-border-subtle rounded-md bg-surface overflow-hidden">
                         {selectedInv.evidenceItems.map((ev) => (
@@ -647,9 +906,12 @@ export function InvestigationsPage() {
                       Forensic Findings ({selectedInv.findings.length})
                     </h4>
                     {selectedInv.findings.length === 0 ? (
-                      <p className="text-xs text-primary-muted font-mono italic">
-                        No findings published yet.
-                      </p>
+                      <div className="p-3 rounded-md bg-surface-subtle border border-border-subtle text-xs space-y-1">
+                        <p className="text-primary font-medium">🎯 What is a Forensic Finding?</p>
+                        <p className="text-primary-muted text-[11px] leading-relaxed">
+                          Once your evidence verifies or disproves a hypothesis, publish your final verified conclusion and remediation advice here.
+                        </p>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {selectedInv.findings.map((f, idx) => (
@@ -752,55 +1014,70 @@ export function InvestigationsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-primary">
-                    Target Scope
+                    Target Scope Category
                   </label>
                   <span className="text-[11px] text-primary-muted">
-                    Area of codebase under review
+                    What area is this case focused on?
                   </span>
                 </div>
-                <input
-                  type="text"
-                  value={newScope}
-                  onChange={(e) => setNewScope(e.target.value)}
-                  placeholder="e.g. Entire repo, Auth subsystem, or React 19 RC • packages/react/src/ReactHooks.js"
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link font-mono"
-                />
 
-                {/* 1-Click Scope Quick Presets */}
+                {/* Scope Category Dropdown Menu */}
+                <select
+                  value={selectedScopePreset}
+                  onChange={(e) => handleScopePresetChange(e.target.value)}
+                  className="w-full bg-surface-subtle text-xs text-primary font-medium rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link mb-2"
+                >
+                  {SCOPE_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.icon} {preset.label} — {preset.description}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Scope String Input with Placeholder matching test expectations */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-primary-muted">
+                      Scope Target String (auto-formatted from dropdown):
+                    </span>
+                    <span className="text-primary-secondary font-mono text-[10px]">
+                      Editable
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={newScope}
+                    onChange={(e) => setNewScope(e.target.value)}
+                    placeholder="e.g. Entire repo, Auth subsystem, or React 19 RC • packages/react/src/ReactHooks.js"
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link font-mono"
+                  />
+                </div>
+
+                {/* 1-Click Quick Preset Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap mt-2">
                   <span className="text-[10px] text-primary-muted font-medium">Quick Presets:</span>
-                  <button
-                    type="button"
-                    onClick={() => setNewScope(`${activeRepo?.fullName || 'Repository'} (Whole Repo)`)}
-                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
-                  >
-                    📁 Whole Repository
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • API & Backend`)}
-                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
-                  >
-                    ⚡ API & Backend
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • UI & Frontend`)}
-                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
-                  >
-                    🎨 UI & Frontend
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • Auth & Security`)}
-                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
-                  >
-                    🔒 Auth & Security
-                  </button>
+                  {SCOPE_PRESETS.slice(0, 7).map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleScopePresetChange(preset.id)}
+                      className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
+                        selectedScopePreset === preset.id
+                          ? 'bg-accent/15 border-accent text-accent font-semibold'
+                          : 'bg-surface-subtle border-border-subtle text-primary-secondary hover:text-primary hover:border-accent'
+                      }`}
+                    >
+                      {preset.icon} {preset.label.split('/')[0]?.trim()}
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[11px] text-primary-muted mt-1.5 leading-normal">
-                  Scope defines which part of the code you are investigating. Click a quick preset above or type any specific module, file path, or PR. Defaults to Whole Repository if left blank.
-                </p>
+
+                <div className="mt-2 p-2.5 rounded bg-surface border border-border-subtle text-[11px] text-primary-secondary leading-relaxed space-y-1">
+                  <p className="font-semibold text-primary">💡 What is Target Scope used for?</p>
+                  <p>
+                    Target Scope categorizes and isolates your investigation. It defines whether you are diagnosing a <strong>🐛 Bug Defect</strong>, reviewing a <strong>🔀 Pull Request</strong>, auditing <strong>⚡ Performance</strong>, or inspecting a <strong>🧩 Subsystem</strong>. It groups evidence, filters saved cases, and keeps findings reproducible.
+                  </p>
+                </div>
               </div>
 
               <div>
