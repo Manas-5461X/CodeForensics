@@ -15,15 +15,9 @@ import { Badge } from '../components/ui/Badge.js';
 
 export function LandingPage() {
   const [activeTab, setActiveTab] = useState<'lineage' | 'assessment' | 'code'>('lineage');
-  const [heroTheme, setHeroTheme] = useState<'moon-dots' | 'moon-grid' | 'systems'>('moon-dots');
-
-  const isMoon = heroTheme !== 'systems';
 
   return (
-    <div className={`min-h-screen ${isMoon ? 'bg-[#030712]' : 'bg-[#0b1120]'} text-slate-100 font-sans selection:bg-[#38bdf8]/30 selection:text-white transition-colors duration-500`}>
-      {/* ---------------------------------------------------------------------- */}
-      {/* 1. Global Navigation Bar (CAPEX-style glass overlay)                  */}
-      {/* ---------------------------------------------------------------------- */}
+    <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-[#38bdf8]/30 selection:text-white">
       {/* ---------------------------------------------------------------------- */}
       {/* 1. Global Navigation Bar (CAPEX-style glass overlay)                  */}
       {/* ---------------------------------------------------------------------- */}
@@ -60,52 +54,12 @@ export function LandingPage() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* 3-Way Background Comparison Selector */}
-          <div className="hidden xs:inline-flex items-center p-0.5 bg-slate-900/90 border border-slate-700/80 rounded-full text-[10px] font-mono shadow-inner">
-            <button
-              onClick={() => setHeroTheme('moon-dots')}
-              title="Wireframe Moon with coordinate dots matrix"
-              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
-                heroTheme === 'moon-dots'
-                  ? 'bg-[#00f0ff] text-[#030712] font-bold shadow-[0_0_10px_rgba(0,240,255,0.6)]'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="hidden sm:inline">✦ Moon (Dots)</span>
-              <span className="sm:hidden">Dots</span>
-            </button>
-            <button
-              onClick={() => setHeroTheme('moon-grid')}
-              title="Wireframe Moon with cyber grid"
-              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
-                heroTheme === 'moon-grid'
-                  ? 'bg-[#38bdf8] text-[#030712] font-bold shadow-[0_0_10px_rgba(56,189,248,0.6)]'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="hidden sm:inline">🌐 Moon (Grid)</span>
-              <span className="sm:hidden">Grid</span>
-            </button>
-            <button
-              onClick={() => setHeroTheme('systems')}
-              title="Deep Systems Architecture background"
-              className={`px-2 sm:px-2.5 py-1 rounded-full transition-all ${
-                heroTheme === 'systems'
-                  ? 'bg-slate-200 text-[#0b1120] font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className="hidden sm:inline">🏛 Systems</span>
-              <span className="sm:hidden">Systems</span>
-            </button>
-          </div>
-
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <a
             href="https://github.com/Manas-5461X/CodeForensics"
             target="_blank"
             rel="noreferrer"
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
           >
             <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
             <span>GitHub</span>
@@ -122,80 +76,46 @@ export function LandingPage() {
       </header>
 
       {/* ---------------------------------------------------------------------- */}
-      {/* 2. Hero Section (Dynamic Full-Viewport Backdrop)                      */}
+      {/* 2. Hero Section (Celestial Wireframe Moon with Coordinate Dots Matrix) */}
       {/* ---------------------------------------------------------------------- */}
       <section className="relative min-h-[100dvh] w-full flex flex-col justify-center overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-16 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
-        {/* Dynamic Backdrop Image Container */}
-        {isMoon ? (
-          <div className="absolute inset-0 z-0 bg-[#030712] overflow-hidden pointer-events-none">
-            <img
-              src="/hero-wireframe.jpg"
-              alt="CodeForensics Celestial Wireframe Terrain"
-              className="w-full h-full object-cover object-[center_top] opacity-95 filter contrast-[1.12] brightness-105 transition-all duration-700"
-            />
-            {/* Multi-layered directional dark gradient overlays preserving full circle and mountain glow */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/90 via-[#030712]/45 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#030712]/25 via-transparent to-transparent" />
+        {/* Celestial Wireframe Terrain with Radial Cyan Coordinate Dots Matrix */}
+        <div className="absolute inset-0 z-0 bg-[#030712] overflow-hidden pointer-events-none">
+          <img
+            src="/hero-wireframe.jpg"
+            alt="CodeForensics Celestial Wireframe Terrain"
+            className="w-full h-full object-cover object-[center_top] opacity-95 filter contrast-[1.12] brightness-105"
+          />
+          {/* Multi-layered directional dark gradient overlays preserving full circle and mountain glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/90 via-[#030712]/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#030712]/25 via-transparent to-transparent" />
 
-            {heroTheme === 'moon-dots' ? (
-              /* Refined CAPEX radial cyan coordinate dots matrix overlay */
-              <div
-                className="absolute inset-0 opacity-30 pointer-events-none"
-                style={{
-                  backgroundImage: 'radial-gradient(circle at 82% 28%, #38bdf8 0 1px, transparent 1.5px)',
-                  backgroundSize: '14px 14px',
-                  maskImage: 'linear-gradient(to left, black 35%, transparent 85%)',
-                  WebkitMaskImage: 'linear-gradient(to left, black 35%, transparent 85%)',
-                }}
-              />
-            ) : (
-              /* Cyber coordinate grid trace overlay */
-              <div
-                className="absolute inset-0 opacity-15 pointer-events-none"
-                style={{
-                  backgroundImage: 'linear-gradient(to right, #00f0ff 1px, transparent 1px), linear-gradient(to bottom, #00f0ff 1px, transparent 1px)',
-                  backgroundSize: '48px 48px',
-                  maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 85%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 85%)',
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          <div className="absolute inset-0 z-0 bg-[#0b1120] overflow-hidden pointer-events-none">
-            <img
-              src="/hero-systems.jpg"
-              alt="CodeForensics Interconnected Systems"
-              className="w-full h-full object-cover object-[center_42%] opacity-75 scale-102 filter contrast-[1.05] brightness-95 transition-all duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0b1120]/95 via-[#0b1120]/75 to-[#0b1120]/30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0b1120] via-[#0b1120]/40 to-[#0b1120]/60" />
-            <div
-              className="absolute inset-0 opacity-20 pointer-events-none hidden lg:block"
-              style={{
-                backgroundImage: 'radial-gradient(circle at 82% 28%, #38bdf8 0 1px, transparent 1.5px)',
-                backgroundSize: '14px 14px',
-                maskImage: 'linear-gradient(to left, black 25%, transparent 75%)',
-                WebkitMaskImage: 'linear-gradient(to left, black 25%, transparent 75%)',
-              }}
-            />
-          </div>
-        )}
+          {/* Refined CAPEX radial cyan coordinate dots matrix overlay */}
+          <div
+            className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 82% 28%, #38bdf8 0 1px, transparent 1.5px)',
+              backgroundSize: '14px 14px',
+              maskImage: 'linear-gradient(to left, black 35%, transparent 85%)',
+              WebkitMaskImage: 'linear-gradient(to left, black 35%, transparent 85%)',
+            }}
+          />
+        </div>
 
         {/* Hero Copy Container */}
         <div className="relative z-10 w-full max-w-6xl mx-auto my-auto">
           {/* Small Monospace Eyebrow */}
-          <div className={`inline-flex items-center gap-2.5 px-3 py-1 rounded ${isMoon ? 'bg-[#06152d]/80 border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.2)]' : 'bg-[#1e293b]/80 border-[#38bdf8]/30'} border text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-4 sm:mb-5 backdrop-blur-xs`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isMoon ? 'bg-[#00f0ff]' : 'bg-[#38bdf8]'} animate-pulse`} />
+          <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded bg-[#06152d]/80 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.2)] text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-4 sm:mb-5 backdrop-blur-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse" />
             <span>FOR MAINTAINERS & CONTRIBUTORS</span>
             <span className="text-slate-500">•</span>
-            <span className={isMoon ? 'text-[#00f0ff] font-bold' : 'text-[#38bdf8]'}>EVIDENCE GRAPH</span>
+            <span className="text-[#00f0ff] font-bold">EVIDENCE GRAPH</span>
           </div>
 
           {/* Oversized Editorial Typography */}
           <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.0] max-w-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
             Stop guessing why code was written.{' '}
-            <span className={`block font-editorial italic font-normal ${isMoon ? 'text-[#38bdf8] drop-shadow-[0_0_24px_rgba(56,189,248,0.7)]' : 'text-[#7dd3fc]'} tracking-tight mt-1 sm:mt-2`}>
+            <span className="block font-editorial italic font-normal text-[#38bdf8] drop-shadow-[0_0_24px_rgba(56,189,248,0.7)] tracking-tight mt-1 sm:mt-2">
               Inspect the evidence.
             </span>
           </h1>
@@ -210,30 +130,30 @@ export function LandingPage() {
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 flex-wrap">
             <Link
               to="/app"
-              className={`inline-flex items-center justify-center gap-2.5 px-6 py-3.5 ${isMoon ? 'bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)]' : 'bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] shadow-[0_0_20px_rgba(56,189,248,0.25)]'} font-mono font-semibold text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5`}
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)] font-mono font-semibold text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5"
             >
               <span>Launch Interactive Workbench</span>
               <span className="text-sm">↗</span>
             </Link>
             <Link
               to="/docs"
-              className={`inline-flex items-center justify-center gap-2 px-5 py-3.5 ${isMoon ? 'bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]' : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 border-slate-700/80'} border font-mono text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5`}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)] font-mono text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5"
             >
-              <BookOpen className={`w-3.5 h-3.5 ${isMoon ? 'text-[#00f0ff]' : 'text-[#38bdf8]'}`} />
+              <BookOpen className="w-3.5 h-3.5 text-[#00f0ff]" />
               <span>System Documentation</span>
             </Link>
             <a
               href="#case-study"
               className="inline-flex items-center justify-center gap-2 px-4 py-3.5 text-slate-400 hover:text-white font-mono text-xs transition-colors"
             >
-              <Search className={`w-3.5 h-3.5 ${isMoon ? 'text-[#00f0ff]' : 'text-[#38bdf8]'}`} />
+              <Search className="w-3.5 h-3.5 text-[#00f0ff]" />
               <span>Inspect Benchmark Case (#28941)</span>
             </a>
           </div>
 
           {/* Engine Status Line */}
           <div className="mt-6 sm:mt-8 flex items-center gap-2.5 text-xs font-mono text-slate-300">
-            <span className={`inline-block w-2 h-2 rounded-full ${isMoon ? 'bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]' : 'bg-[#10b981] shadow-[0_0_8px_#10b981]'}`} />
+            <span className="inline-block w-2 h-2 rounded-full bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]" />
             <span>Forensic intelligence engine live in active benchmark</span>
             <span className="text-slate-600 hidden sm:inline">•</span>
             <span className="text-slate-400 hidden sm:inline">Zero AI hallucinations</span>
