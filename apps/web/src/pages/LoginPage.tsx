@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { Button } from '../components/ui/Button.js';
+import { formatAuthError, FormattedAuthError } from '../utils/authErrors.js';
 import {
   Terminal,
   Shield,
@@ -36,7 +37,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<FormattedAuthError | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +45,18 @@ export function LoginPage() {
     clearError();
 
     if (!email || !password) {
-      setLocalError('Please enter both email and password.');
+      setLocalError({
+        title: 'Missing Required Fields',
+        message: 'Please provide both your email address and password.',
+      });
       return;
     }
 
     if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters.');
+      setLocalError({
+        title: 'Password Too Short',
+        message: 'Password must be at least 6 characters in length.',
+      });
       return;
     }
 
@@ -62,8 +69,7 @@ export function LoginPage() {
       }
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setLocalError(msg);
+      setLocalError(formatAuthError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -77,14 +83,13 @@ export function LoginPage() {
       await providerFn();
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'OAuth sign-in failed';
-      setLocalError(msg);
+      setLocalError(formatAuthError(err));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const displayError = localError || error;
+  const activeError: FormattedAuthError | null = localError || (error ? formatAuthError(error) : null);
 
   return (
     <div className="min-h-[100dvh] lg:h-screen w-full bg-[#030712] text-slate-100 flex flex-col lg:flex-row selection:bg-[#38bdf8]/30 overflow-y-auto lg:overflow-hidden font-sans">
@@ -319,16 +324,26 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Error Alert Box */}
-          {displayError && (
+          {/* Formatted Error Alert Box */}
+          {activeError && (
             <div
               role="alert"
-              className="p-2 px-2.5 bg-rose-500/10 border border-rose-500/40 rounded text-[11px] text-rose-300 flex items-center gap-2 font-mono"
+              className="p-3 bg-rose-500/10 border border-rose-500/35 rounded-lg text-rose-300 flex items-start gap-2.5 font-sans shadow-sm"
             >
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-              <div className="leading-tight truncate">
-                <span className="font-semibold text-rose-200">Error: </span>
-                <span>{displayError}</span>
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <div className="space-y-1 w-full text-xs">
+                <div className="font-semibold text-rose-200">
+                  {activeError.title}
+                </div>
+                <div className="text-[11px] text-rose-300/90 leading-relaxed">
+                  {activeError.message}
+                </div>
+                {activeError.actionHint && (
+                  <div className="text-[10px] text-rose-300/90 bg-rose-950/40 border border-rose-800/40 rounded p-1.5 mt-1 leading-normal">
+                    <span className="font-semibold text-rose-200">Recommendation: </span>
+                    {activeError.actionHint}
+                  </div>
+                )}
               </div>
             </div>
           )}

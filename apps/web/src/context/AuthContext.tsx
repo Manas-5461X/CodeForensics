@@ -11,6 +11,7 @@ import {
   GithubAuthProvider,
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../lib/firebase.js';
+import { formatAuthError } from '../utils/authErrors.js';
 
 export interface AuthContextValue {
   user: User | null;
@@ -115,8 +116,8 @@ export function AuthProvider({
       setIdToken(token);
       return credential.user;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sign in failed';
-      setError(message);
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
       throw err;
     }
   }, []);
@@ -130,8 +131,8 @@ export function AuthProvider({
       setIdToken(token);
       return credential.user;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sign up failed';
-      setError(message);
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
       throw err;
     }
   }, []);
@@ -146,8 +147,8 @@ export function AuthProvider({
       setIdToken(token);
       return credential.user;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google sign-in failed';
-      setError(message);
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
       throw err;
     }
   }, []);
@@ -162,8 +163,8 @@ export function AuthProvider({
       setIdToken(token);
       return credential.user;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'GitHub sign-in failed';
-      setError(message);
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
       throw err;
     }
   }, []);
@@ -175,8 +176,8 @@ export function AuthProvider({
       setUser(null);
       setIdToken(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sign out failed';
-      setError(message);
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
       throw err;
     }
   }, []);
