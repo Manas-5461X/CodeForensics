@@ -1,238 +1,593 @@
-import { useState } from 'react';
+import { useState, useId, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../components/ui/Panel.js';
-import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
+import { EmptyState } from '../components/ui/EmptyState.js';
+import { TableSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { WorkItemDetailDrawer } from '../components/issues/WorkItemDetailDrawer.js';
+import { useRepository } from '../context/RepositoryContext.js';
+import { useApiClient } from '../utils/apiClient.js';
+import type { WorkItemSummary, PaginatedResult } from '@codeforensics/shared';
 import {
   Search,
   ExternalLink,
+  GitPullRequest,
+  CircleDot,
+  GitMerge,
+  AlertTriangle,
+  RotateCw,
+  FolderGit2,
+  ChevronLeft,
+  ChevronRight,
+  ShieldAlert,
+  X,
+  CheckCircle2,
+  Link2,
 } from 'lucide-react';
 
-interface MockIssue {
-  id: string;
-  number: number;
-  title: string;
-  githubState: 'open' | 'closed';
-  forensicAssessment: 'RESOLVED' | 'UNRESOLVED' | 'UNKNOWN' | 'PARTIALLY_ADDRESSED';
-  claimCategory: 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'UNKNOWN';
-  author: string;
-  labels: string[];
-  updatedAt: string;
-  linkedPr?: number;
-  evidenceSnippet: string;
-}
-
-const mockIssues: MockIssue[] = [
-  {
-    id: '1',
-    number: 28941,
-    title: 'useDeferredValue causes tearing in concurrent root transitions',
-    githubState: 'closed',
-    forensicAssessment: 'PARTIALLY_ADDRESSED',
-    claimCategory: 'INFERENCE',
-    author: 'gaearon',
-    labels: ['Component: Concurrent', 'Resolution: Uncertain'],
-    updatedAt: '2h ago',
-    linkedPr: 29012,
-    evidenceSnippet: 'PR #29012 merged fix for initial render only; concurrent fallback path not covered by tests.',
-  },
-  {
-    id: '2',
-    number: 28810,
-    title: 'Memory leak in Suspense list during early unmount',
-    githubState: 'closed',
-    forensicAssessment: 'RESOLVED',
-    claimCategory: 'FACT',
-    author: 'acdlite',
-    labels: ['Component: Suspense', 'Type: Bug'],
-    updatedAt: '1d ago',
-    linkedPr: 28840,
-    evidenceSnippet: 'Closed via commit f9281a with explicit regression test in ReactSuspenseList-test.internal.js.',
-  },
-  {
-    id: '3',
-    number: 28719,
-    title: 'DevTools profiler timeline drops commits under high CPU load',
-    githubState: 'open',
-    forensicAssessment: 'UNRESOLVED',
-    claimCategory: 'FACT',
-    author: 'bvaughn',
-    labels: ['Component: DevTools', 'good first issue'],
-    updatedAt: '3d ago',
-    evidenceSnippet: 'No active pull requests or branches found touching ReactDevToolsProfiler.',
-  },
-  {
-    id: '4',
-    number: 28650,
-    title: 'SSR streaming hydration mismatch with inline scripts',
-    githubState: 'closed',
-    forensicAssessment: 'UNKNOWN',
-    claimCategory: 'UNKNOWN',
-    author: 'sebmarkbage',
-    labels: ['Component: SSR'],
-    updatedAt: '5d ago',
-    evidenceSnippet: 'Closed by bot as stale. No commit or PR referenced in discussion.',
-  },
-];
-
 export function IssuesPage() {
-  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputId = useId();
+  const sortSelectId = useId();
+  const { activeRepo, syncState, isSyncing, triggerSync } = useRepository();
+  const { get } = useApiClient();
 
-  const filteredIssues = mockIssues.filter((issue) => {
-    if (filter === 'open' && issue.githubState !== 'open') return false;
-    if (filter === 'closed' && issue.githubState !== 'closed') return false;
-    if (
-      searchQuery &&
-      !issue.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !issue.number.toString().includes(searchQuery)
-    ) {
-      return false;
-    }
-    return true;
+  // Filters & Pagination State
+  const [typeFilter, setTypeFilter] = useState<'all' | 'issue' | 'pull_request'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'open' | 'closed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortOption, setSortOption] = useState<
+    'created_desc' | 'created_asc' | 'updated_desc' | 'updated_asc' | 'number_desc' | 'number_asc'
+  >('created_desc');
+  const [page, setPage] = useState<number>(1);
+  const limit = 20;
+
+  // Selected item for detail drawer
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+
+  // Debounce search query changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setPage(1); // Reset to page 1 on new search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filters change
+  const handleTypeChange = (newType: 'all' | 'issue' | 'pull_request') => {
+    setTypeFilter(newType);
+    setPage(1);
+  };
+
+  const handleStateChange = (newState: 'all' | 'open' | 'closed') => {
+    setStateFilter(newState);
+    setPage(1);
+  };
+
+  const handleSortChange = (
+    newSort: 'created_desc' | 'created_asc' | 'updated_desc' | 'updated_asc' | 'number_desc' | 'number_asc'
+  ) => {
+    setSortOption(newSort);
+    setPage(1);
+  };
+
+  // TanStack Query for server-side paginated items
+  const {
+    data: itemsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      'workItems',
+      activeRepo?.owner,
+      activeRepo?.name,
+      typeFilter,
+      stateFilter,
+      debouncedSearch,
+      sortOption,
+      page,
+      limit,
+    ],
+    queryFn: async () => {
+      if (!activeRepo) return null;
+      const res = await get<PaginatedResult<WorkItemSummary>>(
+        `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/items`,
+        {
+          type: typeFilter,
+          state: stateFilter,
+          search: debouncedSearch || undefined,
+          sort: sortOption,
+          page,
+          limit,
+        }
+      );
+      if (!res.success || !res.data) {
+        throw new Error(res.error?.message || 'Failed to fetch repository work items');
+      }
+      return res.data;
+    },
+    enabled: Boolean(activeRepo),
   });
+
+  // State 1: No active repository selected
+  if (!activeRepo) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-bold text-primary tracking-tight">
+            Issue & Pull Request Explorer
+          </h2>
+          <p className="text-xs text-primary-secondary mt-0.5">
+            Inspect unified issue threads and pull request lifecycles with verified evidence provenance.
+          </p>
+        </div>
+        <EmptyState
+          icon={<FolderGit2 className="w-8 h-8 text-primary-muted" />}
+          title="No Repository Selected"
+          description="Select or track a GitHub repository from the top navigation bar to explore its issues and pull requests."
+        />
+      </div>
+    );
+  }
+
+  // State 2: Active repo is not yet synchronized (status IDLE or 0 imported)
+  const isUnsynced = !syncState || syncState.status === 'IDLE';
 
   return (
     <div className="space-y-6">
-      {/* Page Header and Controls */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-primary tracking-tight">
-            Issues & Pull Requests Lineage
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-primary tracking-tight">
+              Issue & Pull Request Explorer
+            </h2>
+            <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-surface border border-border-subtle text-primary-secondary">
+              {activeRepo.fullName}
+            </span>
+          </div>
           <p className="text-xs text-primary-secondary mt-0.5">
-            Differentiating observed GitHub provider state from CodeForensics evidence assessments.
+            Unified investigation of issues and pull requests, distinguishing observed GitHub state from forensic verification.
           </p>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => triggerSync(true)}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Synchronizing...' : 'Resync Repository'}
+          </Button>
+        </div>
       </div>
+
+      {/* Sync Status Warning Banners */}
+      {isSyncing && (
+        <div className="bg-[#f0f9ff] border border-[#bae6fd] p-3 rounded-md flex items-center gap-2.5 text-xs text-[#0369a1]">
+          <RotateCw className="w-4 h-4 animate-spin text-[#0284c7] shrink-0" />
+          <span>
+            Background synchronization in progress ({syncState?.progress || 0}%). Results will update dynamically.
+          </span>
+        </div>
+      )}
+
+      {syncState?.status === 'PARTIAL' && (
+        <div className="bg-[#fffbeb] border border-[#fde68a] p-3 rounded-md flex items-start gap-2.5 text-xs text-[#92400e]">
+          <AlertTriangle className="w-4 h-4 text-[#d97706] shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-semibold">Partial Sync Coverage:</span> The last synchronization reached rate limits or encountered partial errors. Some items may be missing. Run a forced resync when rate limits reset.
+          </div>
+        </div>
+      )}
+
+      {syncState?.status === 'FAILED' && (
+        <div className="bg-[#fff1f2] border border-[#fecdd3] p-3 rounded-md flex items-start gap-2.5 text-xs text-[#be123c]">
+          <AlertTriangle className="w-4 h-4 text-[#e11d48] shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-semibold">Sync Failed:</span> {syncState.errorSummary || 'The last synchronization run failed. Displayed records may be out of date.'}
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-surface border border-border-subtle p-3 rounded-md flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-3.5 h-3.5 text-primary-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter by issue #, title, or label..."
-            className="w-full bg-surface-subtle text-xs text-primary rounded-md pl-8 pr-3 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link"
-          />
+      <div className="bg-surface border border-border-subtle p-3 rounded-md space-y-3 shadow-xs">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Search Box */}
+          <div className="relative w-full md:w-96">
+            <label htmlFor={searchInputId} className="sr-only">Search issues and pull requests</label>
+            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              id={searchInputId}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title, description, or #number..."
+              className="w-full bg-surface-subtle text-xs text-primary rounded-md pl-8 pr-8 py-1.5 border border-border-subtle placeholder:text-primary-muted focus:outline-none focus:border-link transition-colors font-sans"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-primary-muted hover:text-primary p-0.5"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <label htmlFor={sortSelectId} className="text-xs text-primary-muted font-mono shrink-0">Sort:</label>
+            <select
+              id={sortSelectId}
+              value={sortOption}
+              onChange={(e) => handleSortChange(e.target.value as any)}
+              className="bg-surface-subtle text-xs text-primary border border-border-subtle rounded-md px-2.5 py-1.5 focus:outline-none focus:border-link font-mono"
+            >
+              <option value="created_desc">Newest created</option>
+              <option value="created_asc">Oldest created</option>
+              <option value="updated_desc">Recently updated</option>
+              <option value="updated_asc">Least recently updated</option>
+              <option value="number_desc">Highest #</option>
+              <option value="number_asc">Lowest #</option>
+            </select>
+          </div>
         </div>
 
-        {/* Tab Filters */}
-        <div className="flex items-center gap-1.5 w-full md:w-auto">
-          <Button
-            size="sm"
-            variant={filter === 'all' ? 'primary' : 'ghost'}
-            onClick={() => setFilter('all')}
-          >
-            All Items ({mockIssues.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === 'open' ? 'primary' : 'ghost'}
-            onClick={() => setFilter('open')}
-          >
-            Open ({mockIssues.filter((i) => i.githubState === 'open').length})
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === 'closed' ? 'primary' : 'ghost'}
-            onClick={() => setFilter('closed')}
-          >
-            Closed ({mockIssues.filter((i) => i.githubState === 'closed').length})
-          </Button>
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border-subtle/60">
+          {/* Type Filters */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-primary-muted mr-1 font-mono">Type:</span>
+            <Button
+              size="sm"
+              variant={typeFilter === 'all' ? 'primary' : 'ghost'}
+              onClick={() => handleTypeChange('all')}
+              className="text-xs h-7 px-2.5"
+            >
+              All Items
+            </Button>
+            <Button
+              size="sm"
+              variant={typeFilter === 'issue' ? 'primary' : 'ghost'}
+              onClick={() => handleTypeChange('issue')}
+              className="text-xs h-7 px-2.5 flex items-center gap-1"
+            >
+              <CircleDot className="w-3 h-3 text-emerald-600" />
+              Issues
+            </Button>
+            <Button
+              size="sm"
+              variant={typeFilter === 'pull_request' ? 'primary' : 'ghost'}
+              onClick={() => handleTypeChange('pull_request')}
+              className="text-xs h-7 px-2.5 flex items-center gap-1"
+            >
+              <GitPullRequest className="w-3 h-3 text-purple-600" />
+              Pull Requests
+            </Button>
+          </div>
+
+          {/* State Filters */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-primary-muted mr-1 font-mono">State:</span>
+            <Button
+              size="sm"
+              variant={stateFilter === 'all' ? 'secondary' : 'ghost'}
+              onClick={() => handleStateChange('all')}
+              className={`text-xs h-7 px-2.5 ${stateFilter === 'all' ? 'bg-surface-selected font-semibold' : ''}`}
+            >
+              All States
+            </Button>
+            <Button
+              size="sm"
+              variant={stateFilter === 'open' ? 'secondary' : 'ghost'}
+              onClick={() => handleStateChange('open')}
+              className={`text-xs h-7 px-2.5 ${stateFilter === 'open' ? 'bg-surface-selected font-semibold text-emerald-700' : ''}`}
+            >
+              Open
+            </Button>
+            <Button
+              size="sm"
+              variant={stateFilter === 'closed' ? 'secondary' : 'ghost'}
+              onClick={() => handleStateChange('closed')}
+              className={`text-xs h-7 px-2.5 ${stateFilter === 'closed' ? 'bg-surface-selected font-semibold text-purple-700' : ''}`}
+            >
+              Closed / Merged
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Issues Table */}
-      <Panel className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-border-subtle bg-surface-subtle/50 text-[11px] font-semibold text-primary-muted uppercase tracking-wider font-mono">
-                <th className="py-2.5 px-4">Work Item</th>
-                <th className="py-2.5 px-4">GitHub State</th>
-                <th className="py-2.5 px-4">Forensic Assessment</th>
-                <th className="py-2.5 px-4">Evidence & Provenance</th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle text-xs">
-              {filteredIssues.map((issue) => (
-                <tr
-                  key={issue.id}
-                  className="hover:bg-surface-subtle/40 transition-colors"
-                >
-                  {/* Item Title and Metadata */}
-                  <td className="py-3 px-4 max-w-md">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-semibold text-primary">
-                        #{issue.number}
-                      </span>
-                      <span className="font-medium text-primary line-clamp-1">
-                        {issue.title}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-primary-muted">
-                      <span>opened by {issue.author}</span>
-                      <span>•</span>
-                      <span>{issue.updatedAt}</span>
-                      {issue.labels.map((lbl) => (
-                        <span
-                          key={lbl}
-                          className="px-1.5 py-0.2 bg-surface-subtle rounded border border-border-subtle text-[10px]"
-                        >
-                          {lbl}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
+      {/* Main Table Area */}
+      {isUnsynced ? (
+        <EmptyState
+          icon={<FolderGit2 className="w-8 h-8 text-primary-muted" />}
+          title="Repository Not Synchronized"
+          description={`Repository "${activeRepo.fullName}" has not been ingested yet. Run initial synchronization to index its issues and pull requests.`}
+          action={
+            <Button
+              variant="primary"
+              onClick={() => triggerSync(false)}
+              disabled={isSyncing}
+              className="flex items-center gap-2"
+            >
+              <RotateCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Synchronizing...' : 'Sync Repository Now'}
+            </Button>
+          }
+        />
+      ) : isLoading ? (
+        <Panel className="p-4">
+          <TableSkeleton rows={8} />
+        </Panel>
+      ) : isError ? (
+        <Panel className="p-8 text-center space-y-3">
+          <div className="p-3 bg-rose-50 text-rose-700 rounded-full w-12 h-12 flex items-center justify-center mx-auto border border-rose-200">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h3 className="text-sm font-bold text-primary">Failed to load work items</h3>
+          <p className="text-xs text-primary-secondary max-w-md mx-auto">
+            {error instanceof Error ? error.message : 'An unexpected error occurred while querying repository items.'}
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => refetch()}>
+            Retry Query
+          </Button>
+        </Panel>
+      ) : !itemsData || itemsData.items.length === 0 ? (
+        <EmptyState
+          title="No Work Items Found"
+          description={
+            debouncedSearch || typeFilter !== 'all' || stateFilter !== 'all'
+              ? 'No issues or pull requests matched your active filter and search criteria.'
+              : 'This repository has no indexed issues or pull requests recorded in the database.'
+          }
+          action={
+            (debouncedSearch || typeFilter !== 'all' || stateFilter !== 'all') ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setSearchQuery('');
+                  setTypeFilter('all');
+                  setStateFilter('all');
+                }}
+              >
+                Reset All Filters
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Table Container */}
+          <Panel className="p-0 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border-subtle bg-surface-subtle/80 text-primary-muted font-mono font-medium">
+                    <th scope="col" className="py-2.5 px-4 w-28">Item</th>
+                    <th scope="col" className="py-2.5 px-4">Title & Context</th>
+                    <th scope="col" className="py-2.5 px-4 w-32">Author</th>
+                    <th scope="col" className="py-2.5 px-4 w-36">Timestamps</th>
+                    <th scope="col" className="py-2.5 px-4 w-28 text-right">State</th>
+                    <th scope="col" className="py-2.5 px-4 w-12 text-center">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {itemsData.items.map((item) => {
+                    const isPR = item.type === 'pull_request';
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelectedNumber(item.number)}
+                        className="hover:bg-surface-subtle/60 transition-colors cursor-pointer group"
+                      >
+                        {/* Type & Number */}
+                        <td className="py-3 px-4 font-mono whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {isPR ? (
+                              <GitPullRequest className="w-3.5 h-3.5 text-purple-600 shrink-0" aria-label="Pull Request" />
+                            ) : (
+                              <CircleDot className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-label="Issue" />
+                            )}
+                            <span className="font-semibold text-primary group-hover:text-link transition-colors">
+                              #{item.number}
+                            </span>
+                          </div>
+                        </td>
 
-                  {/* Official GitHub State */}
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-medium border ${
-                        issue.githubState === 'open'
-                          ? 'bg-[#e3f0e9] text-[#1a573d] border-[#b4dbca]'
-                          : 'bg-surface-subtle text-primary-secondary border-border-subtle'
-                      }`}
-                    >
-                      {issue.githubState === 'open' ? 'Open' : 'Closed'}
-                    </span>
-                  </td>
+                        {/* Title & Description Excerpt + Labels */}
+                        <td className="py-3 px-4 max-w-md">
+                          <div className="font-medium text-primary leading-snug group-hover:text-link transition-colors line-clamp-1">
+                            {item.title}
+                          </div>
+                          {item.body && (
+                            <p className="text-[11px] text-primary-muted line-clamp-1 mt-0.5">
+                              {item.body}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {/* Resolution Status Badge (for issues) */}
+                            {!isPR && item.resolutionStatus && (
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold ${
+                                  item.resolutionStatus === 'RESOLVED'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : item.resolutionStatus === 'PARTIALLY_ADDRESSED'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : item.resolutionStatus === 'UNKNOWN'
+                                    ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-300'
+                                }`}
+                              >
+                                {item.resolutionStatus}
+                              </span>
+                            )}
 
-                  {/* Forensic Assessment */}
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <Badge category={issue.claimCategory}>
-                      {issue.forensicAssessment}
-                    </Badge>
-                  </td>
+                            {/* Relationships Count Badge */}
+                            {item.relationshipsCount !== undefined && item.relationshipsCount > 0 && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-mono bg-cyan-50 text-cyan-800 border border-cyan-200">
+                                <Link2 className="w-2.5 h-2.5" />
+                                {item.relationshipsCount} linked
+                              </span>
+                            )}
 
-                  {/* Evidentiary Details */}
-                  <td className="py-3 px-4 text-primary-secondary text-[11px] max-w-xs">
-                    <p className="line-clamp-2 leading-relaxed">
-                      {issue.evidenceSnippet}
-                    </p>
-                  </td>
+                            {/* Labels */}
+                            {item.labels &&
+                              item.labels.slice(0, 2).map((lbl, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-surface-subtle border border-border-subtle text-primary-secondary"
+                                >
+                                  {lbl}
+                                </span>
+                              ))}
+                            {item.labels && item.labels.length > 2 && (
+                              <span className="text-[10px] text-primary-muted font-mono">
+                                +{item.labels.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-                  {/* Source Links */}
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <a
-                      href={`https://github.com/facebook/react/issues/${issue.number}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-link hover:underline text-xs font-medium"
-                    >
-                      GitHub <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {/* Author */}
+                        <td className="py-3 px-4 text-primary-secondary font-mono whitespace-nowrap">
+                          {item.author || <span className="text-primary-muted">—</span>}
+                        </td>
+
+                        {/* Timestamps */}
+                        <td className="py-3 px-4 text-primary-muted font-mono whitespace-nowrap text-[11px]">
+                          <div>Created {new Date(item.createdAt).toLocaleDateString()}</div>
+                          {item.closedAt && (
+                            <div className="text-[10px] text-primary-muted/80">
+                              Closed {new Date(item.closedAt).toLocaleDateString()}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* State Indicator */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          {isPR ? (
+                            item.state === 'merged' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 font-mono">
+                                <GitMerge className="w-3 h-3 text-purple-600" />
+                                Merged
+                              </span>
+                            ) : item.isDraft ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 font-mono">
+                                Draft
+                              </span>
+                            ) : item.state === 'open' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Open
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200 font-mono">
+                                Closed
+                              </span>
+                            )
+                          ) : item.state === 'open' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Open
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 font-mono">
+                              <CheckCircle2 className="w-3 h-3 text-purple-600" />
+                              Closed
+                            </span>
+                          )}
+                        </td>
+
+                        {/* GitHub External Link */}
+                        <td className="py-3 px-4 text-center">
+                          <a
+                            href={item.htmlUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary-muted hover:text-link inline-flex p-1 rounded hover:bg-surface transition-colors"
+                            title="Open on GitHub"
+                            aria-label={`Open #${item.number} on GitHub`}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          {/* Pagination & Summary Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-primary-muted font-mono pt-1">
+            <div>
+              Showing {Math.min((page - 1) * limit + 1, itemsData.total)} to{' '}
+              {Math.min(page * limit, itemsData.total)} of {itemsData.total} items
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="h-8 px-2.5 flex items-center gap-1"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Previous
+              </Button>
+
+              <span className="px-2 font-medium text-primary">
+                Page {page} of {itemsData.totalPages || 1}
+              </span>
+
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPage((p) => Math.min(itemsData.totalPages, p + 1))}
+                disabled={page >= itemsData.totalPages}
+                className="h-8 px-2.5 flex items-center gap-1"
+                aria-label="Next page"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
-      </Panel>
+      )}
+
+      {/* Forensic Disclaimer Footer */}
+      <div className="p-3 bg-surface-subtle border border-border-subtle rounded-md text-[11px] text-primary-muted flex items-center gap-2 font-mono">
+        <ShieldAlert className="w-4 h-4 text-primary-muted shrink-0" />
+        <span>
+          CodeForensics records authoritative GitHub repository state. In later phases, relationship intelligence engines map claims and commits. Closed issues or merged pull requests do not constitute verified fixes without forensic code regression analysis.
+        </span>
+      </div>
+
+      {/* Slide-over Detail Drawer */}
+      <WorkItemDetailDrawer
+        owner={activeRepo.owner}
+        repo={activeRepo.name}
+        itemNumber={selectedNumber}
+        onClose={() => setSelectedNumber(null)}
+        onSelectItem={(num) => setSelectedNumber(num)}
+      />
     </div>
   );
 }
