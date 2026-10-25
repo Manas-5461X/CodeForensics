@@ -106,7 +106,7 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Trigger sync on active repository
   const triggerSync = useCallback(
-    async (force = false) => {
+    async (force = true) => {
       if (!activeRepo) return;
       try {
         setSyncError(null);
@@ -176,7 +176,7 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (!pollingRef.current) {
         pollingRef.current = setInterval(() => {
           void refreshSyncState();
-        }, 2000);
+        }, 1500);
       }
     } else {
       if (pollingRef.current) {

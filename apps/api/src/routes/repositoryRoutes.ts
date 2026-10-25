@@ -29,6 +29,7 @@ import type { RepositoryStore } from '../db/repositoryStore.js';
 import { formatRepositoryInfo } from '../db/repositoryStore.js';
 import type { Queue } from 'bullmq';
 import type { RepositorySyncJobData } from '../types/syncJob.js';
+import { runInProcessSync } from '../sync/inProcessSync.js';
 
 export interface RepositoryRoutesOptions {
   githubService: IGitHubService;
@@ -367,7 +368,13 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
       const force = bodyResult.success ? bodyResult.data.force : false;
 
       const currentSyncState = await repositoryStore.getSyncState(found.id);
-      if (currentSyncState?.status === 'RUNNING' && !force) {
+      const isStale =
+        currentSyncState &&
+        (currentSyncState.status === 'RUNNING' || currentSyncState.status === 'QUEUED') &&
+        currentSyncState.startedAt &&
+        Date.now() - new Date(currentSyncState.startedAt).getTime() > 60_000;
+
+      if (currentSyncState?.status === 'RUNNING' && !force && !isStale) {
         const response: ApiResponse<SyncTriggerResult> = {
           success: true,
           data: {
@@ -405,9 +412,24 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
 
       if (onSyncTrigger) {
         jobId = await onSyncTrigger(jobData);
-      } else if (syncQueue) {
-        const job = await syncQueue.add(`${owner}/${repo}`, jobData);
-        jobId = String(job.id);
+      } else {
+        if (syncQueue) {
+          try {
+            const job = await syncQueue.add(`${owner}/${repo}`, jobData);
+            jobId = String(job.id);
+          } catch {
+            // Queue unavailable, proceed with in-process execution
+          }
+        }
+        // Asynchronously execute in-process sync pipeline so the UI receives live progress
+        void runInProcessSync({
+          repositoryId: found.id,
+          owner,
+          repo,
+          repositoryStore,
+          githubService,
+          installationId: found.installationId ? parseInt(found.installationId, 10) : undefined,
+        });
       }
 
       const response: ApiResponse<SyncTriggerResult> = {
@@ -469,6 +491,16 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
       }
 
       const syncState = await repositoryStore.getSyncState(found.id);
+      const cp = (syncState?.checkpoints as Record<string, unknown>) || {};
+      const calculatedProgress =
+        typeof cp.progress === 'number'
+          ? cp.progress
+          : typeof syncState?.progress === 'number' && syncState.progress > 0
+          ? syncState.progress
+          : syncState?.status === 'COMPLETED'
+          ? 100
+          : 0;
+
       const stateInfo: RepositorySyncStateInfo = {
         id: syncState?.id || `sync-${found.id}`,
         repositoryId: found.id,
@@ -481,7 +513,7 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
         recordsImported: syncState?.recordsImported || 0,
         issuesCount: syncState?.issuesCount || 0,
         prsCount: syncState?.prsCount || 0,
-        progress: syncState?.progress || 0,
+        progress: calculatedProgress,
         checkpoints: syncState?.checkpoints || null,
         errorSummary: syncState?.errorSummary || null,
         createdAt: syncState?.createdAt ? new Date(syncState.createdAt).toISOString() : new Date().toISOString(),

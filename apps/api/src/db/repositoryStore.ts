@@ -1129,9 +1129,17 @@ export class PrismaRepositoryStore implements RepositoryStore {
       where: { repositoryId },
     });
     if (!syncState) return null;
+    const cp = (syncState.checkpoints as Record<string, unknown>) || null;
+    const progress =
+      typeof cp?.progress === 'number'
+        ? (cp.progress as number)
+        : syncState.status === 'COMPLETED'
+        ? 100
+        : 0;
     return {
       ...syncState,
-      checkpoints: (syncState.checkpoints as Record<string, unknown>) || null,
+      progress,
+      checkpoints: cp,
     };
   }
 
@@ -1140,17 +1148,26 @@ export class PrismaRepositoryStore implements RepositoryStore {
     updates: Partial<Omit<RepositorySyncStateRecord, 'id' | 'repositoryId'>>
   ): Promise<RepositorySyncStateRecord> {
     const prisma = getPrismaClient();
-    const { progress: _, checkpoints, ...restUpdates } = updates;
+    const { progress, checkpoints, ...restUpdates } = updates;
+
+    let mergedCheckpoints: Record<string, unknown> | null = null;
+    if (checkpoints && typeof checkpoints === 'object') {
+      mergedCheckpoints = { ...(checkpoints as Record<string, unknown>) };
+    }
+    if (progress !== undefined) {
+      mergedCheckpoints = { ...(mergedCheckpoints || {}), progress };
+    }
+
     const jsonCheckpoints =
-      checkpoints === null
+      mergedCheckpoints !== null
+        ? (mergedCheckpoints as Prisma.InputJsonValue)
+        : checkpoints === null
         ? Prisma.JsonNull
-        : checkpoints !== undefined
-        ? (checkpoints as Prisma.InputJsonValue)
         : undefined;
 
     const dataToSave = {
       ...restUpdates,
-      ...(checkpoints !== undefined ? { checkpoints: jsonCheckpoints } : {}),
+      ...(jsonCheckpoints !== undefined ? { checkpoints: jsonCheckpoints } : {}),
     };
 
     const syncState = await prisma.repositorySyncState.upsert({
@@ -1164,9 +1181,20 @@ export class PrismaRepositoryStore implements RepositoryStore {
       },
     });
 
+    const cp = (syncState.checkpoints as Record<string, unknown>) || null;
+    const resolvedProgress =
+      typeof cp?.progress === 'number'
+        ? (cp.progress as number)
+        : progress !== undefined
+        ? progress
+        : syncState.status === 'COMPLETED'
+        ? 100
+        : 0;
+
     return {
       ...syncState,
-      checkpoints: (syncState.checkpoints as Record<string, unknown>) || null,
+      progress: resolvedProgress,
+      checkpoints: cp,
     };
   }
 

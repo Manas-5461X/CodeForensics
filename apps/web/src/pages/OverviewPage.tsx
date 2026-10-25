@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
@@ -10,13 +11,17 @@ import {
   ShieldAlert,
   RefreshCw,
   FolderGit2,
+  Link2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRepository } from '../context/RepositoryContext.js';
+import { useApiClient } from '../utils/apiClient.js';
 import { RepositorySelectModal } from '../components/repository/RepositorySelectModal.js';
+import type { RelationshipInfo } from '@codeforensics/shared';
 
 export function OverviewPage() {
   const { activeRepo, syncState, isSyncing, triggerSync, syncError } = useRepository();
+  const { get } = useApiClient();
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
 
   const repoTitle = activeRepo?.fullName || 'No Repository Selected';
@@ -29,6 +34,24 @@ export function OverviewPage() {
   const issuesCount = syncState?.issuesCount ?? 0;
   const prsCount = syncState?.prsCount ?? 0;
   const syncStatus = syncState?.status || 'IDLE';
+  const currentProgress = syncState?.progress ?? (syncStatus === 'COMPLETED' ? 100 : 0);
+
+  // Fetch real evidence-backed relationships for active repository
+  const {
+    data: relationships = [],
+    isLoading: isLoadingRelationships,
+  } = useQuery({
+    queryKey: ['repositoryRelationships', activeRepo?.owner, activeRepo?.name],
+    queryFn: async () => {
+      if (!activeRepo) return [];
+      const res = await get<RelationshipInfo[]>(
+        `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/relationships`
+      );
+      return res.data || [];
+    },
+    enabled: Boolean(activeRepo),
+    refetchInterval: isSyncing ? 2500 : false,
+  });
 
   return (
     <div className="space-y-6">
@@ -77,16 +100,21 @@ export function OverviewPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => triggerSync()}
-              disabled={isSyncing}
+              onClick={() => triggerSync(true)}
+              disabled={isSyncing && currentProgress < 100}
               leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
               className="w-full sm:w-auto justify-center"
             >
-              {isSyncing ? 'Syncing...' : 'Sync Repository'}
+              {isSyncing ? `Syncing (${currentProgress}%)...` : 'Sync Repository'}
             </Button>
           )}
           <Link to="/app/issues" className="w-full sm:w-auto">
-            <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />} className="w-full sm:w-auto justify-center">
+            <Button
+              variant="primary"
+              size="sm"
+              rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+              className="w-full sm:w-auto justify-center"
+            >
               Explore Issues & PRs
             </Button>
           </Link>
@@ -105,7 +133,7 @@ export function OverviewPage() {
               <span className="text-success font-medium">Full coverage verified</span>
             ) : syncStatus === 'PARTIAL' ? (
               <span className="text-warning font-medium">Partial coverage</span>
-            ) : syncStatus === 'RUNNING' ? (
+            ) : syncStatus === 'RUNNING' || syncStatus === 'QUEUED' ? (
               <span className="text-accent font-medium">Ingesting...</span>
             ) : (
               <span className="text-primary-muted">Awaiting sync</span>
@@ -120,7 +148,7 @@ export function OverviewPage() {
           </div>
           <div className="text-[11px] text-primary-secondary mt-1">
             {prsCount > 0 ? (
-              <span className="font-mono text-primary">Tracked via GitHub REST API</span>
+              <span className="font-mono text-primary">Tracked via GitHub Ingestion</span>
             ) : (
               <span className="text-primary-muted">No PRs imported yet</span>
             )}
@@ -130,7 +158,7 @@ export function OverviewPage() {
         <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Sync Status</div>
           <div className="text-lg sm:text-xl font-bold font-mono text-accent mt-1 uppercase">
-            {isSyncing ? `RUNNING (${syncState?.progress || 0}%)` : syncStatus}
+            {isSyncing ? `RUNNING (${currentProgress}%)` : syncStatus}
           </div>
           <div className="text-[11px] text-primary-secondary mt-1 flex items-center gap-1 truncate">
             {syncState?.completedAt ? (
@@ -143,9 +171,11 @@ export function OverviewPage() {
 
         <Panel className="p-3.5 sm:p-4">
           <div className="text-xs text-primary-muted font-medium">Actionable Opportunities</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-link mt-1">24</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-link mt-1">
+            {issuesCount > 0 ? issuesCount.toLocaleString() : isSyncing ? '...' : '0'}
+          </div>
           <div className="text-[11px] text-primary-secondary mt-1">
-            Evaluated by Contribution Finder
+            {issuesCount > 0 ? 'Evaluated by Contribution Finder' : 'Awaiting repository sync'}
           </div>
         </Panel>
       </div>
@@ -162,64 +192,83 @@ export function OverviewPage() {
             </Link>
           }
         >
-          <div className="divide-y divide-border-subtle">
-            <div className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono font-semibold text-primary">#28941</span>
-                  <Badge category="INFERENCE">PARTIALLY_ADDRESSES</Badge>
-                  <span className="text-xs text-primary-muted font-mono">via PR #29012</span>
-                </div>
-                <div className="text-xs font-medium text-primary">
-                  useDeferredValue causes tearing in concurrent root transitions
-                </div>
-                <div className="text-[11px] text-primary-secondary">
-                  Evidence: Matching stack frame in packages/react/src/ReactHooks.js • Closed without verification
-                </div>
-              </div>
-              <div className="shrink-0 self-start sm:self-auto">
-                <Badge category="UNKNOWN">Resolution Uncertain</Badge>
-              </div>
+          {isLoadingRelationships ? (
+            <div className="py-8 text-center text-xs text-primary-muted">
+              Loading lineage relationships...
             </div>
+          ) : relationships.length > 0 ? (
+            <div className="divide-y divide-border-subtle">
+              {relationships.slice(0, 5).map((rel) => {
+                const sourceLabel = rel.sourceNumber ? `#${rel.sourceNumber}` : rel.sourceType;
+                const targetLabel = rel.targetNumber
+                  ? `via ${rel.targetType === 'PULL_REQUEST' ? 'PR ' : ''}#${rel.targetNumber}`
+                  : rel.method
+                  ? `via ${rel.method}`
+                  : '';
 
-            <div className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono font-semibold text-primary">#28810</span>
-                  <Badge category="FACT">FIXED_BY</Badge>
-                  <span className="text-xs text-primary-muted font-mono">commit f9281a</span>
-                </div>
-                <div className="text-xs font-medium text-primary">
-                  Memory leak in Suspense list during early unmount
-                </div>
-                <div className="text-[11px] text-primary-secondary">
-                  Evidence: Explicit GitHub closing keyword in commit • Added regression test
-                </div>
-              </div>
-              <div className="shrink-0 self-start sm:self-auto">
-                <Badge category="RESOLVED">Verified Fix</Badge>
-              </div>
-            </div>
+                const statusBadge =
+                  rel.confidence === 'HIGH' ? (
+                    <Badge category="RESOLVED">Verified Fix</Badge>
+                  ) : rel.confidence === 'MEDIUM' ? (
+                    <Badge category="FACT">Documented Link</Badge>
+                  ) : (
+                    <Badge category="UNKNOWN">Resolution Uncertain</Badge>
+                  );
 
-            <div className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono font-semibold text-primary">#28755</span>
-                  <Badge category="INFERENCE">SUPERSEDES</Badge>
-                  <span className="text-xs text-primary-muted font-mono">PR #28412</span>
-                </div>
-                <div className="text-xs font-medium text-primary">
-                  Refactor fiber priority lanes scheduler
-                </div>
-                <div className="text-[11px] text-primary-secondary">
-                  Evidence: 89% changed file overlap and explicit maintainer comment citation
-                </div>
-              </div>
-              <div className="shrink-0 self-start sm:self-auto">
-                <Badge category="FACT">Merged</Badge>
-              </div>
+                return (
+                  <div
+                    key={rel.id}
+                    className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-semibold text-primary">
+                          {sourceLabel}
+                        </span>
+                        <Badge category={rel.category}>{rel.relationshipType}</Badge>
+                        {targetLabel && (
+                          <span className="text-xs text-primary-muted font-mono">{targetLabel}</span>
+                        )}
+                      </div>
+                      <div className="text-xs font-medium text-primary">
+                        {rel.sourceTitle || rel.targetTitle || 'Correlated Evidence Artifact'}
+                      </div>
+                      <div className="text-[11px] text-primary-secondary">
+                        Evidence: {rel.evidenceSummary}
+                      </div>
+                    </div>
+                    <div className="shrink-0 self-start sm:self-auto">{statusBadge}</div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          ) : (
+            <div className="py-8 px-4 text-center flex flex-col items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-surface-subtle border border-border-subtle flex items-center justify-center text-primary-muted mb-3">
+                <Link2 className="w-5 h-5 text-accent/70" />
+              </div>
+              <h4 className="text-sm font-semibold text-primary">
+                No Lineage Findings Discovered Yet
+              </h4>
+              <p className="text-xs text-primary-secondary max-w-md mt-1 mb-4 leading-relaxed">
+                {isSyncing
+                  ? 'Repository sync is actively ingesting issues and PRs. Findings will appear once cross-references are analyzed.'
+                  : issuesCount > 0
+                  ? 'Cross-reference analysis evaluates closing keywords, commit SHAs, and PR diffs. No direct links were identified in the current sample.'
+                  : 'Synchronize this repository to evaluate evidence-backed causal links, closing keywords, and commit provenance.'}
+              </p>
+              {activeRepo && !isSyncing && issuesCount === 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => triggerSync(true)}
+                  leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                >
+                  Sync Repository
+                </Button>
+              )}
+            </div>
+          )}
         </Panel>
 
         {/* Evidence Rules & Ingestion Health */}
