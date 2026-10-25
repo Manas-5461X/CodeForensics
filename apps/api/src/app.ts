@@ -117,7 +117,7 @@ export function buildApp(config: AppConfig, options?: BuildAppOptions): FastifyI
         const check = await options.dbChecker();
         databaseStatus = check.isConnected ? 'connected' : 'disconnected';
       } else {
-        const check = await checkDatabaseConnection(undefined, 1000);
+        const check = await checkDatabaseConnection(undefined, 4000);
         databaseStatus = check.isConnected ? 'connected' : 'disconnected';
       }
     }
