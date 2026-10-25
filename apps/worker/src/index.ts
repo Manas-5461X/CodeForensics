@@ -1,49 +1,40 @@
-import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
 import { loadWorkerConfig } from './config.js';
-import { SYNC_QUEUE_NAME } from './queues/syncQueue.js';
-import { processSyncJob } from './processors/syncProcessor.js';
+import { SyncWorkerService } from './worker.js';
+
+export * from './config.js';
+export * from './worker.js';
+export * from './queues/syncQueue.js';
+export * from './processors/syncProcessor.js';
 
 async function startWorker(): Promise<void> {
   const config = loadWorkerConfig();
-  console.log(`[CodeForensics Worker] Initializing BullMQ worker for queue "${SYNC_QUEUE_NAME}"...`);
+  console.log('[CodeForensics Worker] Initializing BullMQ background worker...');
 
-  const connection = new IORedis(config.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    lazyConnect: true,
-  });
+  const workerService = new SyncWorkerService(config);
 
-  const worker = new Worker(
-    SYNC_QUEUE_NAME,
-    async (job) => {
-      console.log(`[Worker] Processing job ${job.id} for repository ${job.data.owner}/${job.data.repo}`);
-      return await processSyncJob(job);
-    },
-    {
-      connection,
-      concurrency: config.WORKER_CONCURRENCY,
-    }
-  );
+  try {
+    await workerService.start();
+    console.log('[CodeForensics Worker] BullMQ worker listening for sync jobs.');
+  } catch (err) {
+    console.error('[CodeForensics Worker] Fatal initialization error:', err);
+    process.exit(1);
+  }
 
-  worker.on('completed', (job) => {
-    console.log(`[Worker] Job ${job.id} completed successfully`);
-  });
-
-  worker.on('failed', (job, err) => {
-    console.error(`[Worker] Job ${job?.id} failed with error:`, err.message);
-  });
-
-  // Graceful shutdown
+  // Graceful shutdown handling
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
   for (const signal of signals) {
     process.on(signal, () => {
-      console.log(`[Worker] Received ${signal}, closing worker gracefully...`);
-      void worker.close().then(() => {
-        console.log('[Worker] Worker closed.');
+      console.log(`[CodeForensics Worker] Received ${signal}, closing worker gracefully...`);
+      void workerService.stop().then(() => {
+        console.log('[CodeForensics Worker] Worker and Redis connections closed cleanly.');
         process.exit(0);
       });
     });
   }
 }
 
-void startWorker();
+// Only start when invoked directly as main script
+const isMainModule = process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js');
+if (isMainModule) {
+  void startWorker();
+}
