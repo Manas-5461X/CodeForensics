@@ -3,10 +3,23 @@ node_modules/
 .pnp
 .pnp.js
 
-# Production build outputs
+# Production build outputs & caches
 dist/
 build/
 out/
+.rollup.cache/
+.turbo/
+.cache/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Vite & Vitest cache / temp artifacts
+.vite/
+.vitest/
+vite.config.ts.timestamp-*
+vitest.config.ts.timestamp-*
 
 # Environment files - NEVER commit real credentials
 .env
@@ -25,6 +38,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 *.log
 
 # Testing & Coverage
@@ -43,18 +59,37 @@ test-results/
 *.njsproj
 *.sln
 *.sw?
+*~
+*.bak
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Temporary workspace & worker clone dirs
 tmp/
 scratch/
 worker-workspace/
-.cache/
+
+# Security, keys, and secrets
+secrets/
+*.pem
+*.key
+*.cert
+*.crt
+
+# Local databases & Docker persistent volumes
+postgres_data/
+redis_data/
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db
+*.db-journal
 
 # Specification and prompt documents (local only)
 CodeForensics_Phase_Prompts_README.md
-CodeForensics_skills.md
 documentation.md
 skills.md
+
 
