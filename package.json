@@ -13,6 +13,8 @@
     "dev:api": "npm run dev --workspace=@codeforensics/api",
     "dev:worker": "npm run dev --workspace=@codeforensics/worker",
     "build": "npm run build --workspaces --if-present",
+    "build:backend": "npm run db:generate && npm run build --workspace=@codeforensics/shared && npm run build --workspace=@codeforensics/api && npm run build --workspace=@codeforensics/worker",
+    "build:web": "npm run build --workspace=@codeforensics/shared && npm run build --workspace=@codeforensics/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
