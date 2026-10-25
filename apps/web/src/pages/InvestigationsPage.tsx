@@ -975,154 +975,118 @@ export function InvestigationsPage() {
 
       {/* New Investigation Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface rounded-lg border border-border-strong shadow-lg max-w-lg w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface rounded-lg border border-border-strong shadow-2xl max-w-md sm:max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 shrink-0">
               <h3 className="text-sm font-bold text-primary">
                 New Forensic Investigation
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-primary-muted hover:text-primary"
+                className="text-primary-muted hover:text-primary p-1 rounded hover:bg-surface-subtle transition-colors"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {formError && (
-              <div className="p-2.5 rounded bg-[#fdf2f2] border border-[#f8b4b4] text-xs text-[#9b1c1c]">
+              <div className="mx-4 mt-3 p-2.5 rounded bg-[#fdf2f2] border border-[#f8b4b4] text-xs text-[#9b1c1c] shrink-0">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-primary block mb-1">
-                  Investigation Question *
-                </label>
-                <textarea
-                  rows={2}
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  placeholder="e.g. Did PR #29012 fully resolve the concurrent tearing issue reported in #28941?"
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
-                  required
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-primary">
-                    Target Scope Category
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleCreate} className="flex flex-col flex-1 min-h-0">
+              <div className="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
+                <div>
+                  <label className="text-xs font-semibold text-primary block mb-1">
+                    Investigation Question *
                   </label>
-                  <span className="text-[11px] text-primary-muted">
-                    What area is this case focused on?
-                  </span>
+                  <textarea
+                    rows={2}
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    placeholder="e.g. Did PR #29012 fully resolve the concurrent tearing issue reported in #28941?"
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                    required
+                  />
                 </div>
 
-                {/* Scope Category Dropdown Menu */}
-                <select
-                  value={selectedScopePreset}
-                  onChange={(e) => handleScopePresetChange(e.target.value)}
-                  className="w-full bg-surface-subtle text-xs text-primary font-medium rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link mb-2"
-                >
-                  {SCOPE_PRESETS.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.icon} {preset.label} — {preset.description}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="text-xs font-semibold text-primary block mb-1">
+                    Target Scope Category
+                  </label>
+                  {/* Scope Category Dropdown Menu */}
+                  <select
+                    value={selectedScopePreset}
+                    onChange={(e) => handleScopePresetChange(e.target.value)}
+                    className="w-full bg-surface-subtle text-xs text-primary font-medium rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link mb-1.5"
+                  >
+                    {SCOPE_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.icon} {preset.label} — {preset.description}
+                      </option>
+                    ))}
+                  </select>
 
-                {/* Scope String Input with Placeholder matching test expectations */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-primary-muted">
-                      Scope Target String (auto-formatted from dropdown):
-                    </span>
-                    <span className="text-primary-secondary font-mono text-[10px]">
-                      Editable
-                    </span>
-                  </div>
+                  {/* Scope Target String */}
                   <input
                     type="text"
                     value={newScope}
                     onChange={(e) => setNewScope(e.target.value)}
                     placeholder="e.g. Entire repo, Auth subsystem, or React 19 RC • packages/react/src/ReactHooks.js"
-                    className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link font-mono"
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link font-mono"
                   />
                 </div>
 
-                {/* 1-Click Quick Preset Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                  <span className="text-[10px] text-primary-muted font-medium">Quick Presets:</span>
-                  {SCOPE_PRESETS.slice(0, 7).map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => handleScopePresetChange(preset.id)}
-                      className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
-                        selectedScopePreset === preset.id
-                          ? 'bg-accent/15 border-accent text-accent font-semibold'
-                          : 'bg-surface-subtle border-border-subtle text-primary-secondary hover:text-primary hover:border-accent'
-                      }`}
-                    >
-                      {preset.icon} {preset.label.split('/')[0]?.trim()}
-                    </button>
-                  ))}
+                <div>
+                  <label className="text-xs font-semibold text-primary block mb-1">
+                    Initial Status
+                  </label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as InvestigationStatus)}
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                  >
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="inconclusive">Inconclusive</option>
+                  </select>
                 </div>
 
-                <div className="mt-2 p-2.5 rounded bg-surface border border-border-subtle text-[11px] text-primary-secondary leading-relaxed space-y-1">
-                  <p className="font-semibold text-primary">💡 What is Target Scope used for?</p>
-                  <p>
-                    Target Scope categorizes and isolates your investigation. It defines whether you are diagnosing a <strong>🐛 Bug Defect</strong>, reviewing a <strong>🔀 Pull Request</strong>, auditing <strong>⚡ Performance</strong>, or inspecting a <strong>🧩 Subsystem</strong>. It groups evidence, filters saved cases, and keeps findings reproducible.
-                  </p>
+                <div>
+                  <label className="text-xs font-semibold text-primary block mb-1">
+                    Initial Hypothesis (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newHypothesis}
+                    onChange={(e) => setNewHypothesis(e.target.value)}
+                    placeholder="e.g. PR only addressed single-transition tearing, leaving nested transitions vulnerable"
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-primary block mb-1">
+                    Initial Observation (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newObservation}
+                    onChange={(e) => setNewObservation(e.target.value)}
+                    placeholder="e.g. Snapshotting logic introduced without nested transition assertion"
+                    className="w-full bg-surface-subtle text-xs text-primary rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-primary block mb-1">
-                  Initial Status
-                </label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as InvestigationStatus)}
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="inconclusive">Inconclusive</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-primary block mb-1">
-                  Initial Hypothesis (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={newHypothesis}
-                  onChange={(e) => setNewHypothesis(e.target.value)}
-                  placeholder="e.g. PR only addressed single-transition tearing, leaving nested transitions vulnerable"
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-primary block mb-1">
-                  Initial Observation (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={newObservation}
-                  onChange={(e) => setNewObservation(e.target.value)}
-                  placeholder="e.g. Snapshotting logic introduced without nested transition assertion"
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
+              {/* Fixed Footer: Always visible on any screen */}
+              <div className="flex justify-end gap-2 px-4 py-3 bg-surface-subtle border-t border-border-subtle shrink-0">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1147,7 +1111,7 @@ export function InvestigationsPage() {
 
       {/* Delete Confirmation Modal */}
       {invToDelete && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-lg border border-border-strong shadow-lg max-w-sm w-full p-6 space-y-4">
             <div className="flex items-center gap-2 text-danger">
               <AlertTriangle className="w-5 h-5 shrink-0" />
