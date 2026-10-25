@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext.js';
 import { RepositoryProvider } from './context/RepositoryContext.js';
@@ -41,6 +41,9 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                 {/* Public Landing Page */}
                 <Route path="/" element={<LandingPage />} />
 
+                {/* Public Standalone Documentation Page */}
+                <Route path="/docs" element={<DocsPage />} />
+
                 {/* Public Authentication Gate */}
                 <Route path="/login" element={<LoginPage />} />
 
@@ -58,7 +61,7 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                   <Route path="contributions" element={<ContributionsPage />} />
                   <Route path="archaeology" element={<ArchaeologyPage />} />
                   <Route path="investigations" element={<InvestigationsPage />} />
-                  <Route path="docs" element={<DocsPage />} />
+                  <Route path="docs" element={<Navigate to="/docs" replace />} />
                 </Route>
 
                 {/* 404 Route */}

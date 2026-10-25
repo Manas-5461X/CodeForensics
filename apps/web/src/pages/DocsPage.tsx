@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   BookOpen,
@@ -15,36 +15,53 @@ import {
   Copy,
   Check,
   Compass,
+  ArrowRight,
+  ExternalLink,
+  Menu,
+  X,
+  FileCode,
+  Terminal,
+  Activity,
+  UserCheck,
+  FolderGit2,
 } from 'lucide-react';
 import { cn } from '../utils/cn.js';
 
-interface DocChapter {
+export interface DocChapter {
   id: string;
   title: string;
   category: 'Fundamentals' | 'Intelligence Engines' | 'Operations & Security';
   icon: typeof BookOpen;
   summary: string;
+  readTime: string;
+  tags: string[];
   content: {
     lead: string;
     sections: {
       heading: string;
       body: string;
+      stepNumber?: number;
       codeSnippet?: string;
       callout?: {
-        type: 'note' | 'tip' | 'warning';
+        type: 'note' | 'tip' | 'warning' | 'security';
         text: string;
       };
     }[];
   };
 }
 
-const DOC_CHAPTERS: DocChapter[] = [
+export const DOC_CHAPTERS: DocChapter[] = [
+  // ============================================================================
+  // 1. Fundamentals
+  // ============================================================================
   {
     id: 'overview',
     title: 'Product Overview & Philosophy',
     category: 'Fundamentals',
     icon: Compass,
     summary: 'The core mission, evidentiary taxonomy, and architectural boundaries of CodeForensics.',
+    readTime: '3 min read',
+    tags: ['Architecture', 'Evidentiary Hierarchy', 'Philosophy'],
     content: {
       lead: 'CodeForensics is an evidence-backed repository intelligence platform. It treats source code and historical metadata as untrusted inputs, connecting issues, pull requests, commits, and AST symbols with traceable provenance.',
       sections: [
@@ -57,8 +74,12 @@ const DOC_CHAPTERS: DocChapter[] = [
           },
         },
         {
-          heading: 'Core Differentiators',
-          body: 'Unlike generic AI code assistants that guess intent, CodeForensics requires hard citations. Every relationship link, contributor ranking, and code revision milestone links directly back to verified GitHub entities.',
+          heading: 'The 4-Tier Evidence Classification',
+          body: 'Every entity, relationship, and closure assertion is stamped with one of four evidentiary tiers:\n\n• FACT: Direct observation from source provider APIs (e.g., GitHub commit SHA, author identity, verified merge timestamp).\n• INFERENCE: Deterministic AST derivation, explicit closing keywords ("fixes #42"), or commit-diff symbol overlap.\n• HYPOTHESIS: Heuristic or probabilistic match requiring human verification (e.g., semantic similarity or tentative PR relevance).\n• UNKNOWN: Honest abstention when evidence is missing, unverified, or ambiguous.',
+        },
+        {
+          heading: 'Core Differentiators from Generic AI Assistants',
+          body: 'Unlike LLM code tools that hallucinate intent or fabricate nonexistent PR connections, CodeForensics demands verifiable citations. Every relationship link, contributor score, and revision milestone points to immutable cryptographic commit SHAs and verified GitHub events.',
         },
       ],
     },
@@ -69,24 +90,30 @@ const DOC_CHAPTERS: DocChapter[] = [
     category: 'Fundamentals',
     icon: KeyRound,
     summary: 'Configuring the GitHub App integration with least-privilege read permissions.',
+    readTime: '4 min read',
+    tags: ['GitHub App', 'Security', 'Permissions'],
     content: {
-      lead: 'CodeForensics integrates with GitHub via an official GitHub App. This provides high rate limits (5,000 requests per hour) and fine-grained repository authorization without storing personal access tokens.',
+      lead: 'CodeForensics integrates with GitHub via an official GitHub App rather than personal access tokens (PAT). This provides high hourly rate limits (5,000+ req/hr) and repository-scoped authorization.',
       sections: [
         {
           heading: 'Required Repository Permissions',
-          body: 'CodeForensics strictly requests Read-only permissions across 4 repository resources:',
-          codeSnippet: `Issues: Read-only          # To inspect issue threads and closing keywords
-Pull requests: Read-only   # To inspect PR descriptions, branches, and merges
-Contents: Read-only        # To inspect commit trees, file contents, and line ranges
-Metadata: Read-only        # Mandatory base repository metadata`,
+          body: 'CodeForensics strictly requests Read-only permissions across four repository resources:',
+          codeSnippet: `Issues: Read-only          # To inspect issue threads, comments, and closing keywords
+Pull requests: Read-only   # To inspect PR descriptions, base/head branches, and merges
+Contents: Read-only        # To read commit trees, line ranges, and AST symbols
+Metadata: Read-only        # Mandatory base repository metadata (name, owner, visibility)`,
         },
         {
-          heading: 'Webhook Integration',
-          body: 'Real-time webhook events (installation, issues, pull_request) allow instant synchronization. In local environments where public URLs are not accessible, manual on-demand sync is fully supported.',
+          heading: 'Least-Privilege Security Guarantee',
+          body: 'All administrative, secret, action, package, and write permissions must remain set to "No access". CodeForensics never requests write or delete permissions on any repository.',
           callout: {
-            type: 'tip',
-            text: 'For local webhook forwarding, you can use a public proxy like Smee.io pointing to your local /webhooks/github endpoint.',
+            type: 'security',
+            text: 'CodeForensics never stores personal access tokens in databases. Temporary 1-hour installation tokens are minted on-demand using an RSA private key and held in ephemeral memory.',
           },
+        },
+        {
+          heading: 'Webhook Delivery & HMAC-SHA256 Verification',
+          body: 'Live webhook events (issues, pull_request, installation) are signed with HMAC-SHA256 using GITHUB_WEBHOOK_SECRET. Fastify verifies the x-hub-signature-256 header using timing-safe comparisons to prevent timing attacks.',
         },
       ],
     },
@@ -97,19 +124,92 @@ Metadata: Read-only        # Mandatory base repository metadata`,
     category: 'Fundamentals',
     icon: Database,
     summary: 'How background BullMQ workers stream, index, and checkpoint repository data.',
+    readTime: '4 min read',
+    tags: ['BullMQ', 'Redis', 'Sync Pipeline', 'Postgres'],
     content: {
       lead: 'Repository synchronization runs asynchronously in background BullMQ workers backed by Redis, ensuring heavy Git and GitHub API workloads never block the web workbench.',
       sections: [
         {
-          heading: 'The Ingestion Pipeline',
-          body: 'When you trigger a sync, a job is pushed to the repository-sync BullMQ queue. The worker executes three distinct stages: (1) Repository metadata verification, (2) Paginated issues ingestion with rate-limit backoff, and (3) Pull requests and merge commit inspection.',
-          codeSnippet: `// Trigger a repository sync via API
+          heading: 'The Multi-Stage Ingestion Pipeline',
+          body: 'When synchronization is triggered, a job is pushed to the repository-sync queue. The background worker executes through distinct stages with real-time checkpointing:',
+          codeSnippet: `// Synchronize repository via API
 POST /api/v1/repositories/:owner/:repo/sync
-Authorization: Bearer <FIREBASE_ID_TOKEN>`,
+Authorization: Bearer <FIREBASE_ID_TOKEN>
+
+// Pipeline Execution Stages:
+Stage 1: Verify repository metadata and installation token validity
+Stage 2: Ingest paginated issues with rate-limit exponential backoff
+Stage 3: Ingest pull requests, merge proofs, and linked commit SHAs
+Stage 4: Compute deterministic cross-entity relationships and cache results`,
         },
         {
           heading: 'Idempotency and Checkpoints',
-          body: 'All database writes use Prisma upserts. Repeated sync runs update existing records without creating duplicates. If an ingestion is interrupted, coverage complete flags indicate partial coverage honestly.',
+          body: 'All database writes utilize Prisma upserts keyed by GitHub IDs. Repeated sync runs update existing records without creating duplicates. If an ingestion is interrupted, coverage complete flags indicate partial coverage honestly.',
+          callout: {
+            type: 'tip',
+            text: 'You can check real-time synchronization progress on any repository in the workbench TopBar status badge or via GET /api/v1/repositories/:owner/:repo/sync.',
+          },
+        },
+      ],
+    },
+  },
+
+  // ============================================================================
+  // 2. Intelligence Engines & Full How-To-Use Workflows
+  // ============================================================================
+  {
+    id: 'workflow-guide',
+    title: 'Complete Step-by-Step Workbench Workflow',
+    category: 'Intelligence Engines',
+    icon: Activity,
+    summary: 'A complete practical walkthrough: from selecting a repository to forensic analysis.',
+    readTime: '6 min read',
+    tags: ['Workflow', 'Step-by-Step', 'Practical Guide', 'How-To'],
+    content: {
+      lead: 'This guide walks you through the complete end-to-end workflow of investigating an open-source codebase using CodeForensics, from initial repository selection to exporting audit-grade evidence bundles.',
+      sections: [
+        {
+          heading: 'Step 1: Select or Track Your Target Repository',
+          stepNumber: 1,
+          body: 'Open the workbench at /app. Click the repository dropdown in the header or sidebar to open the Repository Selection modal. If your GitHub App is installed, select any discovered repository from the list. Alternatively, enter a custom public repository (e.g., facebook/react, vercel/next.js) and click "Track Repository".',
+        },
+        {
+          heading: 'Step 2: Trigger and Monitor Forensic Synchronization',
+          stepNumber: 2,
+          body: 'Once a repository is active, verify its sync state. Click the "Sync" button in the TopBar. The BullMQ worker will stream issues, PRs, comments, and commit logs into Postgres. The TopBar shows an active spinning indicator ("Syncing..."), transitioning to "Synchronized" once completed.',
+          callout: {
+            type: 'tip',
+            text: 'Initial synchronization of large repositories indexes the latest 100 issues and PRs first for immediate exploration while background workers complete historical backfill.',
+          },
+        },
+        {
+          heading: 'Step 3: Explore Issues & PRs with Evidentiary Confidence',
+          stepNumber: 3,
+          body: 'Navigate to "Issues & PRs" in the sidebar. Use the search bar to query keywords (e.g. "memory leak", "auth bypass", "hydration"). The table displays type icons, issue numbers, titles, and real-time state badges. Click any row to slide out the WorkItemDetailDrawer.',
+        },
+        {
+          heading: 'Step 4: Inspect "Why Linked?" Cards and Closure Proofs',
+          stepNumber: 4,
+          body: 'Inside the drawer, switch to the "Relationships & Resolution" tab. CodeForensics analyzes why this work item is linked to other PRs or issues. Look for the "Why Linked?" card:\n\n• If closed by a verified commit with "fixes #123", the badge displays FACT with 100% confidence.\n• If linked via PR branch name or title keyword, it displays INFERENCE.\n• If closed without an associated PR, it displays UNKNOWN CLOSURE.',
+        },
+        {
+          heading: 'Step 5: Trace Function Evolution with Code Archaeology',
+          stepNumber: 5,
+          body: 'Navigate to "Code Archaeology". Enter a file path (e.g. packages/shared/src/index.ts) and a function or symbol name. Click "Trace Symbol History". CodeForensics parses the file AST in memory, extracts exact line spans, and overlays historical git blame revisions with linked PR pills.',
+        },
+        {
+          heading: 'Step 6: Assess Contributor Expertise & Ownership Risks',
+          stepNumber: 6,
+          body: 'Navigate to "Contribution Finder". Review the ranked list of maintainers categorized into DOMAIN EXPERT, ACTIVE, and HISTORICAL. Inspect the Subsystem Ownership Risk banner at the top to discover single-maintainer dependencies and bus-factor vulnerabilities.',
+        },
+        {
+          heading: 'Step 7: Record and Export Saved Forensic Investigations',
+          stepNumber: 7,
+          body: 'Navigate to "Investigations". Click "+ New Investigation" to create an audit record. Attach observed issue/PR citations, add hypothesis cards (e.g. "Fix was reverted in commit #a1b2c3d"), and record uncertainty notes. Your investigation is cryptographically secured to your user account.',
+          callout: {
+            type: 'note',
+            text: 'All investigation records can be referenced later or shared with incident response teams as audit-grade verification briefs.',
+          },
         },
       ],
     },
@@ -120,16 +220,22 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>`,
     category: 'Intelligence Engines',
     icon: GitPullRequest,
     summary: 'Navigating, searching, and inspecting synchronized work items and discussion threads.',
+    readTime: '4 min read',
+    tags: ['Explorer', 'Work Items', 'Filtering', 'Detail Drawer'],
     content: {
       lead: 'The Issue and PR Explorer presents a unified table of all indexed work items with real-time state badges, author attribution, creation recency, and deep relationship drawers.',
       sections: [
         {
-          heading: 'Filtering & Search',
-          body: 'Filter items by type (Issue vs. PR), state (Open vs. Closed), or author. Full-text search queries issue titles and body descriptions.',
+          heading: 'Filtering & Precision Search',
+          body: 'Filter items by type (Issue vs. PR), state (Open vs. Closed), or author. Full-text search queries issue titles and body descriptions with instant debounced updates.',
         },
         {
           heading: 'Drawer Inspection & GitHub Verification',
           body: 'Clicking any row opens the WorkItemDetailDrawer, displaying the full body content, raw metadata, resolution assessment, detected relationships, and direct links to the official GitHub discussion thread.',
+        },
+        {
+          heading: 'Mobile Responsive Table Reflow',
+          body: 'On mobile and tablet displays (< 640px), the table automatically collapses non-essential columns (Author, Timestamps) into compact metadata chips beneath the title, ensuring zero horizontal overflow while preserving complete attribution data.',
         },
       ],
     },
@@ -140,6 +246,8 @@ Authorization: Bearer <FIREBASE_ID_TOKEN>`,
     category: 'Intelligence Engines',
     icon: Sparkles,
     summary: 'Deterministic detection of ADDRESSES, SUPERSEDES, and FIXED_BY relationships.',
+    readTime: '5 min read',
+    tags: ['Relationships', 'Why Linked', 'Evidence Cards', 'Closure'],
     content: {
       lead: 'CodeForensics discovers causal and historical connections between issues and pull requests using transparent, explainable heuristic and deterministic rules.',
       sections: [
@@ -165,8 +273,10 @@ FIXED_BY    # Confirmed resolution where a merged PR definitively closed an issu
     id: 'contributions',
     title: 'Contribution Finder',
     category: 'Intelligence Engines',
-    icon: Sparkles,
+    icon: UserCheck,
     summary: 'Discovering relevant code maintainers and assessing subsystem maintenance risk.',
+    readTime: '4 min read',
+    tags: ['Maintainers', 'Risk Analysis', 'Bus Factor', 'Ownership'],
     content: {
       lead: 'The Contribution Finder identifies the most qualified engineers to review a problem or collaborate on a subsystem based on historical commits, recency, and pull request activity.',
       sections: [
@@ -187,6 +297,8 @@ FIXED_BY    # Confirmed resolution where a merged PR definitively closed an issu
     category: 'Intelligence Engines',
     icon: GitBranch,
     summary: 'Safe source analysis, TypeScript Compiler AST symbol extraction, and revision history.',
+    readTime: '5 min read',
+    tags: ['AST', 'TypeScript', 'Git Blame', 'Security Sandbox'],
     content: {
       lead: 'Code Archaeology traces the evolution of source code files and functions over time without executing untrusted repository code or build scripts.',
       sections: [
@@ -207,8 +319,10 @@ GET /api/v1/repositories/:owner/:repo/archaeology/trace?filePath=packages/shared
     id: 'investigations',
     title: 'Saved Investigations Workbench',
     category: 'Operations & Security',
-    icon: BookOpen,
+    icon: FolderGit2,
     summary: 'Managing forensic records, working hypotheses, observations, and structured citations.',
+    readTime: '4 min read',
+    tags: ['Investigations', 'Audit Trails', 'Hypotheses', 'Citations'],
     content: {
       lead: 'Saved Investigations allow researchers to capture what they observed, why it mattered, and which evidence supported their conclusion.',
       sections: [
@@ -223,12 +337,18 @@ GET /api/v1/repositories/:owner/:repo/archaeology/trace?filePath=packages/shared
       ],
     },
   },
+
+  // ============================================================================
+  // 3. Operations & Security
+  // ============================================================================
   {
     id: 'security',
     title: 'Authentication & Security Boundaries',
     category: 'Operations & Security',
     icon: Shield,
     summary: 'Multi-tenant isolation, token verification, input sanitization, and secret protection.',
+    readTime: '4 min read',
+    tags: ['Firebase', 'Auth', 'CORS', 'Security Headers'],
     content: {
       lead: 'CodeForensics enforces defense-in-depth across the web client, API server, background workers, and PostgreSQL database.',
       sections: [
@@ -249,20 +369,30 @@ GET /api/v1/repositories/:owner/:repo/archaeology/trace?filePath=packages/shared
     category: 'Operations & Security',
     icon: AlertTriangle,
     summary: 'Resolving database connectivity, Redis queue delays, and GitHub App integration errors.',
+    readTime: '5 min read',
+    tags: ['FAQ', 'Troubleshooting', 'Firebase Domains', 'Queue Stalls'],
     content: {
-      lead: 'Actionable recovery guidance for common local setup and infrastructure failures.',
+      lead: 'Actionable recovery guidance for common local setup, cloud deployment, and infrastructure issues.',
       sections: [
         {
+          heading: 'Firebase "auth/unauthorized-domain" Error',
+          body: 'If sign-in displays "Domain Not Authorized", your production domain (e.g. your Vercel deployment URL) is not yet whitelisted in Firebase Console. Go to Firebase Console → Authentication → Settings → Authorized domains, click "Add domain", and paste your Vercel domain.',
+          callout: {
+            type: 'warning',
+            text: 'Firebase requires this domain whitelist to protect your API key from unauthorized client-side impersonation on third-party sites.',
+          },
+        },
+        {
           heading: 'Database Connection Failures (500 / degraded health)',
-          body: 'If the /health endpoint reports database: disconnected, ensure PostgreSQL is running and DATABASE_URL matches your credentials. For Docker: run docker compose up -d postgres.',
+          body: 'If the /health endpoint reports database: disconnected, ensure PostgreSQL is running and DATABASE_URL matches your credentials. For cloud pools (e.g., Neon Postgres), verify network pooling and ensure health check timeouts accommodate cold connections (3000ms+).',
         },
         {
           heading: 'Redis Queue Stalls or Missing Worker',
-          body: 'If sync jobs remain in QUEUED state, verify that the worker process is running (npm run dev:worker) and connected to REDIS_URL.',
+          body: 'If sync jobs remain in QUEUED state, verify that the worker process is running (npm run dev:worker or node apps/worker/dist/index.js) and connected to REDIS_URL.',
         },
         {
           heading: 'GitHub App "Not Configured" Warning',
-          body: 'If repository discovery returns an empty list, ensure GITHUB_APP_ID and GITHUB_PRIVATE_KEY_PATH are configured in .env and that the GitHub App has been installed on your GitHub account.',
+          body: 'If repository discovery returns an empty list, ensure GITHUB_APP_ID and GITHUB_PRIVATE_KEY are configured in environment variables and that the GitHub App has been installed on your GitHub account or organization.',
         },
       ],
     },
@@ -273,7 +403,7 @@ export function DocsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filterQuery, setFilterQuery] = useState('');
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
-  const [isMobileChaptersOpen, setIsMobileChaptersOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const activeChapterId = searchParams.get('chapter') || 'overview';
 
@@ -285,6 +415,7 @@ export function DocsPage() {
   const prevChapter = activeIndex > 0 ? DOC_CHAPTERS[activeIndex - 1] : null;
   const nextChapter = activeIndex < DOC_CHAPTERS.length - 1 ? DOC_CHAPTERS[activeIndex + 1] : null;
 
+  // Filter chapters across title, summary, category, or tags
   const filteredChapters = useMemo(() => {
     if (!filterQuery.trim()) return DOC_CHAPTERS;
     const q = filterQuery.toLowerCase();
@@ -292,9 +423,24 @@ export function DocsPage() {
       (c) =>
         c.title.toLowerCase().includes(q) ||
         c.summary.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q)
+        c.category.toLowerCase().includes(q) ||
+        c.tags.some((t) => t.toLowerCase().includes(q))
     );
   }, [filterQuery]);
+
+  // Group filtered chapters by category
+  const categories = useMemo(() => {
+    const map = new Map<'Fundamentals' | 'Intelligence Engines' | 'Operations & Security', DocChapter[]>();
+    map.set('Fundamentals', []);
+    map.set('Intelligence Engines', []);
+    map.set('Operations & Security', []);
+
+    for (const ch of filteredChapters) {
+      const list = map.get(ch.category);
+      if (list) list.push(ch);
+    }
+    return map;
+  }, [filteredChapters]);
 
   const handleCopy = (snippet: string) => {
     void navigator.clipboard.writeText(snippet);
@@ -304,172 +450,336 @@ export function DocsPage() {
 
   const handleSelectChapter = (id: string) => {
     setSearchParams({ chapter: id });
-    setIsMobileChaptersOpen(false);
+    setIsMobileSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Keyboard shortcut listener for quick search ('/')
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        document.getElementById('docs-search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
-      {/* Top Breadcrumb & Header */}
-      <div className="mb-6 pb-4 border-b border-border-subtle">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-primary-muted mb-2 flex-wrap">
-          <Link to="/app" className="hover:text-primary transition-colors">
-            Workbench
+    <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col font-sans selection:bg-[#38bdf8]/30 selection:text-white">
+      {/* ---------------------------------------------------------------------- */}
+      {/* 1. Global Standalone Documentation Header Navigation                   */}
+      {/* ---------------------------------------------------------------------- */}
+      <header className="sticky top-0 z-40 h-16 bg-[#0b1120]/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Mobile Sidebar Hamburger Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen((prev) => !prev)}
+            className="lg:hidden p-2 text-slate-400 hover:text-white rounded-md border border-slate-800 hover:border-slate-700 bg-slate-900/60 min-w-[38px] min-h-[38px] flex items-center justify-center"
+            aria-label="Toggle Documentation Navigation"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
+          {/* Logo & Docs Lockup */}
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#1e293b] border border-[#38bdf8]/40 text-[#38bdf8] flex items-center justify-center font-mono font-bold text-xs sm:text-sm shadow-[0_0_12px_rgba(56,189,248,0.2)]">
+              CF
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm sm:text-base font-bold tracking-tight text-white group-hover:text-[#38bdf8] transition-colors">
+                CodeForensics
+              </span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30">
+                DOCS
+              </span>
+            </div>
           </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-primary font-medium">In-App Documentation</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-accent font-semibold truncate max-w-[200px] sm:max-w-none">{activeChapter.title}</span>
-        </nav>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center gap-2.5">
-              <BookOpen className="w-5 sm:w-6 h-5 sm:h-6 text-accent shrink-0" />
-              <span>Developer Reference & System Guide</span>
-            </h1>
-            <p className="text-xs text-primary-secondary mt-1">
-              Evidence-backed explanations, architecture boundaries, and operating procedures.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-subtle border border-border-subtle text-primary-muted">
-              Release v0.1.0
-            </span>
-          </div>
         </div>
-      </div>
 
-      {/* Mobile Chapter Selector Toggle (<lg) */}
-      <div className="lg:hidden mb-4">
-        <button
-          type="button"
-          onClick={() => setIsMobileChaptersOpen((prev) => !prev)}
-          className="w-full flex items-center justify-between p-3 rounded-lg bg-surface border border-border-strong text-xs font-medium text-primary shadow-xs"
-        >
-          <div className="flex items-center gap-2 truncate">
-            <activeChapter.icon className="w-4 h-4 text-accent shrink-0" />
-            <span className="text-primary-muted font-mono">Chapter:</span>
-            <span className="font-semibold text-primary truncate">{activeChapter.title}</span>
-          </div>
-          <span className="text-xs text-accent font-mono ml-2 shrink-0">
-            {isMobileChaptersOpen ? 'Hide Menu ▲' : 'Browse All ▼'}
-          </span>
-        </button>
-      </div>
-
-      {/* Main Layout: Sidebar & Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-        {/* Navigation Sidebar */}
-        <aside className={cn('lg:col-span-4 bg-surface border border-border-subtle rounded-lg p-4 space-y-4', !isMobileChaptersOpen && 'hidden lg:block')}>
-          {/* Quick Search Input */}
+        {/* Global Search Bar (Center / Right) */}
+        <div className="flex-1 max-w-xs sm:max-w-md mx-3 hidden sm:block">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-primary-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
+              id="docs-search-input"
               type="text"
-              placeholder="Search documentation..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-surface-subtle border border-border-strong rounded text-xs font-mono text-primary placeholder:text-primary-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link transition-colors"
+              placeholder="Search documentation..."
+              className="w-full h-9 pl-8 pr-12 bg-slate-950/70 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-[#38bdf8] focus:ring-1 focus:ring-[#38bdf8] font-mono transition-all"
             />
+            {filterQuery ? (
+              <button
+                type="button"
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs font-mono"
+              >
+                ✕
+              </button>
+            ) : (
+              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 bg-slate-900 border border-slate-800 rounded">
+                /
+              </kbd>
+            )}
+          </div>
+        </div>
+
+        {/* Direct Action Links */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <Link
+            to="/"
+            className="hidden md:inline-flex items-center text-xs font-mono text-slate-400 hover:text-white transition-colors px-2 py-1"
+          >
+            Home
+          </Link>
+          <a
+            href="https://github.com/Manas-5461X/CodeForensics"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 bg-slate-900/60 transition-colors"
+          >
+            <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
+            <span>GitHub</span>
+          </a>
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-[#38bdf8] hover:bg-[#7dd3fc] text-[#0b1120] font-mono font-bold text-xs uppercase tracking-wider rounded transition-all duration-200 shadow-[0_0_16px_rgba(56,189,248,0.25)] hover:-translate-y-0.5"
+          >
+            <span>Workbench</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </header>
+
+      {/* ---------------------------------------------------------------------- */}
+      {/* 2. Main Documentation Layout: Categorized Sidebar + Content Article   */}
+      {/* ---------------------------------------------------------------------- */}
+      <div className="flex-1 w-full max-w-[1440px] mx-auto flex relative">
+        {/* Mobile Sidebar Off-Canvas Backdrop */}
+        {isMobileSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs lg:hidden transition-opacity"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        {/* Left Sticky Sidebar (<aside>) */}
+        <aside
+          className={cn(
+            'fixed lg:sticky top-16 z-50 lg:z-10 h-[calc(100vh-4rem)] w-72 sm:w-80 border-r border-slate-800/80 bg-[#0b1120] lg:bg-transparent overflow-y-auto p-4 sm:p-5 flex flex-col shrink-0 transition-transform duration-300 ease-in-out',
+            isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          )}
+        >
+          {/* Mobile Sidebar Header */}
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 lg:hidden">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#38bdf8]" />
+              <span className="font-bold text-sm text-white">Documentation Index</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="p-1 text-slate-400 hover:text-white rounded min-w-[32px] min-h-[32px] flex items-center justify-center"
+              aria-label="Close Documentation Index"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Chapter Links Grouped by Category */}
-          <div className="space-y-4">
-            {(['Fundamentals', 'Intelligence Engines', 'Operations & Security'] as const).map(
-              (category) => {
-                const chaptersInCategory = filteredChapters.filter((c) => c.category === category);
-                if (chaptersInCategory.length === 0) return null;
+          {/* Mobile Search input inside drawer */}
+          <div className="mb-4 sm:hidden">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Filter chapters..."
+                className="w-full h-8 pl-7 pr-3 bg-slate-950/80 border border-slate-800 rounded text-xs text-slate-200 placeholder:text-slate-500 font-mono"
+              />
+            </div>
+          </div>
 
-                return (
-                  <div key={category} className="space-y-1">
-                    <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-primary-muted px-2 py-1">
-                      {category}
-                    </div>
-                    {chaptersInCategory.map((chapter) => {
+          {/* Categorized Chapter Navigation */}
+          <nav className="space-y-6 flex-1">
+            {(['Fundamentals', 'Intelligence Engines', 'Operations & Security'] as const).map((categoryKey) => {
+              const chapters = categories.get(categoryKey) || [];
+              if (chapters.length === 0) return null;
+
+              return (
+                <div key={categoryKey} className="space-y-1.5">
+                  <div className="px-2.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>{categoryKey}</span>
+                    <span className="text-slate-600 font-mono">{chapters.length}</span>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    {chapters.map((chapter) => {
+                      const isActive = activeChapter.id === chapter.id;
                       const Icon = chapter.icon;
-                      const isActive = chapter.id === activeChapter.id;
+
                       return (
                         <button
                           key={chapter.id}
                           type="button"
                           onClick={() => handleSelectChapter(chapter.id)}
                           className={cn(
-                            'w-full text-left px-2.5 py-2 rounded text-xs font-medium flex items-center gap-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'w-full text-left flex items-start gap-2.5 px-3 py-2 rounded-lg text-xs transition-all duration-150 group',
                             isActive
-                              ? 'bg-surface-selected text-accent font-semibold border-l-2 border-accent'
-                              : 'text-primary-secondary hover:text-primary hover:bg-surface-subtle'
+                              ? 'bg-[#38bdf8]/15 text-[#38bdf8] font-semibold border border-[#38bdf8]/30 shadow-xs'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent'
                           )}
                         >
-                          <Icon className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{chapter.title}</span>
+                          <Icon
+                            className={cn(
+                              'w-4 h-4 shrink-0 mt-0.5 transition-colors',
+                              isActive ? 'text-[#38bdf8]' : 'text-slate-500 group-hover:text-slate-300'
+                            )}
+                          />
+                          <div className="flex-1 truncate">
+                            <div className="truncate">{chapter.title}</div>
+                          </div>
+                          {isActive && <ChevronRight className="w-3 h-3 text-[#38bdf8] shrink-0 mt-0.5" />}
                         </button>
                       );
                     })}
                   </div>
-                );
-              }
-            )}
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Sidebar Footer Badge */}
+          <div className="pt-4 mt-4 border-t border-slate-800/80 text-[11px] font-mono text-slate-500 flex items-center justify-between">
+            <span>Release v0.1.0</span>
+            <span className="text-[#10b981] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+              Production
+            </span>
           </div>
         </aside>
 
-        {/* Documentation Content Panel */}
-        <main className="lg:col-span-8 bg-surface border border-border-subtle rounded-lg p-6 sm:p-8 space-y-8">
-          {/* Chapter Header */}
-          <div className="space-y-3 pb-6 border-b border-border-subtle">
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-surface-subtle border border-border-subtle text-accent">
-              <activeChapter.icon className="w-3 h-3" />
-              <span>{activeChapter.category}</span>
+        {/* Right Article Main Content */}
+        <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-8 lg:py-10">
+          {/* Breadcrumb Row */}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-4 flex-wrap">
+            <Link to="/" className="hover:text-white transition-colors">
+              Home
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+            <Link to="/docs" className="hover:text-white transition-colors">
+              Docs
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+            <span className="text-slate-400">{activeChapter.category}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+            <span className="text-[#38bdf8] font-medium truncate max-w-[220px] sm:max-w-none">
+              {activeChapter.title}
+            </span>
+          </nav>
+
+          {/* Chapter Header Title & Meta */}
+          <div className="pb-6 mb-8 border-b border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#06152d] border border-[#00f0ff]/30 text-[10px] font-mono text-[#00f0ff] uppercase tracking-wider">
+                <activeChapter.icon className="w-3 h-3" />
+                <span>{activeChapter.category}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+                <span>{activeChapter.readTime}</span>
+                <span>•</span>
+                <span className="text-slate-300">Developer Reference & System Guide</span>
+              </div>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-primary">
+
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white mb-3">
               {activeChapter.title}
             </h2>
-            <p className="text-sm text-primary-secondary leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-300 font-light leading-relaxed">
               {activeChapter.content.lead}
             </p>
+
+            {/* Tag Pills */}
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              {activeChapter.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-900 border border-slate-800"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* Chapter Body Sections */}
-          <div className="space-y-8">
+          {/* Chapter Content Sections */}
+          <div className="space-y-10">
             {activeChapter.content.sections.map((section, idx) => (
-              <div key={idx} className="space-y-3">
-                <h3 className="text-base font-semibold text-primary tracking-tight">
-                  {section.heading}
-                </h3>
-                <p className="text-xs sm:text-sm text-primary-secondary leading-relaxed whitespace-pre-line">
-                  {section.body}
-                </p>
+              <section key={idx} className="space-y-3.5 scroll-mt-20" id={`section-${idx}`}>
+                <div className="flex items-baseline gap-3">
+                  {section.stepNumber && (
+                    <span className="w-6 h-6 rounded bg-[#38bdf8]/15 border border-[#38bdf8]/40 text-[#38bdf8] font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                      {section.stepNumber}
+                    </span>
+                  )}
+                  <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+                    {section.heading}
+                  </h3>
+                </div>
 
-                {/* Callout Notice */}
+                <div className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal whitespace-pre-line">
+                  {section.body}
+                </div>
+
+                {/* Callout Box */}
                 {section.callout && (
                   <div
                     className={cn(
-                      'p-3.5 rounded border text-xs leading-relaxed flex items-start gap-2.5',
-                      section.callout.type === 'note' && 'bg-surface-subtle border-border-strong text-primary',
-                      section.callout.type === 'tip' && 'bg-surface-selected/30 border-accent/30 text-primary',
-                      section.callout.type === 'warning' && 'bg-warning/10 border-warning/30 text-warning'
+                      'p-3.5 sm:p-4 rounded-lg border text-xs sm:text-sm leading-relaxed flex items-start gap-3 my-3',
+                      section.callout.type === 'note' &&
+                        'bg-blue-500/10 border-blue-500/30 text-blue-200',
+                      section.callout.type === 'tip' &&
+                        'bg-emerald-500/10 border-emerald-500/30 text-emerald-200',
+                      section.callout.type === 'warning' &&
+                        'bg-amber-500/10 border-amber-500/30 text-amber-200',
+                      section.callout.type === 'security' &&
+                        'bg-purple-500/10 border-purple-500/30 text-purple-200'
                     )}
                   >
-                    <span className="font-mono font-bold text-[10px] uppercase shrink-0 px-1.5 py-0.5 rounded bg-surface border border-border-subtle">
-                      {section.callout.type}
-                    </span>
-                    <span>{section.callout.text}</span>
+                    {section.callout.type === 'note' && <Compass className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />}
+                    {section.callout.type === 'tip' && <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />}
+                    {section.callout.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />}
+                    {section.callout.type === 'security' && <Shield className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />}
+                    <div className="flex-1">
+                      <strong className="font-semibold block mb-0.5 uppercase tracking-wider text-[10px] font-mono">
+                        {section.callout.type}:
+                      </strong>
+                      <span>{section.callout.text}</span>
+                    </div>
                   </div>
                 )}
 
-                {/* Code Snippet Box */}
+                {/* Code Block Snippet */}
                 {section.codeSnippet && (
-                  <div className="relative rounded bg-slate-950 border border-border-strong overflow-hidden my-3">
-                    <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-border-subtle text-[10px] font-mono text-primary-muted">
-                      <span>Syntax / Contract</span>
+                  <div className="relative group rounded-lg overflow-hidden border border-slate-800 bg-[#060a14] my-3">
+                    <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800/80 text-[11px] font-mono text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-3.5 h-3.5 text-[#38bdf8]" />
+                        <span>Snippet Reference</span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleCopy(section.codeSnippet!)}
-                        className="flex items-center gap-1 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-link"
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-mono text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/60 transition-colors"
+                        aria-label="Copy code snippet to clipboard"
                       >
                         {copiedSnippet === section.codeSnippet ? (
                           <>
-                            <Check className="w-3 h-3 text-success" />
-                            <span className="text-success">Copied</span>
+                            <Check className="w-3 h-3 text-[#10b981]" />
+                            <span className="text-[#10b981]">Copied</span>
                           </>
                         ) : (
                           <>
@@ -479,50 +789,78 @@ export function DocsPage() {
                         )}
                       </button>
                     </div>
-                    <pre className="p-3.5 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed">
+                    <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed selection:bg-[#38bdf8]/40">
                       <code>{section.codeSnippet}</code>
                     </pre>
                   </div>
                 )}
-              </div>
+              </section>
             ))}
           </div>
 
-          {/* Previous / Next Chapter Navigation Footer */}
-          <div className="pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Interactive Next & Previous Chapter Navigation Footer */}
+          <div className="mt-14 pt-8 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {prevChapter ? (
               <button
                 type="button"
                 onClick={() => handleSelectChapter(prevChapter.id)}
-                className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 rounded bg-surface border border-border-strong text-xs font-medium text-primary hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link"
+                className="flex flex-col items-start p-4 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/80 transition-all text-left group"
+                aria-label={`Previous ${prevChapter.title}`}
               >
-                <ChevronLeft className="w-4 h-4 text-primary-muted" />
-                <div className="text-left">
-                  <div className="text-[10px] font-mono text-primary-muted uppercase">Previous</div>
-                  <div className="font-medium text-primary truncate max-w-[200px]">{prevChapter.title}</div>
+                <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500 mb-1">
+                  <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                  <span>Previous</span>
+                </div>
+                <div className="font-semibold text-sm text-slate-200 group-hover:text-[#38bdf8] transition-colors truncate w-full">
+                  {prevChapter.title}
                 </div>
               </button>
             ) : (
-              <div />
+              <div className="hidden sm:block" />
             )}
 
-            {nextChapter && (
+            {nextChapter ? (
               <button
                 type="button"
                 onClick={() => handleSelectChapter(nextChapter.id)}
-                className="w-full sm:w-auto inline-flex items-center justify-end gap-2 px-3 py-2 rounded bg-surface border border-border-strong text-xs font-medium text-primary hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link ml-auto"
+                className="flex flex-col items-end p-4 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/80 transition-all text-right group sm:col-start-2"
+                aria-label={`Next ${nextChapter.title}`}
               >
-                <div className="text-right">
-                  <div className="text-[10px] font-mono text-primary-muted uppercase">Next</div>
-                  <div className="font-medium text-primary truncate max-w-[200px]">{nextChapter.title}</div>
+                <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500 mb-1">
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-primary-muted" />
+                <div className="font-semibold text-sm text-slate-200 group-hover:text-[#38bdf8] transition-colors truncate w-full">
+                  {nextChapter.title}
+                </div>
               </button>
+            ) : (
+              <div className="hidden sm:block" />
             )}
+          </div>
+
+          {/* Launch Workbench Banner at Bottom */}
+          <div className="mt-8 p-6 rounded-xl bg-gradient-to-r from-[#0b1528] via-[#0d1e3a] to-[#0b1528] border border-[#38bdf8]/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+            <div>
+              <h4 className="text-sm sm:text-base font-bold text-white mb-1">
+                Ready to analyze code with traceable provenance?
+              </h4>
+              <p className="text-xs text-slate-300 font-light">
+                Launch the interactive workbench to investigate issues, inspect PR closure proofs, and trace symbols.
+              </p>
+            </div>
+            <Link
+              to="/app"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#38bdf8] hover:bg-[#7dd3fc] text-[#0b1120] font-mono font-bold text-xs uppercase tracking-wider rounded-md transition-all shrink-0 shadow-sm"
+            >
+              <span>Open Workbench</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </main>
       </div>
     </div>
   );
 }
+
 export default DocsPage;

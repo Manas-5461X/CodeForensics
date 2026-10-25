@@ -7,7 +7,6 @@ import {
   Clock,
   UserCircle2,
   LogOut,
-  HelpCircle,
   Menu,
 } from 'lucide-react';
 import { Button } from '../ui/Button.js';
@@ -126,18 +125,6 @@ export function TopBar({
         >
           <span className="hidden xs:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
         </Button>
-
-        {/* Documentation Link */}
-        <Link to="/app/docs" title="Documentation & System Guide">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="px-2 min-w-[36px] min-h-[36px] flex items-center justify-center"
-            aria-label="Documentation"
-          >
-            <HelpCircle className="w-4 h-4 text-primary-muted hover:text-accent transition-colors" />
-          </Button>
-        </Link>
 
         {/* User Account / Identity */}
         {user ? (

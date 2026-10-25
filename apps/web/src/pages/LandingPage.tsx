@@ -9,6 +9,7 @@ import {
   Sparkles,
   Terminal,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge.js';
 
@@ -54,7 +55,7 @@ export function LandingPage() {
           <a href="#rules" className="hover:text-white transition-colors">
             Rules of Evidence
           </a>
-          <Link to="/app/docs" className="hover:text-[#38bdf8] transition-colors">
+          <Link to="/docs" className="hover:text-[#38bdf8] transition-colors">
             Documentation
           </Link>
         </nav>
@@ -206,7 +207,7 @@ export function LandingPage() {
           </p>
 
           {/* CTA Action Row */}
-          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 flex-wrap">
             <Link
               to="/app"
               className={`inline-flex items-center justify-center gap-2.5 px-6 py-3.5 ${isMoon ? 'bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)]' : 'bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] shadow-[0_0_20px_rgba(56,189,248,0.25)]'} font-mono font-semibold text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5`}
@@ -214,9 +215,16 @@ export function LandingPage() {
               <span>Launch Interactive Workbench</span>
               <span className="text-sm">↗</span>
             </Link>
+            <Link
+              to="/docs"
+              className={`inline-flex items-center justify-center gap-2 px-5 py-3.5 ${isMoon ? 'bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]' : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 border-slate-700/80'} border font-mono text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5`}
+            >
+              <BookOpen className={`w-3.5 h-3.5 ${isMoon ? 'text-[#00f0ff]' : 'text-[#38bdf8]'}`} />
+              <span>System Documentation</span>
+            </Link>
             <a
               href="#case-study"
-              className={`inline-flex items-center justify-center gap-2 px-5 py-3.5 ${isMoon ? 'bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]' : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 border-slate-700/80'} border font-mono text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5`}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3.5 text-slate-400 hover:text-white font-mono text-xs transition-colors"
             >
               <Search className={`w-3.5 h-3.5 ${isMoon ? 'text-[#00f0ff]' : 'text-[#38bdf8]'}`} />
               <span>Inspect Benchmark Case (#28941)</span>
@@ -874,7 +882,10 @@ export function LandingPage() {
             <span className="text-slate-400 text-xs">Evidence-backed repository intelligence workbench</span>
           </div>
 
-          <div className="flex items-center gap-6 font-mono text-[11px]">
+          <div className="flex items-center gap-6 font-mono text-[11px] flex-wrap">
+            <Link to="/docs" className="text-[#38bdf8] hover:text-white transition-colors">
+              Documentation & Guides
+            </Link>
             <Link to="/app" className="hover:text-white transition-colors">
               Workbench
             </Link>

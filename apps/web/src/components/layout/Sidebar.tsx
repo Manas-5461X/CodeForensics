@@ -8,7 +8,6 @@ import {
   BookOpen,
   FolderGit2,
   ChevronDown,
-  HelpCircle,
   X,
 } from 'lucide-react';
 import { cn } from '../../utils/cn.js';
@@ -39,7 +38,6 @@ export function Sidebar({
     { label: 'Contribution Finder', to: '/app/contributions', icon: Sparkles },
     { label: 'Code Archaeology', to: '/app/archaeology', icon: GitBranch },
     { label: 'Investigations', to: '/app/investigations', icon: BookOpen },
-    { label: 'Documentation', to: '/app/docs', icon: HelpCircle },
   ];
 
   const renderSidebarContent = (isMobile = false) => (
