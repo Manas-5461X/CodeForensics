@@ -187,69 +187,135 @@ export class GitHubAppService implements IGitHubService {
       };
     }
 
-    // 2. If GitHub App is configured, attempt to find an authorized installation for this repo
-    if (this.app) {
-      try {
-        const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
-          owner,
-          repo,
-        });
-        if (installation?.id) {
-          const octokit = await this.getInstallationOctokit(installation.id);
-          const { data } = await octokit.rest.repos.get({ owner, repo });
-          return {
-            id: data.id,
-            name: data.name,
-            fullName: data.full_name,
-            owner: data.owner.login,
-            private: data.private,
-            htmlUrl: data.html_url,
-            description: data.description,
-            defaultBranch: data.default_branch,
-            installationId: installation.id,
-          };
-        }
-      } catch {
-        // Repository is not installed under the GitHub App. Fall through to public repository verification!
-      }
+    // 2. High-speed Direct Public REST API Lookup (Resolves in <1 second with zero Octokit retry loops)
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'CodeForensics/0.1.0',
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `token ${process.env.GITHUB_TOKEN}`;
     }
 
-    // 3. Public Repository Access (No GitHub App configuration required)
-    const publicOctokit = new Octokit({
-      auth: process.env.GITHUB_TOKEN || undefined,
-    });
-
     try {
-      const { data } = await publicOctokit.rest.repos.get({ owner, repo });
-      return {
-        id: data.id,
-        name: data.name,
-        fullName: data.full_name,
-        owner: data.owner.login,
-        private: data.private,
-        htmlUrl: data.html_url,
-        description: data.description,
-        defaultBranch: data.default_branch,
-        installationId: undefined,
-      };
-    } catch (err: unknown) {
-      const status = (err as { status?: number })?.status;
-      if (status === 404) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const resp = await fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+        { headers, signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (resp.status === 200) {
+        const data = (await resp.json()) as {
+          id: number;
+          name: string;
+          full_name: string;
+          owner: { login: string };
+          private: boolean;
+          html_url: string;
+          description: string | null;
+          default_branch: string;
+        };
+
+        return {
+          id: data.id,
+          name: data.name,
+          fullName: data.full_name,
+          owner: data.owner?.login || owner,
+          private: Boolean(data.private),
+          htmlUrl: data.html_url,
+          description: data.description,
+          defaultBranch: data.default_branch || 'main',
+          installationId: undefined,
+        };
+      }
+
+      if (resp.status === 404) {
+        // If 404, check if it's a private repository under an installed GitHub App
+        if (this.app) {
+          try {
+            const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
+              owner,
+              repo,
+            });
+            if (installation?.id) {
+              const octokit = await this.getInstallationOctokit(installation.id);
+              const { data } = await octokit.rest.repos.get({ owner, repo });
+              return {
+                id: data.id,
+                name: data.name,
+                fullName: data.full_name,
+                owner: data.owner.login,
+                private: data.private,
+                htmlUrl: data.html_url,
+                description: data.description,
+                defaultBranch: data.default_branch,
+                installationId: installation.id,
+              };
+            }
+          } catch {
+            // Not in GitHub App
+          }
+        }
+
         const notFoundErr = new Error(
           `Repository '${owner}/${repo}' was not found on GitHub. Please check that the repository is public and spelled correctly.`
         );
         (notFoundErr as unknown as { status: number }).status = 404;
         throw notFoundErr;
       }
-      if (status === 403 || status === 401) {
+
+      if (resp.status === 403 || resp.status === 401) {
+        const rateLimitRemaining = resp.headers.get('x-ratelimit-remaining');
+        if (rateLimitRemaining === '0') {
+          const limitErr = new Error(
+            'GitHub API rate limit reached. Please configure a GITHUB_TOKEN or install the GitHub App.'
+          );
+          (limitErr as unknown as { status: number }).status = 403;
+          throw limitErr;
+        }
+
         const permErr = new Error(
-          `Repository '${owner}/${repo}' is private or rate-limited. To inspect private repositories, please install the GitHub App.`
+          `Repository '${owner}/${repo}' is private. To analyze private repositories, please install the GitHub App.`
         );
         (permErr as unknown as { status: number }).status = 403;
         throw permErr;
       }
+    } catch (err: unknown) {
+      if ((err as { status?: number })?.status) {
+        throw err;
+      }
+      // If direct fetch timed out or failed, attempt GitHub App installation fallback
+      if (this.app) {
+        try {
+          const { data: installation } = await this.app.octokit.rest.apps.getRepoInstallation({
+            owner,
+            repo,
+          });
+          if (installation?.id) {
+            const octokit = await this.getInstallationOctokit(installation.id);
+            const { data } = await octokit.rest.repos.get({ owner, repo });
+            return {
+              id: data.id,
+              name: data.name,
+              fullName: data.full_name,
+              owner: data.owner.login,
+              private: data.private,
+              htmlUrl: data.html_url,
+              description: data.description,
+              defaultBranch: data.default_branch,
+              installationId: installation.id,
+            };
+          }
+        } catch {
+          // Ignore
+        }
+      }
       throw err;
     }
+
+    throw new Error(`Failed to verify repository ${owner}/${repo}`);
   }
 
   public verifyWebhookSignature(payload: string, signature: string): boolean {

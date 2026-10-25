@@ -56,10 +56,28 @@ export async function apiClient<T>(
     requestHeaders.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(url, {
-    ...restOptions,
-    headers: requestHeaders,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...restOptions,
+      headers: requestHeaders,
+      signal: options.signal || controller.signal,
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiClientError(
+        'Request timed out. The server may be waking up from sleep. Please try again.',
+        'TIMEOUT',
+        408
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   let data: ApiResponse<T>;
   try {

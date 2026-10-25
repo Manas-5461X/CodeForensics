@@ -10,7 +10,6 @@ import {
   Lock,
   Globe,
   ExternalLink,
-  Sparkles,
   Info,
 } from 'lucide-react';
 import { Button } from '../ui/Button.js';
@@ -22,13 +21,6 @@ interface RepositorySelectModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const POPULAR_REPOS = [
-  { owner: 'Manas-5461X', repo: 'shopkart', label: 'Manas-5461X/shopkart' },
-  { owner: 'facebook', repo: 'react', label: 'facebook/react' },
-  { owner: 'vercel', repo: 'next.js', label: 'vercel/next.js' },
-  { owner: 'expressjs', repo: 'express', label: 'expressjs/express' },
-];
 
 export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
   isOpen,
@@ -131,12 +123,6 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
     }
   };
 
-  const handleSelectPreset = (owner: string, repo: string) => {
-    setCustomOwner(owner);
-    setCustomRepo(repo);
-    setModalError(null);
-  };
-
   // Filter tracked repositories by search
   const filteredTracked = repositories.filter(
     (r) =>
@@ -196,23 +182,6 @@ export const RepositorySelectModal: React.FC<RepositorySelectModalProps> = ({
             <p className="text-[11px] text-primary-secondary leading-relaxed">
               Analyze any public repository on GitHub — including your personal projects or open-source libraries. Verified directly via GitHub REST API.
             </p>
-
-            {/* Quick Preset Pills */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-primary-muted font-mono flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-accent" /> Suggestions:
-              </span>
-              {POPULAR_REPOS.map((preset) => (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => handleSelectPreset(preset.owner, preset.repo)}
-                  className="px-2 py-0.5 rounded text-[11px] font-mono bg-surface hover:bg-surface-subtle border border-border-subtle hover:border-accent text-primary transition-colors"
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
 
             <form onSubmit={handleAddCustom} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
               <div className="flex items-center gap-2 flex-1">
