@@ -9,6 +9,8 @@ import {
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   GithubAuthProvider,
+  updateProfile,
+  updatePassword,
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../lib/firebase.js';
 import { formatAuthError } from '../utils/authErrors.js';
@@ -24,6 +26,8 @@ export interface AuthContextValue {
   signInWithGoogle: () => Promise<User>;
   signInWithGithub: () => Promise<User>;
   signOut: () => Promise<void>;
+  updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
+  updateUserPassword: (newPassword: string) => Promise<void>;
   getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
   clearError: () => void;
 }
@@ -182,6 +186,52 @@ export function AuthProvider({
     }
   }, []);
 
+  const updateUserProfile = useCallback(async (displayName: string, photoURL?: string): Promise<void> => {
+    setError(null);
+    try {
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: displayName.trim(),
+          photoURL: photoURL || null,
+        });
+        // Create shallow clone with updated fields so React state triggers re-renders
+        const updated = Object.assign(Object.create(Object.getPrototypeOf(auth.currentUser)), auth.currentUser, {
+          displayName: displayName.trim(),
+          photoURL: photoURL || null,
+        });
+        setUser(updated as User);
+      } else if (user) {
+        // Fallback for mock/test users
+        const updated = Object.assign(Object.create(Object.getPrototypeOf(user)), user, {
+          displayName: displayName.trim(),
+          photoURL: photoURL || null,
+        });
+        setUser(updated as User);
+      } else {
+        throw new Error('No authenticated user session found');
+      }
+    } catch (err: unknown) {
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
+      throw err;
+    }
+  }, [user]);
+
+  const updateUserPassword = useCallback(async (newPassword: string): Promise<void> => {
+    setError(null);
+    try {
+      if (auth.currentUser) {
+        await updatePassword(auth.currentUser, newPassword);
+      } else if (!user) {
+        throw new Error('No authenticated user session found');
+      }
+    } catch (err: unknown) {
+      const formatted = formatAuthError(err);
+      setError(formatted.message);
+      throw err;
+    }
+  }, [user]);
+
   const value: AuthContextValue = {
     user,
     idToken,
@@ -193,6 +243,8 @@ export function AuthProvider({
     signInWithGoogle,
     signInWithGithub,
     signOut,
+    updateUserProfile,
+    updateUserPassword,
     getIdToken,
     clearError,
   };

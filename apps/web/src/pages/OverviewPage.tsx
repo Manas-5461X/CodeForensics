@@ -12,6 +12,7 @@ import {
   RefreshCw,
   FolderGit2,
   Link2,
+  Compass,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useRepository } from '../context/RepositoryContext.js';
@@ -64,6 +65,36 @@ export function OverviewPage() {
           </div>
         </div>
       )}
+
+      {/* Workflow Guide & Documentation Quick Banner */}
+      <div className="bg-surface rounded-md border border-border-strong p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-surface to-surface-subtle shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md bg-accent/15 border border-accent/30 text-accent flex items-center justify-center shrink-0">
+            <Compass className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-primary flex items-center gap-2">
+              <span>New to CodeForensics?</span>
+              <span className="text-[10px] text-accent font-semibold px-1.5 py-0.2 rounded bg-accent/10 border border-accent/20">Guided Workflow</span>
+            </div>
+            <p className="text-[11px] text-primary-secondary mt-0.5">
+              Learn how to trace symbols with AST Code Archaeology, evaluate causal PR links, and cite evidence.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <Link to="/app/workflow" className="w-full sm:w-auto">
+            <Button variant="secondary" size="sm" rightIcon={<ArrowRight className="w-3 h-3" />} className="w-full sm:w-auto text-xs">
+              Workflow Guide
+            </Button>
+          </Link>
+          <Link to="/docs" className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs">
+              Docs
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       {/* Scope and Repository Banner */}
       <div className="bg-surface border border-border-subtle p-4 sm:p-5 rounded-md flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary.js';
 import { LandingPage } from './pages/LandingPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
+import { WorkflowPage } from './pages/WorkflowPage.js';
 import { IssuesPage } from './pages/IssuesPage.js';
 import { ContributionsPage } from './pages/ContributionsPage.js';
 import { ArchaeologyPage } from './pages/ArchaeologyPage.js';
@@ -57,6 +58,7 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                   }
                 >
                   <Route index element={<OverviewPage />} />
+                  <Route path="workflow" element={<WorkflowPage />} />
                   <Route path="issues" element={<IssuesPage />} />
                   <Route path="contributions" element={<ContributionsPage />} />
                   <Route path="archaeology" element={<ArchaeologyPage />} />
@@ -65,7 +67,9 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                 </Route>
 
                 {/* Legacy /workbench route aliases for backward compatibility */}
+                <Route path="/workflow" element={<Navigate to="/app/workflow" replace />} />
                 <Route path="/workbench" element={<Navigate to="/app" replace />} />
+                <Route path="/workbench/workflow" element={<Navigate to="/app/workflow" replace />} />
                 <Route path="/workbench/investigations" element={<Navigate to="/app/investigations" replace />} />
                 <Route path="/workbench/archaeology" element={<Navigate to="/app/archaeology" replace />} />
                 <Route path="/workbench/contributions" element={<Navigate to="/app/contributions" replace />} />

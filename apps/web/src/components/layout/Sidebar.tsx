@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import {
+  Compass,
   LayoutDashboard,
   GitPullRequest,
   Sparkles,
@@ -9,6 +10,7 @@ import {
   FolderGit2,
   ChevronDown,
   X,
+  FileText,
 } from 'lucide-react';
 import { cn } from '../../utils/cn.js';
 import { useRepository } from '../../context/RepositoryContext.js';
@@ -33,6 +35,7 @@ export function Sidebar({
   const currentRepoName = propActiveRepo || contextActiveRepo?.fullName || 'No Repository Selected';
 
   const navItems = [
+    { label: 'Workflow Guide', to: '/app/workflow', icon: Compass },
     { label: 'Overview', to: '/app', end: true, icon: LayoutDashboard },
     { label: 'Issues & PRs', to: '/app/issues', icon: GitPullRequest },
     { label: 'Contribution Finder', to: '/app/contributions', icon: Sparkles },
@@ -119,6 +122,18 @@ export function Sidebar({
             </NavLink>
           );
         })}
+
+        <div className="pt-3 pb-1 text-[10px] font-semibold text-primary-muted uppercase tracking-wider px-2">
+          Resources
+        </div>
+        <Link
+          to="/docs"
+          onClick={() => isMobile && onCloseMobile?.()}
+          className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-medium text-primary-secondary hover:text-primary hover:bg-surface-subtle transition-colors"
+        >
+          <FileText className="w-4 h-4 text-primary-muted shrink-0" />
+          <span>Documentation</span>
+        </Link>
       </nav>
 
       {/* Footer Info */}

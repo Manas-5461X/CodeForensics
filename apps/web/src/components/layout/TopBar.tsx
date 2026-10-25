@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -12,6 +13,7 @@ import {
 import { Button } from '../ui/Button.js';
 import { useAuth } from '../../context/AuthContext.js';
 import { useRepository } from '../../context/RepositoryContext.js';
+import { ProfileModal } from '../profile/ProfileModal.js';
 
 interface TopBarProps {
   pageTitle?: string;
@@ -30,6 +32,7 @@ export function TopBar({
 }: TopBarProps) {
   const { user, signOut } = useAuth();
   const { syncState, isSyncing, triggerSync, activeRepo } = useRepository();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleSync = () => {
     if (propOnSyncClick) {
@@ -129,14 +132,24 @@ export function TopBar({
         {/* User Account / Identity */}
         {user ? (
           <div className="flex items-center gap-2">
-            <div className="hidden lg:flex flex-col items-end text-right">
-              <span className="text-xs font-semibold text-primary truncate max-w-[120px]">
-                {user.displayName || user.email?.split('@')[0]}
-              </span>
-              <span className="text-[10px] text-primary-muted font-mono truncate max-w-[120px]">
-                {user.email}
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(true)}
+              className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-surface-subtle transition-colors group cursor-pointer border border-transparent hover:border-border-subtle"
+              title="Manage Profile & Settings"
+            >
+              <div className="w-7 h-7 rounded-full bg-accent/15 border border-accent/30 text-accent font-bold flex items-center justify-center text-xs tracking-wider shrink-0">
+                {(user.displayName || user.email || 'CF').slice(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden lg:flex flex-col items-start text-left">
+                <span className="text-xs font-semibold text-primary group-hover:text-link transition-colors truncate max-w-[130px]">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                <span className="text-[10px] text-primary-muted font-mono truncate max-w-[130px]">
+                  Edit Profile
+                </span>
+              </div>
+            </button>
             <Button
               size="sm"
               variant="outline"
@@ -161,6 +174,14 @@ export function TopBar({
           </Link>
         )}
       </div>
+
+      {/* Profile & Account Settings Modal */}
+      {user && (
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </header>
   );
 }

@@ -13,11 +13,12 @@ export function AppShell() {
   }, [location.pathname]);
 
   const getPageTitle = (path: string): string => {
-    if (path.startsWith('/issues')) return 'Issue & PR Lineage';
-    if (path.startsWith('/contributions')) return 'Contribution Finder';
-    if (path.startsWith('/archaeology')) return 'Code Archaeology';
-    if (path.startsWith('/investigations')) return 'Investigations & Evidence';
-    if (path.startsWith('/docs')) return 'Documentation';
+    if (path.includes('/workflow')) return 'Workbench Workflow Guide';
+    if (path.includes('/issues')) return 'Issue & PR Lineage';
+    if (path.includes('/contributions')) return 'Contribution Finder';
+    if (path.includes('/archaeology')) return 'Code Archaeology';
+    if (path.includes('/investigations')) return 'Investigations & Evidence';
+    if (path.includes('/docs')) return 'Documentation';
     return 'Repository Overview';
   };
 

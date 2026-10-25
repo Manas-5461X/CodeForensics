@@ -1023,14 +1023,20 @@ export function InvestigationsPage() {
                   <select
                     value={selectedScopePreset}
                     onChange={(e) => handleScopePresetChange(e.target.value)}
-                    className="w-full bg-surface-subtle text-xs text-primary font-medium rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link mb-1.5"
+                    className="w-full bg-surface-subtle text-xs text-primary font-medium rounded px-2.5 py-1.5 border border-border-strong focus:outline-none focus:border-link mb-1"
                   >
                     {SCOPE_PRESETS.map((preset) => (
                       <option key={preset.id} value={preset.id}>
-                        {preset.icon} {preset.label} — {preset.description}
+                        {preset.icon} {preset.label}
                       </option>
                     ))}
                   </select>
+
+                  {SCOPE_PRESETS.find((p) => p.id === selectedScopePreset)?.description && (
+                    <p className="text-[11px] text-primary-muted mb-1.5 italic">
+                      {SCOPE_PRESETS.find((p) => p.id === selectedScopePreset)?.description}
+                    </p>
+                  )}
 
                   {/* Scope Target String */}
                   <input
