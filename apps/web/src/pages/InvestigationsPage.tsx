@@ -124,10 +124,9 @@ export function InvestigationsPage() {
       setFormError('Question is required');
       return;
     }
-    if (!newScope.trim()) {
-      setFormError('Scope is required');
-      return;
-    }
+    const scopeToUse =
+      newScope.trim() ||
+      (activeRepo ? `${activeRepo.fullName} (Whole Repo)` : 'Whole Repository');
 
     setIsSubmitting(true);
     setFormError(null);
@@ -153,7 +152,7 @@ export function InvestigationsPage() {
       const res = await post<InvestigationRecord>('/api/v1/investigations', {
         repositoryId: activeRepo.id,
         question: newQuestion.trim(),
-        scope: newScope.trim(),
+        scope: scopeToUse,
         status: newStatus,
         hypotheses,
         observations,
@@ -307,6 +306,9 @@ export function InvestigationsPage() {
           size="sm"
           onClick={() => {
             setFormError(null);
+            if (!newScope && activeRepo) {
+              setNewScope(`${activeRepo.fullName} (Whole Repo)`);
+            }
             setIsCreateModalOpen(true);
           }}
           leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -748,17 +750,57 @@ export function InvestigationsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-primary block mb-1">
-                  Target Scope *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-primary">
+                    Target Scope
+                  </label>
+                  <span className="text-[11px] text-primary-muted">
+                    Area of codebase under review
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={newScope}
                   onChange={(e) => setNewScope(e.target.value)}
-                  placeholder="e.g. React 19 RC • packages/react/src/ReactHooks.js • commit b84f291"
-                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link"
-                  required
+                  placeholder="e.g. Entire repo, Auth subsystem, or React 19 RC • packages/react/src/ReactHooks.js"
+                  className="w-full bg-surface-subtle text-xs text-primary rounded px-3 py-2 border border-border-strong focus:outline-none focus:border-link font-mono"
                 />
+
+                {/* 1-Click Scope Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                  <span className="text-[10px] text-primary-muted font-medium">Quick Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => setNewScope(`${activeRepo?.fullName || 'Repository'} (Whole Repo)`)}
+                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
+                  >
+                    📁 Whole Repository
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • API & Backend`)}
+                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
+                  >
+                    ⚡ API & Backend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • UI & Frontend`)}
+                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
+                  >
+                    🎨 UI & Frontend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewScope(`${activeRepo?.name || 'repo'} • Auth & Security`)}
+                    className="px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-primary hover:border-accent transition-colors"
+                  >
+                    🔒 Auth & Security
+                  </button>
+                </div>
+                <p className="text-[11px] text-primary-muted mt-1.5 leading-normal">
+                  Scope defines which part of the code you are investigating. Click a quick preset above or type any specific module, file path, or PR. Defaults to Whole Repository if left blank.
+                </p>
               </div>
 
               <div>

@@ -64,6 +64,14 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                   <Route path="docs" element={<Navigate to="/docs" replace />} />
                 </Route>
 
+                {/* Legacy /workbench route aliases for backward compatibility */}
+                <Route path="/workbench" element={<Navigate to="/app" replace />} />
+                <Route path="/workbench/investigations" element={<Navigate to="/app/investigations" replace />} />
+                <Route path="/workbench/archaeology" element={<Navigate to="/app/archaeology" replace />} />
+                <Route path="/workbench/contributions" element={<Navigate to="/app/contributions" replace />} />
+                <Route path="/workbench/issues" element={<Navigate to="/app/issues" replace />} />
+                <Route path="/workbench/*" element={<Navigate to="/app" replace />} />
+
                 {/* 404 Route */}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

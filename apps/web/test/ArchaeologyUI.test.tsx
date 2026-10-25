@@ -158,7 +158,7 @@ describe('Phase 8: Code Archaeology Frontend Experience', () => {
     expect(screen.getByText('Sync Repository')).toBeDefined();
   });
 
-  it('renders symbol search input and quick suggestion buttons', () => {
+  it('renders symbol search input and search controls', () => {
     render(
       <MemoryRouter>
         <ArchaeologyPage />
@@ -166,8 +166,7 @@ describe('Phase 8: Code Archaeology Frontend Experience', () => {
     );
 
     expect(screen.getByPlaceholderText(/e.g. useDeferredValue/)).toBeDefined();
-    expect(screen.getByText('LaneScheduler')).toBeDefined();
-    expect(screen.getByText('packages/react/src/ReactHooks.js')).toBeDefined();
+    expect(screen.getByText('Trace History')).toBeDefined();
   });
 
   it('displays AST symbol details, line ranges, and GitHub source link after trace', async () => {

@@ -20,19 +20,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const DEFAULT_SUGGESTIONS = [
-  'useDeferredValue',
-  'packages/react/src/ReactHooks.js',
-  'LaneScheduler',
-  'createScheduler',
-];
-
 export function ArchaeologyPage() {
   const { activeRepo, syncState, triggerSync, isSyncing } = useRepository();
   const { get } = useApiClient();
   const navigate = useNavigate();
 
-  const [symbolQuery, setSymbolQuery] = useState<string>('useDeferredValue');
+  const isReactRepo = activeRepo?.name?.toLowerCase().includes('react') ?? false;
+  const [symbolQuery, setSymbolQuery] = useState<string>(isReactRepo ? 'useDeferredValue' : '');
   const [filePathInput, setFilePathInput] = useState<string>('');
   const [traceResult, setTraceResult] = useState<ArchaeologyTraceResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,20 +69,18 @@ export function ArchaeologyPage() {
   // Initial load trace
   useEffect(() => {
     if (activeRepo && !traceResult && !isLoading) {
-      void performTrace('useDeferredValue');
+      const initialQuery = symbolQuery.trim() || (isReactRepo ? 'useDeferredValue' : '');
+      if (initialQuery) {
+        void performTrace(initialQuery);
+      }
     }
-  }, [activeRepo]);
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setSymbolQuery(suggestion);
-    void performTrace(suggestion);
-  };
+  }, [activeRepo, isReactRepo]);
 
   const handleCreateInvestigationFromTrace = () => {
     if (!traceResult || !activeRepo) return;
     const initialQuestion = `What is the historical evolution and rationale of ${traceResult.query}?`;
     const scope = `${activeRepo.fullName} • ${traceResult.filePath || traceResult.query}`;
-    navigate('/workbench/investigations', {
+    navigate('/app/investigations', {
       state: {
         prefillQuestion: initialQuestion,
         prefillScope: scope,
@@ -233,7 +225,7 @@ export function ArchaeologyPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void performTrace();
               }}
-              placeholder="e.g. useDeferredValue, LaneScheduler, or packages/react/src/ReactHooks.js"
+              placeholder="e.g. useDeferredValue, auth, api, or packages/react/src/ReactHooks.js"
               className="w-full bg-surface-subtle text-xs font-mono text-primary rounded-md pl-9 pr-3 py-2 border border-border-strong focus:outline-none focus:border-link"
             />
           </div>
@@ -256,25 +248,13 @@ export function ArchaeologyPage() {
               leftIcon={isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : undefined}
               className="shrink-0"
             >
-              Trace
+              Trace History
             </Button>
           </div>
         </div>
-
-        {/* Quick Suggestion Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 pt-1 text-[11px] no-scrollbar">
-          <span className="text-primary-muted font-medium shrink-0">Quick suggestions:</span>
-          {DEFAULT_SUGGESTIONS.map((sug) => (
-            <button
-              key={sug}
-              type="button"
-              onClick={() => handleSuggestionClick(sug)}
-              className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle font-mono text-primary-secondary hover:text-primary hover:border-accent transition-colors shrink-0"
-            >
-              {sug}
-            </button>
-          ))}
-        </div>
+        <p className="text-[11px] text-primary-muted leading-relaxed">
+          Type any keyword, function name, or file path to search across commits and pull requests in this repository.
+        </p>
       </Panel>
 
       {/* Loading Skeleton */}
