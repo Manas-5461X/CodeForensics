@@ -32,9 +32,12 @@ export function MermaidViewer({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'visual' | 'code'>('visual');
   const [copied, setCopied] = useState<boolean>(false);
+  const [showHint, setShowHint] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Dynamically render Mermaid chart into SVG
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const hasDraggedRef = useRef(false);
+  // Dynamically compile and render Mermaid chart into SVG
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -42,7 +45,6 @@ export function MermaidViewer({
 
     async function renderMermaid() {
       try {
-        // Dynamically load Mermaid ESM from reliable CDN
         const loadDynamicModule = new Function('url', 'return import(url)') as (
           url: string
         ) => Promise<{ default?: any; render: any; initialize: any }>;
@@ -89,9 +91,156 @@ export function MermaidViewer({
     };
   }, [chart]);
 
+  // Wheel & Trackpad Pinch-to-Zoom Handler
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Touchpad pinch (sends e.ctrlKey === true) OR Ctrl/Meta/Alt + mouse wheel
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const zoomDelta = e.deltaY < 0 ? 0.12 : -0.12;
+        setZoomLevel((prevZoom) => {
+          const nextZoom = Math.min(3.0, Math.max(0.4, Math.round((prevZoom + zoomDelta) * 100) / 100));
+          if (nextZoom === prevZoom) return prevZoom;
+
+          const rect = container.getBoundingClientRect();
+          const cursorX = e.clientX - rect.left;
+          const cursorY = e.clientY - rect.top;
+          const factor = nextZoom / prevZoom;
+
+          container.scrollLeft = Math.max(0, (container.scrollLeft + cursorX) * factor - cursorX);
+          container.scrollTop = Math.max(0, (container.scrollTop + cursorY) * factor - cursorY);
+
+          return nextZoom;
+        });
+      }
+    };
+
+    // Touch device pinch zoom support
+    let initialDistance = 0;
+    let startZoom = 1;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        initialDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        startZoom = zoomLevel;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialDistance > 0) {
+        e.preventDefault();
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        const currentDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDistance / initialDistance;
+        const nextZoom = Math.min(3.0, Math.max(0.4, Math.round(startZoom * scale * 100) / 100));
+        setZoomLevel(nextZoom);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      initialDistance = 0;
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [zoomLevel]);
+
   const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, Math.round((z + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.4, Math.round((z - 0.15) * 100) / 100));
   const handleResetZoom = () => setZoomLevel(1);
+
+  // Double-click zoom at the specific clicked place
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // If already zoomed in (>= 1.5x), double-click smoothly resets back to 1.0x (100%)
+    if (zoomLevel >= 1.5) {
+      setZoomLevel(1);
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const targetZoom = Math.min(2.8, Math.round((zoomLevel + 0.5) * 100) / 100);
+    const factor = targetZoom / zoomLevel;
+
+    // Center the double-clicked coordinates in the viewport
+    const targetScrollLeft = (container.scrollLeft + clickX) * factor - clickX;
+    const targetScrollTop = (container.scrollTop + clickY) * factor - clickY;
+
+    setZoomLevel(targetZoom);
+
+    requestAnimationFrame(() => {
+      const left = Math.max(0, targetScrollLeft);
+      const top = Math.max(0, targetScrollTop);
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ left, top, behavior: 'smooth' });
+      } else {
+        container.scrollLeft = left;
+        container.scrollTop = top;
+      }
+    });
+  };
+
+  // Drag-to-pan handlers
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement)?.closest('.node') || (e.target as HTMLElement)?.closest('button')) {
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+
+    isDraggingRef.current = true;
+    hasDraggedRef.current = false;
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasDraggedRef.current = true;
+      container.style.cursor = 'grabbing';
+    }
+
+    container.scrollLeft = dragStartRef.current.scrollLeft - dx;
+    container.scrollTop = dragStartRef.current.scrollTop - dy;
+  };
+
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = '';
+    }
+  };
 
   const handleCopyCode = async () => {
     try {
@@ -118,6 +267,10 @@ export function MermaidViewer({
 
   // Handle interactive clicks on SVG nodes (folders & files)
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Ignore click if user was dragging or double-clicking
+    if (hasDraggedRef.current || e.detail > 1) {
+      return;
+    }
     if (!onNodeClick) return;
     const target = e.target as HTMLElement | SVGElement | null;
     if (!target) return;
@@ -215,6 +368,11 @@ export function MermaidViewer({
         <div
           ref={containerRef}
           onClick={handleContainerClick}
+          onDoubleClick={handleDoubleClick}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
           className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg p-6 flex items-center justify-center select-none mermaid-canvas"
         >
           {/* Interactive Node Hover CSS */}
@@ -232,17 +390,28 @@ export function MermaidViewer({
             }
           `}</style>
 
-          {/* Helper hint inside canvas */}
-          {!isLoading && !error && svgContent && (
-            <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-1.5 px-2 py-1 rounded bg-surface/90 backdrop-blur-md border border-border-subtle text-[10px] font-mono text-primary-muted shadow-xs pointer-events-none">
+          {/* Helper hint placed at TOP-LEFT so it NEVER interferes with diagram nodes below */}
+          {!isLoading && !error && svgContent && showHint && (
+            <div className="absolute top-3 left-3 z-10 hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface/90 backdrop-blur-md border border-border-subtle text-[10px] font-mono text-primary-muted shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-              <span>Click folder to expand/collapse • Files show churn score</span>
+              <span>Click folder to expand • Double-click or trackpad pinch to zoom</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHint(false);
+                }}
+                className="ml-1 text-primary-muted hover:text-primary transition-colors font-bold"
+                title="Dismiss hint"
+              >
+                ✕
+              </button>
             </div>
           )}
 
-          {/* In-Image Floating Zoom Overlay */}
+          {/* In-Image Floating Zoom Overlay placed at TOP-RIGHT so it NEVER interferes with diagram nodes */}
           {!isLoading && !error && svgContent && (
-            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-surface/90 backdrop-blur-md border border-border-subtle rounded-md px-1.5 py-1 shadow-md text-xs font-mono">
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-surface/90 backdrop-blur-md border border-border-subtle rounded-md px-1.5 py-1 shadow-md text-xs font-mono">
               <button
                 type="button"
                 onClick={handleZoomOut}
@@ -251,7 +420,7 @@ export function MermaidViewer({
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center select-none">
+              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center select-none font-semibold">
                 {Math.round(zoomLevel * 100)}%
               </span>
               <button
@@ -297,9 +466,9 @@ export function MermaidViewer({
               style={{
                 transform: `scale(${zoomLevel})`,
                 transformOrigin: 'top center',
-                transition: 'transform 0.15s ease-out',
+                transition: isDraggingRef.current ? 'none' : 'transform 0.12s ease-out',
               }}
-              className="w-full flex justify-center py-4"
+              className="w-full flex justify-center py-4 min-w-max"
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />
           ) : null}

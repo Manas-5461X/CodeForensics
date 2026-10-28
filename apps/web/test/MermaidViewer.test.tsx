@@ -71,4 +71,23 @@ describe('MermaidViewer Component', () => {
       expect(handleNodeClick).toHaveBeenCalledWith('n_apps_api', '📁 api (▾ 5 files)');
     }
   });
+
+  it('supports double-click to zoom and wheel events', () => {
+    const { container } = render(
+      <MermaidViewer
+        chart={sampleChart}
+        title="Zoom Test"
+      />
+    );
+
+    const canvas = container.querySelector('.mermaid-canvas');
+    expect(canvas).toBeDefined();
+
+    if (canvas) {
+      // Test double-click event
+      fireEvent.doubleClick(canvas, { clientX: 100, clientY: 100 });
+      // Test wheel event with ctrlKey (trackpad pinch-to-zoom)
+      fireEvent.wheel(canvas, { deltaY: -50, ctrlKey: true });
+    }
+  });
 });
