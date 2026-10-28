@@ -6,6 +6,7 @@ import { Panel } from '../components/ui/Panel.js';
 import { Button } from '../components/ui/Button.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { MermaidViewer } from '../components/map/MermaidViewer.js';
 import type {
   RepositoryMapData,
   RepositoryMapNode,
@@ -45,7 +46,7 @@ export function RepositoryMapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubsystem, setSelectedSubsystem] = useState<string>('all');
   const [minChurn, setMinChurn] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'tree' | 'mermaid' | 'text'>('tree');
+  const [viewMode, setViewMode] = useState<'graph' | 'tree' | 'mermaid' | 'text'>('graph');
 
   // Zoom & Pan Canvas State
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -178,20 +179,27 @@ export function RepositoryMapPage() {
   // Export generators
   const generateMermaidExport = (data: RepositoryMapData): string => {
     const lines: string[] = ['graph TD', `  root["📁 ${data.fullName}"]:::rootClass`];
-    for (const sub of data.root.children || []) {
-      const subId = sub.name.replace(/[^a-zA-Z0-9]/g, '_');
-      const churnLabel = sub.churnScore >= 65 ? ' 🔥 HOTSPOT' : '';
-      lines.push(`  root --> ${subId}["📁 ${sub.name} (${sub.fileCount} files)${churnLabel}"]`);
+    for (const sub of data.root?.children || []) {
+      const subId = (sub.name || 'node').replace(/[^a-zA-Z0-9]/g, '_');
+      const isHot = (sub.churnScore ?? 0) >= 65;
+      const churnLabel = isHot ? ' 🔥 HOTSPOT' : '';
+      const nodeClass = isHot ? ':::hotClass' : ':::dirClass';
+      lines.push(`  root --> ${subId}["📁 ${sub.name} (${sub.fileCount ?? 0} files)${churnLabel}"]${nodeClass}`);
       if (sub.children) {
         for (const child of sub.children.slice(0, 8)) {
-          const childId = `${subId}_${child.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          const childId = `${subId}_${(child.name || 'file').replace(/[^a-zA-Z0-9]/g, '_')}`;
           const icon = child.type === 'directory' ? '📁' : '📄';
-          const badge = child.churnScore >= 75 ? ' [High Churn]' : '';
-          lines.push(`  ${subId} --> ${childId}["${icon} ${child.name}${badge}"]`);
+          const childHot = (child.churnScore ?? 0) >= 75;
+          const badge = childHot ? ' [🔥 High Churn]' : '';
+          const childClass = childHot ? ':::hotClass' : child.type === 'directory' ? ':::dirClass' : ':::fileClass';
+          lines.push(`  ${subId} --> ${childId}["${icon} ${child.name}${badge}"]${childClass}`);
         }
       }
     }
-    lines.push('  classDef rootClass fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;');
+    lines.push('  classDef rootClass fill:#0f172a,stroke:#38bdf8,stroke-width:2.5px,color:#f8fafc;');
+    lines.push('  classDef dirClass fill:#1e293b,stroke:#0284c7,stroke-width:1.5px,color:#f8fafc;');
+    lines.push('  classDef fileClass fill:#0f172a,stroke:#475569,stroke-width:1px,color:#e2e8f0;');
+    lines.push('  classDef hotClass fill:#450a0a,stroke:#f43f5e,stroke-width:2px,color:#fecdd3;');
     return lines.join('\n');
   };
 
@@ -524,30 +532,43 @@ export function RepositoryMapPage() {
               <div className="flex items-center gap-1 p-0.5 bg-surface-subtle border border-border-subtle rounded-md self-start sm:self-auto">
                 <button
                   type="button"
-                  onClick={() => setViewMode('tree')}
-                  className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'tree' ? 'bg-surface text-primary shadow-xs' : 'text-primary-muted hover:text-primary'
+                  onClick={() => setViewMode('graph')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'graph' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
-                  Interactive Tree
+                  <Network className="w-3.5 h-3.5 text-accent" />
+                  <span>Visual Graph</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('tree')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'tree' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  }`}
+                >
+                  <Folder className="w-3.5 h-3.5 text-accent" />
+                  <span>Interactive Tree</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('mermaid')}
-                  className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'mermaid' ? 'bg-surface text-primary shadow-xs' : 'text-primary-muted hover:text-primary'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'mermaid' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
-                  Mermaid Graph
+                  <Code2 className="w-3.5 h-3.5 text-accent" />
+                  <span>Mermaid Code</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('text')}
-                  className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'text' ? 'bg-surface text-primary shadow-xs' : 'text-primary-muted hover:text-primary'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'text' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
-                  ASCII Tree
+                  <FileText className="w-3.5 h-3.5 text-accent" />
+                  <span>ASCII Tree</span>
                 </button>
               </div>
             </div>
@@ -655,7 +676,13 @@ export function RepositoryMapPage() {
                 </Button>
               </div>
             ) : mapData ? (
-              viewMode === 'tree' ? (
+              viewMode === 'graph' ? (
+                <MermaidViewer
+                  chart={generateMermaidExport(mapData)}
+                  title={`${mapData.fullName} Architecture Flowchart`}
+                  filename={`${activeRepo?.name || 'repo'}-architecture-flowchart`}
+                />
+              ) : viewMode === 'tree' ? (
                 <div
                   style={{
                     transform: `scale(${zoomLevel})`,
@@ -682,7 +709,7 @@ export function RepositoryMapPage() {
                       Copy Syntax
                     </button>
                   </div>
-                  <pre className="p-4 bg-canvas border border-border-subtle rounded-md text-xs font-mono text-primary overflow-x-auto leading-relaxed">
+                  <pre className="p-4 bg-canvas border border-border-subtle rounded-md text-xs font-mono text-primary overflow-x-auto leading-relaxed whitespace-pre select-all">
                     {generateMermaidExport(mapData)}
                   </pre>
                 </div>
