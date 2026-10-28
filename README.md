@@ -190,9 +190,11 @@ codeforensics/
 ├── prisma/
 │   ├── schema.prisma    # PostgreSQL relational schema and compound unique indexes
 │   └── migrations/      # Version-controlled SQL migrations
-├── docs/                # In-depth architectural documentation
+├── docs/                # In-depth architectural & deployment guides
+│   ├── setup-and-deployment.md # End-to-end setup, cloud deployment & troubleshooting
+│   └── data-model.md    # Relational schema and entity mappings
 ├── docker-compose.yml   # PostgreSQL 16 and Redis 7 local orchestration
-├── setup.md             # End-to-end setup and deployment guide
+├── setup.md             # Quick developer setup cheatsheet
 └── package.json         # Monorepo workspaces manifest
 ```
 
@@ -475,7 +477,7 @@ npm test --workspace=@codeforensics/web
 | `GitHub App not configured (401/403)` | Missing PEM file or incorrect App ID. | Verify `GITHUB_APP_ID` and `secrets/github-private-key.pem` match your registered GitHub App. |
 | `Port 4000 or 5173 already in use` | Zombie process from previous run. | Kill the occupying process: `npx kill-port 4000 5173` or restart your terminal. |
 
-For extended diagnostics, see [docs/troubleshooting.md](docs/troubleshooting.md).
+For extended diagnostics and common error recovery, see the [Setup & Deployment Troubleshooting Guide](docs/setup-and-deployment.md#8-troubleshooting--diagnostics-runbook).
 
 ---
 
@@ -483,12 +485,12 @@ For extended diagnostics, see [docs/troubleshooting.md](docs/troubleshooting.md)
 
 Before deploying CodeForensics to production:
 
-1. **Frontend**: Deploy `apps/web` to Vercel or Cloudflare Pages. Configure environment variables (`VITE_API_BASE_URL`, `VITE_FIREBASE_*`).
+1. **Frontend**: Deploy `apps/web` to Vercel or Cloudflare Pages. Configure environment variables (`VITE_API_URL`, `VITE_FIREBASE_*`).
 2. **Backend API & Worker**: Deploy `apps/api` and `apps/worker` as Node containers on Render, Fly.io, or AWS ECS.
 3. **Database & Queue**: Provision managed PostgreSQL 16+ (e.g. Neon, Supabase) and managed Redis (e.g. Upstash). Run `npx prisma migrate deploy` in your CI/CD pipeline.
 4. **Domain Configuration**: Add your production domain to Firebase Authorized Domains and update GitHub App Webhook URLs.
 
-For full deployment scripts and recipes, see [setup.md](setup.md).
+For full cloud deployment step-by-step instructions, see [docs/setup-and-deployment.md](docs/setup-and-deployment.md) and [setup.md](setup.md).
 
 ---
 
@@ -504,5 +506,3 @@ For full deployment scripts and recipes, see [setup.md](setup.md).
 Watch the complete CodeForensics product demo showing multi-tier repository synchronization, AST Code Archaeology, issue/PR lineage tracing, contributor impact scoring, and the forensic investigations vault:
 
 - **Product Demo Video**: [Watch Demo on Google Drive](https://drive.google.com/drive/folders/1x_lT3jjLE0A8UWEtmDs0cvlbsKQgqd7e?usp=sharing)
-
-

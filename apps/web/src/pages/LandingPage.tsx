@@ -106,7 +106,7 @@ export function LandingPage() {
         <div className="relative z-10 w-full max-w-6xl mx-auto my-auto">
           {/* Small Monospace Eyebrow */}
           <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded bg-[#06152d]/80 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.2)] text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-4 sm:mb-5 backdrop-blur-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]" />
             <span>FOR MAINTAINERS & CONTRIBUTORS</span>
             <span className="text-slate-500">•</span>
             <span className="text-[#00f0ff] font-bold">EVIDENCE GRAPH</span>
@@ -123,7 +123,7 @@ export function LandingPage() {
           {/* Value Proposition Tagline */}
           <p className="mt-4 sm:mt-5 text-sm sm:text-base lg:text-lg text-slate-200 max-w-2xl leading-relaxed font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
             CodeForensics connects GitHub issues, pull requests, review discussions, and commit diffs into an inspectable evidence graph.
-            Distinguish observed provider facts from heuristic inferences—with visible uncertainty and traceable provenance.
+            Distinguish observed provider facts from heuristic inferences, with visible uncertainty and traceable provenance.
           </p>
 
           {/* CTA Action Row */}

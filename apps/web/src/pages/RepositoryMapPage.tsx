@@ -1880,70 +1880,90 @@ export function RepositoryMapPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60">
-                    <span className="text-[10px] text-primary-muted block">Churn Hotspot Score</span>
-                    <div className="flex items-baseline justify-between mt-0.5">
-                      <span
-                        className={`font-bold text-sm ${
-                          selectedNode.churnScore >= 65
-                            ? 'text-rose-600'
-                            : selectedNode.churnScore >= 40
-                            ? 'text-amber-600'
-                            : 'text-emerald-600'
-                        }`}
-                      >
-                        {selectedNode.churnScore}/100
-                      </span>
-                      <span className="text-[10px] font-semibold text-primary-muted">
-                        {selectedNode.churnScore >= 65 ? 'Hotspot' : selectedNode.churnScore >= 40 ? 'Moderate' : 'Stable'}
-                      </span>
-                    </div>
-
-                    {/* Score Bar */}
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          selectedNode.churnScore >= 65
-                            ? 'bg-rose-500'
-                            : selectedNode.churnScore >= 40
-                            ? 'bg-amber-500'
-                            : 'bg-emerald-500'
-                        }`}
-                        style={{ width: `${Math.min(100, Math.max(5, selectedNode.churnScore))}%` }}
-                      />
-                    </div>
-
-                    <p className="text-[9px] text-primary-muted leading-tight mt-1">
+                {/* De-clustered, spacious Churn Hotspot Score Card */}
+                <div className="p-3 bg-surface-subtle/50 rounded-lg border border-border-subtle/70 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-primary font-mono uppercase tracking-wider">
+                      Churn Hotspot Risk
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold font-mono px-2 py-0.5 rounded-full border ${
+                        selectedNode.churnScore >= 65
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                          : selectedNode.churnScore >= 40
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      }`}
+                    >
                       {selectedNode.churnScore >= 65
-                        ? 'High-risk change frequency. Primary bug magnet.'
+                        ? 'Critical Hotspot'
                         : selectedNode.churnScore >= 40
-                        ? 'Active feature iterations & changes.'
-                        : 'Infrequently modified stable component.'}
-                    </p>
+                        ? 'Active Churn'
+                        : 'Stable Core'}
+                    </span>
                   </div>
 
-                  <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60">
-                    <span className="text-[10px] text-primary-muted block">
+                  <div className="flex items-baseline gap-1.5">
+                    <span
+                      className={`text-2xl font-bold font-mono tracking-tight ${
+                        selectedNode.churnScore >= 65
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : selectedNode.churnScore >= 40
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      }`}
+                    >
+                      {selectedNode.churnScore}
+                    </span>
+                    <span className="text-xs font-mono text-primary-muted">/ 100</span>
+                  </div>
+
+                  {/* Score Progress Bar */}
+                  <div className="w-full bg-slate-200 dark:bg-slate-700/80 h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        selectedNode.churnScore >= 65
+                          ? 'bg-rose-500'
+                          : selectedNode.churnScore >= 40
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(5, selectedNode.churnScore))}%` }}
+                    />
+                  </div>
+
+                  <p className="text-[10px] text-primary-muted leading-relaxed">
+                    {selectedNode.churnScore >= 65
+                      ? 'High-risk change frequency. Primary bug magnet and volatility zone.'
+                      : selectedNode.churnScore >= 40
+                      ? 'Active feature iterations and recurrent pull request revisions.'
+                      : 'Infrequently modified stable component with low regression risk.'}
+                  </p>
+                </div>
+
+                {/* 2-Column Secondary Metrics: Size / Files & Maintainer */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 bg-surface-subtle/50 rounded-lg border border-border-subtle/60">
+                    <span className="text-[10px] text-primary-muted block font-medium">
                       {selectedNode.type === 'directory' ? 'Total Files' : 'File Size'}
                     </span>
-                    <span className="font-bold text-sm text-primary">
+                    <span className="font-bold text-sm text-primary font-mono mt-0.5 block">
                       {selectedNode.type === 'directory'
                         ? `${selectedNode.fileCount || 0} files`
                         : `${((selectedNode.size || 1024) / 1024).toFixed(1)} KB`}
                     </span>
                   </div>
-                </div>
 
-                {selectedNode.topMaintainer && (
-                  <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60">
-                    <span className="text-[10px] text-primary-muted block">Primary Maintainer</span>
-                    <span className="font-bold text-xs text-primary flex items-center gap-1 mt-0.5">
-                      <User className="w-3 h-3 text-primary-muted" />
-                      @{selectedNode.topMaintainer}
+                  <div className="p-2.5 bg-surface-subtle/50 rounded-lg border border-border-subtle/60">
+                    <span className="text-[10px] text-primary-muted block font-medium">Primary Maintainer</span>
+                    <span className="font-bold text-xs text-primary flex items-center gap-1 mt-1 truncate">
+                      <User className="w-3 h-3 text-primary-muted shrink-0" />
+                      <span className="truncate">
+                        {selectedNode.topMaintainer ? `@${selectedNode.topMaintainer}` : 'Distributed'}
+                      </span>
                     </span>
                   </div>
-                )}
+                </div>
 
                 {/* Frequently Co-Changed Companions if available */}
                 {selectedNode.type === 'file' && coChangeReport && (

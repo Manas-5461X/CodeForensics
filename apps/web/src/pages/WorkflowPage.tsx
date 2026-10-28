@@ -170,7 +170,7 @@ export function WorkflowPage() {
               <FolderGit2 className="w-3.5 h-3.5 text-accent" />
               Active Target: <strong className="text-primary font-mono">{activeRepo.fullName}</strong>
             </span>
-            <span className="hidden sm:inline">Engine v0.1.0 • Ready for Investigation</span>
+            <span className="hidden sm:inline text-primary-muted font-mono">Ready for Investigation</span>
           </div>
         )}
       </div>

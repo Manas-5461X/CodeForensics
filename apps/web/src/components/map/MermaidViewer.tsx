@@ -36,7 +36,6 @@ export function MermaidViewer({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'visual' | 'code'>('visual');
   const [copied, setCopied] = useState<boolean>(false);
-  const [showHint, setShowHint] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
@@ -352,8 +351,42 @@ export function MermaidViewer({
           </span>
         </div>
 
-        {/* Right: Compact Visual/Code Toggle & Logo/Icon Buttons */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+        {/* Right: Compact Visual/Code Toggle, Header Zoom Controls & Logo Buttons */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto flex-wrap">
+          {/* Static Zoom Controls in Header Bar - Never overlaps or covers canvas nodes */}
+          {activeTab === 'visual' && !isLoading && !error && (
+            <div className="flex items-center gap-1 bg-surface-subtle border border-border-subtle rounded px-1.5 py-0.5 text-xs font-mono">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-0.5 text-primary-muted hover:text-primary rounded transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center select-none font-semibold tabular-nums">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-0.5 text-primary-muted hover:text-primary rounded transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <div className="h-3 w-px bg-border-subtle mx-0.5" />
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="p-0.5 text-primary-muted hover:text-primary rounded transition-colors"
+                title="Reset Zoom (100%)"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           {/* Dependency Flow Overlay Toggle */}
           {onToggleDependencies && (
             <button
@@ -457,59 +490,6 @@ export function MermaidViewer({
               filter: brightness(0.92);
             }
           `}</style>
-
-          {/* Helper hint placed at TOP-LEFT so it NEVER interferes with diagram nodes below */}
-          {!isLoading && !error && svgContent && showHint && (
-            <div className="absolute top-3 left-3 z-10 hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface/90 backdrop-blur-md border border-border-subtle text-[10px] font-mono text-primary-muted shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-              <span>Click folder to expand • Double-click or trackpad pinch to zoom</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowHint(false);
-                }}
-                className="ml-1 text-primary-muted hover:text-primary transition-colors font-bold"
-                title="Dismiss hint"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* In-Image Floating Zoom Overlay placed at TOP-RIGHT so it NEVER interferes with diagram nodes */}
-          {!isLoading && !error && svgContent && (
-            <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-surface/90 backdrop-blur-md border border-border-subtle rounded-md px-1.5 py-1 shadow-md text-xs font-mono">
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center select-none font-semibold">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <div className="h-3 w-px bg-border-subtle mx-0.5" />
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
-                title="Reset Zoom (100%)"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            </div>
-          )}
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center space-y-3 py-24 text-primary-muted font-mono text-xs">

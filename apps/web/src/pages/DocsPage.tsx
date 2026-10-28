@@ -444,40 +444,6 @@ GET /api/v1/repositories/:owner/:repo/archaeology/trace?filePath=packages/shared
       ],
     },
   },
-  {
-    id: 'troubleshooting',
-    title: 'Troubleshooting & Diagnostics',
-    category: 'Operations & Security',
-    icon: AlertTriangle,
-    summary: 'Resolving database connectivity, Redis queue delays, and GitHub App integration errors.',
-    readTime: '5 min read',
-    tags: ['FAQ', 'Troubleshooting', 'Firebase Domains', 'Queue Stalls'],
-    content: {
-      lead: 'Actionable recovery guidance for common local setup, cloud deployment, and infrastructure issues.',
-      sections: [
-        {
-          heading: 'Firebase "auth/unauthorized-domain" Error',
-          body: 'If sign-in displays "Domain Not Authorized", your production domain (e.g. your Vercel deployment URL) is not yet whitelisted in Firebase Console. Go to Firebase Console → Authentication → Settings → Authorized domains, click "Add domain", and paste your Vercel domain.',
-          callout: {
-            type: 'warning',
-            text: 'Firebase requires this domain whitelist to protect your API key from unauthorized client-side impersonation on third-party sites.',
-          },
-        },
-        {
-          heading: 'Database Connection Failures (500 / degraded health)',
-          body: 'If the /health endpoint reports database: disconnected, ensure PostgreSQL is running and DATABASE_URL matches your credentials. For cloud pools (e.g., Neon Postgres), verify network pooling and ensure health check timeouts accommodate cold connections (3000ms+).',
-        },
-        {
-          heading: 'Redis Queue Stalls or Missing Worker',
-          body: 'If sync jobs remain in QUEUED state, verify that the worker process is running (npm run dev:worker or node apps/worker/dist/index.js) and connected to REDIS_URL.',
-        },
-        {
-          heading: 'GitHub App "Not Configured" Warning',
-          body: 'If repository discovery returns an empty list, ensure GITHUB_APP_ID and GITHUB_PRIVATE_KEY are configured in environment variables and that the GitHub App has been installed on your GitHub account or organization.',
-        },
-      ],
-    },
-  },
 ];
 
 export function DocsPage() {
@@ -733,13 +699,17 @@ export function DocsPage() {
             })}
           </nav>
 
-          {/* Sidebar Footer Badge */}
-          <div className="pt-4 mt-4 border-t border-slate-200 text-[11px] font-mono text-slate-500 flex items-center justify-between">
-            <span>Release v0.1.0</span>
-            <span className="text-emerald-600 flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Production
-            </span>
+          {/* Sidebar Footer Link to Developer Setup & Cloud Deployment */}
+          <div className="pt-4 mt-4 border-t border-slate-200 text-[11px] font-mono text-slate-500">
+            <a
+              href="https://github.com/Manas-5461X/CodeForensics/blob/main/docs/setup-and-deployment.md"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between text-slate-600 hover:text-cyan-700 transition-colors group"
+            >
+              <span>Setup & Cloud Deployment</span>
+              <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-cyan-700 transition-colors" />
+            </a>
           </div>
         </aside>
 

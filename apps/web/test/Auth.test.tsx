@@ -48,6 +48,6 @@ describe('Phase 2: Frontend Authentication & Protected Routes', () => {
     expect(screen.getByText('Sign in to Workbench')).toBeDefined();
     expect(screen.getByText('GitHub')).toBeDefined();
     expect(screen.getByText('Google')).toBeDefined();
-    expect(screen.getByText('Forensic Authentication Gate')).toBeDefined();
+    expect(screen.getByText('Account Access')).toBeDefined();
   });
 });

@@ -137,17 +137,6 @@ export function Sidebar({
           <span>Documentation</span>
         </Link>
       </nav>
-
-      {/* Footer Info */}
-      <div className="p-3 border-t border-border-subtle bg-surface-subtle/20 text-[11px] text-primary-muted shrink-0">
-        <div className="flex items-center justify-between">
-          <span>Engine v0.1.0</span>
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success">
-            <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
-            Online
-          </span>
-        </div>
-      </div>
     </div>
   );
 

@@ -16,7 +16,7 @@ describe('Phase 9: In-App Documentation Frontend Experience', () => {
     );
 
     expect(screen.getByText('Developer Reference & System Guide')).toBeDefined();
-    expect(screen.getByText('Release v0.1.0')).toBeDefined();
+    expect(screen.getByText('Setup & Cloud Deployment')).toBeDefined();
     expect(screen.getByPlaceholderText('Search documentation...')).toBeDefined();
   });
 

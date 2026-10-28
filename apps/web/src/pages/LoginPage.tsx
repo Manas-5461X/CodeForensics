@@ -135,11 +135,6 @@ export function LoginPage() {
               </span>
             </div>
           </Link>
-
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#06152d]/90 border border-[#00f0ff]/30 text-[9px] font-mono text-[#00f0ff] uppercase tracking-wider backdrop-blur-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse" />
-            <span>Cryptographic Gateway</span>
-          </div>
         </div>
 
         {/* Center: Editorial Manifesto & Evidentiary Taxonomy Visual */}
@@ -219,13 +214,10 @@ export function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom: Verifiable Benchmark Line */}
+        {/* Bottom: Integrity Note */}
         <div className="relative z-10 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-            <span>Benchmark Case #28941 Live</span>
-          </div>
-          <span className="text-slate-500">Decoupled Identity Boundary</span>
+          <span>Provable code citations</span>
+          <span className="text-slate-500">Zero unverified inferences</span>
         </div>
       </div>
 
@@ -299,17 +291,17 @@ export function LoginPage() {
 
           {/* Header Typography */}
           <div className="space-y-0.5">
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#06152d] border border-[#00f0ff]/30 text-[9px] font-mono text-[#00f0ff] uppercase tracking-wider mb-0.5">
-              <Shield className="w-2.5 h-2.5" />
-              <span>Forensic Authentication Gate</span>
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-0.5">
+              <Shield className="w-3 h-3 text-[#38bdf8]" />
+              <span>Account Access</span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white leading-tight">
               {mode === 'signin' ? 'Sign in to Workbench' : 'Create Maintainer Account'}
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-400 font-light">
               {mode === 'signin'
-                ? 'Authenticate with your verified identity to access saved repository investigations.'
-                : 'Register maintainer identity. Tokens are cryptographically verified by backend.'}
+                ? 'Sign in to access saved repository investigations and evidence dossiers.'
+                : 'Create an account to track repositories and save investigations.'}
             </p>
           </div>
 
@@ -474,19 +466,19 @@ export function LoginPage() {
             </button>
           </div>
 
-          {/* Security & Boundary Notice */}
+          {/* Security Notice */}
           <div className="pt-2 border-t border-slate-800/80 text-[10px] font-mono text-slate-500 flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-slate-400">
               <Check className="w-3 h-3 text-[#10b981]" />
-              <span>Decoupled Identity Boundary</span>
+              <span>Secure Authentication</span>
             </div>
-            <span className="text-[9px] text-slate-500">Cryptographic backend verification</span>
+            <span className="text-[9px] text-slate-500">Firebase & GitHub OAuth</span>
           </div>
         </div>
 
         {/* Bottom Footer Note */}
-        <div className="w-full max-w-sm sm:max-w-md mx-auto pt-2 text-center text-[10px] font-mono text-slate-600 shrink-0">
-          CodeForensics Engine • Software Forensics & Repository Intelligence
+        <div className="w-full max-w-sm sm:max-w-md mx-auto pt-2 text-center text-[10px] font-mono text-slate-500 shrink-0">
+          CodeForensics • Repository Forensics Platform
         </div>
       </div>
     </div>
