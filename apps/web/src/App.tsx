@@ -10,10 +10,7 @@ import { LoginPage } from './pages/LoginPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { WorkflowPage } from './pages/WorkflowPage.js';
 import { RepositoryMapPage } from './pages/RepositoryMapPage.js';
-import { CoChangePage } from './pages/CoChangePage.js';
-import { TimelinePage } from './pages/TimelinePage.js';
-import { BusFactorPage } from './pages/BusFactorPage.js';
-import { BlastRadiusPage } from './pages/BlastRadiusPage.js';
+import { ForensicAnalysisPage } from './pages/ForensicAnalysisPage.js';
 import { IssuesPage } from './pages/IssuesPage.js';
 import { ContributionsPage } from './pages/ContributionsPage.js';
 import { ArchaeologyPage } from './pages/ArchaeologyPage.js';
@@ -65,10 +62,12 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                   <Route index element={<OverviewPage />} />
                   <Route path="workflow" element={<WorkflowPage />} />
                   <Route path="map" element={<RepositoryMapPage />} />
-                  <Route path="co-change" element={<CoChangePage />} />
-                  <Route path="timeline" element={<TimelinePage />} />
-                  <Route path="bus-factor" element={<BusFactorPage />} />
-                  <Route path="blast-radius" element={<BlastRadiusPage />} />
+                  <Route path="analysis" element={<ForensicAnalysisPage />} />
+                  {/* Backward-compatible redirects to unified Forensic Analysis tab engine */}
+                  <Route path="co-change" element={<Navigate to="/app/analysis?tab=co-change" replace />} />
+                  <Route path="timeline" element={<Navigate to="/app/analysis?tab=timeline" replace />} />
+                  <Route path="bus-factor" element={<Navigate to="/app/analysis?tab=bus-factor" replace />} />
+                  <Route path="blast-radius" element={<Navigate to="/app/analysis?tab=blast-radius" replace />} />
                   <Route path="issues" element={<IssuesPage />} />
                   <Route path="contributions" element={<ContributionsPage />} />
                   <Route path="archaeology" element={<ArchaeologyPage />} />

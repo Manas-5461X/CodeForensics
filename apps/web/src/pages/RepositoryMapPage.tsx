@@ -24,6 +24,7 @@ import {
   FolderOpen,
   FileCode,
   FileText,
+  FolderGit2,
   Flame,
   User,
   GitBranch,
@@ -110,6 +111,29 @@ export function RepositoryMapPage() {
       })
       .sort((a, b) => (b.churnScore ?? 0) - (a.churnScore ?? 0));
   }, [allFileNodes, searchQuery, selectedSubsystem, minChurn]);
+
+  // Group filtered files by subsystem for the Proper Visual Heatmap Matrix
+  const heatmapFilesBySubsystem = useMemo(() => {
+    const groupMap = new Map<string, RepositoryMapNode[]>();
+    for (const file of filteredHeatmapFiles) {
+      const parts = file.path.split('/');
+      const key = parts.length > 2 ? `${parts[0]}/${parts[1]}` : (parts.length > 1 ? parts[0] : 'root');
+      if (!groupMap.has(key)) {
+        groupMap.set(key, []);
+      }
+      groupMap.get(key)!.push(file);
+    }
+
+    const groups: { subsystem: string; files: RepositoryMapNode[]; avgChurn: number }[] = [];
+    Array.from(groupMap.entries()).forEach(([subsystem, files]) => {
+      const avgChurn = Math.round(
+        files.reduce((acc, f) => acc + (f.churnScore ?? 0), 0) / files.length
+      );
+      groups.push({ subsystem, files, avgChurn });
+    });
+
+    return groups.sort((a, b) => b.avgChurn - a.avgChurn);
+  }, [filteredHeatmapFiles]);
 
   // Fetch repository architecture map data
   useEffect(() => {
@@ -784,14 +808,14 @@ export function RepositoryMapPage() {
       {/* Dedicated Forensic Analysis Engines Nav Banner */}
       <div className="p-3 bg-surface border border-border-subtle rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
         <div className="flex items-center gap-2 text-primary font-semibold">
-          <Layers className="w-4 h-4 text-accent" />
-          <span>Dedicated Forensic Analysis Engines:</span>
+          <Activity className="w-4 h-4 text-accent" />
+          <span>Forensic Analysis Workbench:</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/app/co-change')}
+            onClick={() => navigate('/app/analysis?tab=co-change')}
             leftIcon={<GitMerge className="w-3.5 h-3.5 text-accent" />}
           >
             Co-Change Matrix
@@ -799,7 +823,7 @@ export function RepositoryMapPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/app/timeline')}
+            onClick={() => navigate('/app/analysis?tab=timeline')}
             leftIcon={<Clock className="w-3.5 h-3.5 text-accent" />}
           >
             Time-Machine
@@ -807,7 +831,7 @@ export function RepositoryMapPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/app/bus-factor')}
+            onClick={() => navigate('/app/analysis?tab=bus-factor')}
             leftIcon={<ShieldAlert className="w-3.5 h-3.5 text-rose-500" />}
           >
             Bus Factor
@@ -815,7 +839,7 @@ export function RepositoryMapPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/app/blast-radius')}
+            onClick={() => navigate('/app/analysis?tab=blast-radius')}
             leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
           >
             Blast Radius
@@ -1091,110 +1115,155 @@ export function RepositoryMapPage() {
               ) : viewMode === 'heatmap' ? (
                 <div className="space-y-6 font-mono text-xs animate-in fade-in">
                   {/* Heatmap Control & Stat Banner */}
-                  <div className="p-3.5 bg-surface border border-border-subtle rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Flame className="w-4 h-4 text-rose-500" />
-                        <h4 className="font-bold text-primary text-sm">Visual Code Churn & Hotspot Heatmap</h4>
+                  <div className="p-4 bg-surface border border-border-subtle rounded-lg space-y-3.5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Flame className="w-4 h-4 text-rose-500" />
+                          <h4 className="font-bold text-primary text-sm">Visual Code Churn & Hotspot Heatmap</h4>
+                        </div>
+                        <p className="text-[11px] text-primary-secondary mt-0.5">
+                          2D density matrix shaded by volatility score (0–100). Click any cell to inspect in the Architecture Inspector.
+                        </p>
                       </div>
-                      <p className="text-[11px] text-primary-secondary mt-0.5">
-                        Interactive file matrix color-coded by volatility score (0–100). Click any file tile to inspect forensic telemetry.
-                      </p>
+
+                      <div className="flex items-center gap-3 text-xs font-mono shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                          <span className="text-primary font-semibold">
+                            {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 75).length} Hotspots (75+)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                          <span className="text-primary font-semibold">
+                            {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 50 && (f.churnScore ?? 0) < 75).length} High (50–74)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                          <span className="text-primary font-semibold">
+                            {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 25 && (f.churnScore ?? 0) < 50).length} Moderate
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                          <span className="text-primary font-semibold">
+                            {allFileNodes.filter((f) => (f.churnScore ?? 0) < 25).length} Stable (&lt;25)
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs font-mono shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-                        <span className="text-primary font-semibold">
-                          {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 65).length} Hotspots
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-                        <span className="text-primary font-semibold">
-                          {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 40 && (f.churnScore ?? 0) < 65).length} Active
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                        <span className="text-primary font-semibold">
-                          {allFileNodes.filter((f) => (f.churnScore ?? 0) < 40).length} Stable
-                        </span>
+                    {/* Continuous Color Gradient Scale Bar */}
+                    <div className="space-y-1.5 pt-1 border-t border-border-subtle/70">
+                      <div className="h-2.5 w-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 via-amber-500 via-orange-500 to-rose-600 shadow-inner" />
+                      <div className="flex items-center justify-between text-[10px] font-mono text-primary-muted">
+                        <span>0 Stable (Teal)</span>
+                        <span>25 Low</span>
+                        <span>50 Moderate (Amber)</span>
+                        <span>75 High (Orange)</span>
+                        <span>100 Critical Hotspot (Crimson)</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Heatmap Tiles Matrix */}
+                  {/* Proper Visual Heatmap Matrix - Grouped by Subsystem */}
                   {filteredHeatmapFiles.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
-                      {filteredHeatmapFiles.map((file) => {
-                        const churn = file.churnScore ?? 0;
-                        const isHot = churn >= 65;
-                        const isWarm = churn >= 40 && !isHot;
-                        const isSelected = selectedNode?.path === file.path;
-
-                        return (
-                          <div
-                            key={file.path}
-                            onClick={() => setSelectedNode(file)}
-                            className={`p-3 rounded-lg border transition-all cursor-pointer relative group flex flex-col justify-between min-h-[92px] ${
-                              isSelected
-                                ? 'ring-2 ring-accent border-accent shadow-md'
-                                : ''
-                            } ${
-                              isHot
-                                ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-900/60 hover:border-rose-500 hover:shadow-md'
-                                : isWarm
-                                ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 hover:border-amber-500 hover:shadow-md'
-                                : 'bg-surface border-border-subtle hover:border-primary-muted hover:shadow-xs'
-                            }`}
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-1">
-                                <span
-                                  className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
-                                    isHot
-                                      ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'
-                                      : isWarm
-                                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
-                                      : 'bg-surface-subtle text-primary-muted'
-                                  }`}
-                                >
-                                  {file.path.split('/')[0]}
-                                </span>
-
-                                <span
-                                  className={`inline-flex items-center gap-0.5 text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
-                                    isHot
-                                      ? 'bg-rose-600 text-white'
-                                      : isWarm
-                                      ? 'bg-amber-600 text-white'
-                                      : 'bg-slate-200 dark:bg-slate-800 text-primary-muted'
-                                  }`}
-                                >
-                                  {isHot && <Flame className="w-2.5 h-2.5 text-white inline shrink-0" />}
-                                  {churn}
-                                </span>
-                              </div>
-
-                              <div className="font-semibold text-xs text-primary truncate mt-1" title={file.name}>
-                                {file.name}
-                              </div>
-
-                              <div className="text-[10px] text-primary-muted truncate font-mono" title={file.path}>
-                                {file.path.split('/').slice(0, -1).join('/') || '/'}
-                              </div>
+                    <div className="space-y-4">
+                      {heatmapFilesBySubsystem.map((group) => (
+                        <div key={group.subsystem} className="p-3.5 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-2.5">
+                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-border-subtle">
+                            <div className="flex items-center gap-2">
+                              <FolderGit2 className="w-3.5 h-3.5 text-accent" />
+                              <span className="font-bold text-primary font-mono">{group.subsystem}</span>
+                              <span className="text-[10px] text-primary-muted font-normal">
+                                ({group.files.length} {group.files.length === 1 ? 'file' : 'files'})
+                              </span>
                             </div>
 
-                            <div className="flex items-center justify-between text-[10px] text-primary-muted pt-2 mt-2 border-t border-border-subtle/50">
-                              <span>{((file.size || 1024) / 1024).toFixed(1)} KB</span>
-                              <span className="truncate max-w-[80px]">
-                                {file.topMaintainer ? `@${file.topMaintainer}` : 'team'}
+                            <div className="flex items-center gap-2 text-[10px] font-mono">
+                              <span className="text-primary-muted">Avg Volatility:</span>
+                              <span
+                                className={`font-bold px-1.5 py-0.2 rounded ${
+                                  group.avgChurn >= 65
+                                    ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                                    : group.avgChurn >= 40
+                                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                                }`}
+                              >
+                                {group.avgChurn}/100
                               </span>
                             </div>
                           </div>
-                        );
-                      })}
+
+                          {/* Dense Grid of Heatmap Squares */}
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {group.files.map((file) => {
+                              const churn = file.churnScore ?? 0;
+                              const isHot = churn >= 75;
+                              const isHigh = churn >= 50 && !isHot;
+                              const isModerate = churn >= 25 && !isHigh && !isHot;
+                              const isSelected = selectedNode?.path === file.path;
+
+                              return (
+                                <div
+                                  key={file.path}
+                                  onClick={() => setSelectedNode(file)}
+                                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all relative group select-none shadow-xs border ${
+                                    isSelected
+                                      ? 'ring-2 ring-accent ring-offset-2 ring-offset-canvas scale-110 z-20 shadow-md'
+                                      : 'hover:scale-110 hover:z-10'
+                                  } ${
+                                    isHot
+                                      ? 'bg-rose-500/25 border-rose-500/60 text-rose-300 dark:text-rose-200 hover:bg-rose-500/40'
+                                      : isHigh
+                                      ? 'bg-orange-500/20 border-orange-500/50 text-orange-300 dark:text-orange-200 hover:bg-orange-500/35'
+                                      : isModerate
+                                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 dark:text-amber-200 hover:bg-amber-500/30'
+                                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 dark:text-emerald-300 hover:bg-emerald-500/25'
+                                  }`}
+                                >
+                                  <span className="text-xs font-bold font-mono leading-none">
+                                    {churn}
+                                  </span>
+                                  {isHot && (
+                                    <Flame className="w-2.5 h-2.5 text-rose-500 mt-0.5 animate-pulse shrink-0" />
+                                  )}
+
+                                  {/* Rich Floating Tooltip on Hover */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col w-56 p-2.5 bg-canvas/95 backdrop-blur-md border border-border-strong rounded-lg shadow-xl text-left pointer-events-none z-50 text-[11px] font-mono leading-normal">
+                                    <div className="font-bold text-primary truncate text-xs pb-1 border-b border-border-subtle">
+                                      {file.name}
+                                    </div>
+                                    <div className="text-[10px] text-primary-muted truncate mt-1">
+                                      {file.path}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border-subtle/60 text-[10px]">
+                                      <span className="text-primary-secondary">Churn Volatility:</span>
+                                      <span className={`font-bold ${isHot ? 'text-rose-500' : isHigh ? 'text-orange-500' : isModerate ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                        {churn}/100 ({isHot ? 'Hotspot' : isHigh ? 'High' : isModerate ? 'Moderate' : 'Stable'})
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] mt-0.5">
+                                      <span className="text-primary-secondary">File Size:</span>
+                                      <span className="font-semibold text-primary">{((file.size || 1024) / 1024).toFixed(1)} KB</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] mt-0.5">
+                                      <span className="text-primary-secondary">Maintainer:</span>
+                                      <span className="font-semibold text-primary">@{file.topMaintainer || 'team'}</span>
+                                    </div>
+                                    <div className="text-[9px] text-accent mt-1.5 pt-1 border-t border-border-subtle/40 text-center font-sans">
+                                      Click to inspect in Architecture Inspector &rarr;
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="p-8 text-center border border-dashed border-border-subtle rounded-lg bg-surface-subtle/30 space-y-2">
@@ -1553,7 +1622,7 @@ export function RepositoryMapPage() {
                       size="sm"
                       className="w-full justify-start text-xs font-mono"
                       onClick={() => {
-                        navigate(`/app/blast-radius?target=${encodeURIComponent(selectedNode.path)}`);
+                        navigate(`/app/analysis?tab=blast-radius&target=${encodeURIComponent(selectedNode.path)}`);
                       }}
                       leftIcon={<Zap className="w-3.5 h-3.5 text-amber-300" />}
                     >
