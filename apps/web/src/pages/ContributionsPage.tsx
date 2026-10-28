@@ -3,7 +3,7 @@ import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { ContributorSkeleton } from '../components/ui/LoadingSkeleton.js';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type {
@@ -481,11 +481,7 @@ export function ContributionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-3">
-            <LoadingSkeleton className="h-28 w-full" />
-            <LoadingSkeleton className="h-28 w-full" />
-            <LoadingSkeleton className="h-28 w-full" />
-          </div>
+          <ContributorSkeleton count={4} />
         ) : error ? (
           <Panel className="p-6 text-center border-red-200 bg-red-50/20">
             <p className="text-xs text-red-600 font-medium">{error}</p>

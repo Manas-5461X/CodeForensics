@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Panel } from '../components/ui/Panel.js';
 import { Button } from '../components/ui/Button.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { AnalysisSkeleton } from '../components/ui/LoadingSkeleton.js';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type { KnowledgeLossSummary } from '@codeforensics/shared';
@@ -131,11 +131,7 @@ export function BusFactorPage() {
       </div>
 
       {isLoading ? (
-        <div className="p-8 space-y-4">
-          <LoadingSkeleton className="h-6 w-1/4" />
-          <LoadingSkeleton className="h-24 w-full" />
-          <LoadingSkeleton className="h-64 w-full" />
-        </div>
+        <AnalysisSkeleton message="Evaluating knowledge loss exposure & key-person dependencies..." />
       ) : error ? (
         <div className="p-6 text-center text-rose-600 font-mono text-xs border border-rose-200 rounded-lg bg-surface">
           <p>{error}</p>

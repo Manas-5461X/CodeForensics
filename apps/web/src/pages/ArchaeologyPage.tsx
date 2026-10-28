@@ -3,7 +3,7 @@ import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { ArchaeologySkeleton } from '../components/ui/LoadingSkeleton.js';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type { ArchaeologyTraceResult } from '@codeforensics/shared';
@@ -281,12 +281,7 @@ export function ArchaeologyPage() {
       </Panel>
 
       {/* Loading Skeleton */}
-      {isLoading && (
-        <div className="space-y-4">
-          <LoadingSkeleton className="h-24 w-full" />
-          <LoadingSkeleton className="h-64 w-full" />
-        </div>
-      )}
+      {isLoading && <ArchaeologySkeleton />}
 
       {/* Error Banner */}
       {error && !isLoading && (

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
+import { Skeleton } from '../components/ui/LoadingSkeleton.js';
 import {
   CheckCircle2,
   AlertCircle,
@@ -247,8 +248,19 @@ export function OverviewPage() {
           }
         >
           {isLoadingRelationships ? (
-            <div className="py-8 text-center text-xs text-primary-muted">
-              Loading lineage relationships...
+            <div className="divide-y divide-border-subtle py-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Skeleton className="w-6 h-6 rounded-md shrink-0" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <Skeleton className="h-3.5 w-1/3" />
+                      <Skeleton className="h-2.5 w-1/2" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-20 rounded-full shrink-0" />
+                </div>
+              ))}
             </div>
           ) : relationships.length > 0 ? (
             <div className="divide-y divide-border-subtle">

@@ -4,7 +4,7 @@ import { Panel } from '../components/ui/Panel.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Button } from '../components/ui/Button.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { InvestigationSkeleton } from '../components/ui/LoadingSkeleton.js';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type {
@@ -604,12 +604,7 @@ export function InvestigationsPage() {
 
       {/* Main Workbench Layout */}
       {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <LoadingSkeleton className="h-96 w-full" />
-          <div className="lg:col-span-2">
-            <LoadingSkeleton className="h-96 w-full" />
-          </div>
-        </div>
+        <InvestigationSkeleton />
       ) : investigations.length === 0 ? (
         <EmptyState
           icon={<FileQuestion className="w-8 h-8 text-primary-muted" />}

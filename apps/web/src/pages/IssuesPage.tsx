@@ -77,6 +77,8 @@ export function IssuesPage() {
   const {
     data: itemsData,
     isLoading,
+    isPending,
+    isFetching,
     isError,
     error,
     refetch,
@@ -158,8 +160,8 @@ export function IssuesPage() {
     );
   }
 
-  // State 2: Active repo is not yet synchronized (status IDLE or 0 imported)
-  const isUnsynced = !syncState || syncState.status === 'IDLE';
+  // State 2: Active repo is not yet synchronized (only when syncState is loaded and strictly IDLE with 0 records)
+  const isUnsynced = syncState !== null && syncState.status === 'IDLE' && (syncState.recordsImported ?? 0) === 0;
 
   return (
     <div className="space-y-6">
@@ -353,9 +355,9 @@ export function IssuesPage() {
             </Button>
           }
         />
-      ) : isLoading ? (
-        <Panel className="p-4">
-          <TableSkeleton rows={8} />
+      ) : (isPending || isLoading || (isFetching && !itemsData) || (!syncState && isLoadingRepos)) ? (
+        <Panel className="p-4 shadow-xs">
+          <TableSkeleton rows={8} message="Scanning repository issues & pull requests..." />
         </Panel>
       ) : isError ? (
         <Panel className="p-8 text-center space-y-3">
@@ -396,6 +398,14 @@ export function IssuesPage() {
         />
       ) : (
         <div className="space-y-4">
+          {/* Subtle updating indicator */}
+          {isFetching && (
+            <div className="flex items-center gap-2 text-xs text-accent font-mono animate-pulse px-1">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>Updating repository work items...</span>
+            </div>
+          )}
+
           {/* Table Container */}
           <Panel className="p-0 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">

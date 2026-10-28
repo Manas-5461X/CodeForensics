@@ -5,7 +5,7 @@ import { useApiClient } from '../utils/apiClient.js';
 import { Panel } from '../components/ui/Panel.js';
 import { Button } from '../components/ui/Button.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { GraphSkeleton, CardSkeleton, Skeleton } from '../components/ui/LoadingSkeleton.js';
 import { MermaidViewer } from '../components/map/MermaidViewer.js';
 import type {
   RepositoryMapData,
@@ -854,7 +854,17 @@ export function RepositoryMapPage() {
       )}
 
       {/* Metrics Banner */}
-      {mapData && (
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Panel key={i} className="p-3.5 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </Panel>
+          ))}
+        </div>
+      ) : mapData ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <Panel className="p-3.5">
             <div className="text-[10px] font-mono uppercase tracking-wider text-primary-muted font-semibold">
@@ -905,7 +915,7 @@ export function RepositoryMapPage() {
             </div>
           </Panel>
         </div>
-      )}
+      ) : null}
 
       {/* Dedicated Forensic Analysis Engines Nav Banner */}
       <div className="p-3 bg-surface border border-border-subtle rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
@@ -1046,11 +1056,7 @@ export function RepositoryMapPage() {
           {/* Interactive Canvas Viewport */}
           <Panel className="p-4 min-h-[500px] max-h-[700px] overflow-auto bg-surface-subtle/20 relative">
             {isLoading ? (
-              <div className="p-8 space-y-4">
-                <LoadingSkeleton className="h-6 w-1/3" />
-                <LoadingSkeleton className="h-4 w-2/3" />
-                <LoadingSkeleton className="h-48 w-full" />
-              </div>
+              <GraphSkeleton message="Generating architecture map & code churn topology..." />
             ) : error ? (
               <div className="p-8 text-center text-rose-600 font-mono text-xs space-y-2">
                 <p>Failed to generate architecture map: {error}</p>
@@ -1491,7 +1497,9 @@ export function RepositoryMapPage() {
               Architecture Inspector
             </h3>
 
-            {selectedNode ? (
+            {isLoading ? (
+              <CardSkeleton rows={4} className="border-0 p-0" />
+            ) : selectedNode ? (
               <div className="space-y-3 text-xs font-mono">
                 <div className="p-3 bg-surface-subtle/80 rounded border border-border-subtle space-y-1">
                   <div className="text-[10px] text-primary-muted uppercase font-semibold">

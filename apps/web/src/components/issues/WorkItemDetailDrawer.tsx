@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { WorkItemDetail } from '@codeforensics/shared';
 import { useApiClient } from '../../utils/apiClient.js';
 import { Button } from '../ui/Button.js';
-import { Skeleton } from '../ui/LoadingSkeleton.js';
+import {
+  Skeleton,
+  DetailDrawerSkeleton,
+  TimelineSkeleton,
+  DiffSkeleton,
+} from '../ui/LoadingSkeleton.js';
 import {
   X,
   ExternalLink,
@@ -30,6 +35,7 @@ import {
   Layers,
   AlertOctagon,
   BookmarkPlus,
+  RefreshCw,
 } from 'lucide-react';
 
 export interface WorkItemDetailDrawerProps {
@@ -55,6 +61,10 @@ export function WorkItemDetailDrawer({
   const [expandedRelId, setExpandedRelId] = useState<string | null>(null);
   const [copiedPrecedentId, setCopiedPrecedentId] = useState<string | null>(null);
 
+  const [isLoadingDiff, setIsLoadingDiff] = useState<boolean>(false);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(false);
+  const [isRefreshingItem, setIsRefreshingItem] = useState<boolean>(false);
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,38 +77,119 @@ export function WorkItemDetailDrawer({
   }, [onClose]);
 
   // Fetch detail whenever itemNumber changes
-  useEffect(() => {
+  const fetchItemDetail = useCallback(async () => {
     if (!itemNumber) {
       setItem(null);
       setError(null);
       return;
     }
 
-    let isMounted = true;
     setIsLoading(true);
     setError(null);
 
-    get<WorkItemDetail>(`/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/items/${itemNumber}`)
-      .then((res) => {
-        if (!isMounted) return;
-        if (res.data) {
-          setItem(res.data);
-        } else {
-          setError(res.error?.message || 'Failed to load item detail');
-        }
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Failed to retrieve item detail');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const res = await get<WorkItemDetail>(
+        `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/items/${itemNumber}`
+      );
+      if (res.data) {
+        setItem(res.data);
+      } else {
+        setError(res.error?.message || 'Failed to load item detail');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to retrieve item detail');
+    } finally {
+      setIsLoading(false);
+    }
   }, [owner, repo, itemNumber, get]);
+
+  useEffect(() => {
+    void fetchItemDetail();
+  }, [fetchItemDetail]);
+
+  // Fetch diff on-demand if not already available
+  const fetchDiffOnDemand = useCallback(async () => {
+    if (!itemNumber) return;
+    setIsLoadingDiff(true);
+    try {
+      const res = await get<{ available: boolean; notes?: string; diff: any }>(
+        `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/items/${itemNumber}/diff`
+      );
+      if (res.data && res.data.diff) {
+        setItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                diffAvailable: res.data!.available,
+                diffNotes: res.data!.notes,
+                diffSummary: res.data!.diff,
+              }
+            : null
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to fetch diff on demand:', err);
+    } finally {
+      setIsLoadingDiff(false);
+    }
+  }, [owner, repo, itemNumber, get]);
+
+  // Fetch timeline on-demand if not already available
+  const fetchTimelineOnDemand = useCallback(async () => {
+    if (!itemNumber) return;
+    setIsLoadingTimeline(true);
+    try {
+      const res = await get<{ available: boolean; notes?: string; events: any[] }>(
+        `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/items/${itemNumber}/timeline`
+      );
+      if (res.data) {
+        setItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                timelineAvailable: res.data!.available,
+                timelineNotes: res.data!.notes,
+                timelineEvents: res.data!.events,
+              }
+            : null
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to fetch timeline on demand:', err);
+    } finally {
+      setIsLoadingTimeline(false);
+    }
+  }, [owner, repo, itemNumber, get]);
+
+  // Trigger diff fetch on switching to diff tab if missing
+  useEffect(() => {
+    if (activeTab === 'diff' && item?.type === 'pull_request' && !item.diffAvailable && !isLoadingDiff) {
+      void fetchDiffOnDemand();
+    }
+  }, [activeTab, item?.type, item?.diffAvailable, isLoadingDiff, fetchDiffOnDemand]);
+
+  // Trigger timeline fetch on switching to timeline tab if missing
+  useEffect(() => {
+    if (activeTab === 'timeline' && item && !item.timelineAvailable && !isLoadingTimeline) {
+      void fetchTimelineOnDemand();
+    }
+  }, [activeTab, item, item?.timelineAvailable, isLoadingTimeline, fetchTimelineOnDemand]);
+
+  // Refresh live GitHub item metadata
+  const handleRefreshLive = async () => {
+    if (!itemNumber) return;
+    setIsRefreshingItem(true);
+    try {
+      const res = await get<WorkItemDetail>(
+        `/api/v1/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/items/${itemNumber}`
+      );
+      if (res.data) {
+        setItem(res.data);
+      }
+    } finally {
+      setIsRefreshingItem(false);
+    }
+  };
 
   if (!itemNumber) return null;
 
@@ -205,6 +296,16 @@ export function WorkItemDetailDrawer({
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={handleRefreshLive}
+                disabled={isRefreshingItem || isLoading}
+                className="p-2 text-primary-muted hover:text-accent hover:bg-surface rounded-md border border-transparent hover:border-border-subtle transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center disabled:opacity-50"
+                title="Refresh live data from GitHub"
+                aria-label="Refresh live data from GitHub"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshingItem ? 'animate-spin text-accent' : ''}`} />
+              </button>
               {item?.htmlUrl && (
                 <a
                   href={item.htmlUrl}
@@ -307,12 +408,7 @@ export function WorkItemDetailDrawer({
           {/* Drawer Body Content */}
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-4 w-1/4" />
-                <Skeleton className="h-16 w-full" />
-              </div>
+              <DetailDrawerSkeleton />
             ) : error ? (
               <div className="p-4 bg-rose-50 border border-rose-200 rounded-md text-rose-800 text-xs">
                 <div className="font-semibold mb-1">Failed to load item detail</div>
@@ -399,17 +495,48 @@ export function WorkItemDetailDrawer({
 
                     {/* Description Body */}
                     <div>
-                      <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 font-mono flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-primary-muted" />
-                        Description Body
-                      </h3>
-                      {item.body ? (
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-semibold text-primary uppercase tracking-wider font-mono flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-primary-muted" />
+                          Description Body
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={handleRefreshLive}
+                          disabled={isRefreshingItem}
+                          className="inline-flex items-center gap-1 text-[11px] font-mono text-link hover:underline disabled:opacity-50"
+                          title="Refresh live description and metadata from GitHub"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isRefreshingItem ? 'animate-spin text-accent' : ''}`} />
+                          <span>{isRefreshingItem ? 'Syncing...' : 'Refresh Live'}</span>
+                        </button>
+                      </div>
+                      {isRefreshingItem ? (
+                        <div className="p-4 bg-surface rounded-md border border-border-subtle space-y-2.5 animate-pulse">
+                          <div className="flex items-center gap-2 text-xs font-mono text-accent pb-1">
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Retrieving live description from GitHub...</span>
+                          </div>
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-5/6" />
+                          <Skeleton className="h-3.5 w-2/3" />
+                        </div>
+                      ) : item.body ? (
                         <div className="p-4 bg-surface rounded-md border border-border-subtle text-xs text-primary font-sans leading-relaxed whitespace-pre-wrap selection:bg-cyan-100">
                           {item.body}
                         </div>
                       ) : (
-                        <div className="p-6 text-center border border-dashed border-border-subtle rounded-md text-xs text-primary-muted bg-surface-subtle/30 font-mono">
-                          No description provided for this {item.type === 'pull_request' ? 'pull request' : 'issue'}.
+                        <div className="p-6 text-center border border-dashed border-border-subtle rounded-md text-xs text-primary-muted bg-surface-subtle/30 font-mono space-y-2">
+                          <p>No description recorded locally for this {item.type === 'pull_request' ? 'pull request' : 'issue'}.</p>
+                          <button
+                            type="button"
+                            onClick={handleRefreshLive}
+                            disabled={isRefreshingItem}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border-strong rounded text-xs font-mono text-accent hover:bg-surface-subtle transition-colors shadow-xs"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingItem ? 'animate-spin' : ''}`} />
+                            Fetch Live Description from GitHub
+                          </button>
                         </div>
                       )}
                     </div>
@@ -874,12 +1001,26 @@ export function WorkItemDetailDrawer({
                 {/* TAB 3: TIMELINE */}
                 {activeTab === 'timeline' && (
                   <div className="space-y-4">
-                    {item.timelineAvailable && item.timelineEvents && item.timelineEvents.length > 0 ? (
+                    {isLoadingTimeline ? (
+                      <TimelineSkeleton />
+                    ) : item.timelineAvailable && item.timelineEvents && item.timelineEvents.length > 0 ? (
                       <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-1 border-b border-border-subtle/60 text-xs font-mono text-primary-muted">
+                          <span>{item.timelineEvents.length} discussion comment{item.timelineEvents.length === 1 ? '' : 's'}</span>
+                          <button
+                            type="button"
+                            onClick={fetchTimelineOnDemand}
+                            disabled={isLoadingTimeline}
+                            className="inline-flex items-center gap-1 text-[11px] text-link hover:underline"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${isLoadingTimeline ? 'animate-spin text-accent' : ''}`} />
+                            Refresh Comments
+                          </button>
+                        </div>
                         {item.timelineEvents.map((event) => (
                           <div
                             key={event.id}
-                            className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-1.5"
+                            className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-1.5 shadow-xs"
                           >
                             <div className="flex items-center justify-between text-xs text-primary-muted font-mono">
                               <span className="font-semibold text-primary">
@@ -888,7 +1029,7 @@ export function WorkItemDetailDrawer({
                               <span>{new Date(event.createdAt).toLocaleString()}</span>
                             </div>
                             {event.body && (
-                              <p className="text-xs text-primary whitespace-pre-wrap leading-relaxed">
+                              <p className="text-xs text-primary whitespace-pre-wrap leading-relaxed font-sans">
                                 {event.body}
                               </p>
                             )}
@@ -896,78 +1037,105 @@ export function WorkItemDetailDrawer({
                         ))}
                       </div>
                     ) : (
-                      <div className="p-6 text-center border border-dashed border-border-subtle rounded-md bg-surface-subtle/40 space-y-2">
+                      <div className="p-6 text-center border border-dashed border-border-subtle rounded-md bg-surface-subtle/40 space-y-3">
                         <div className="inline-flex p-2 bg-surface rounded-full border border-border-subtle text-primary-muted mb-1">
-                          <MessageSquare className="w-5 h-5" />
+                          <MessageSquare className="w-5 h-5 text-accent" />
                         </div>
                         <h4 className="text-xs font-semibold text-primary font-mono">
-                          Timeline History Not Ingested
+                          {item.timelineAvailable ? 'No Discussion Comments Posted' : 'Timeline History Not Ingested'}
                         </h4>
                         <p className="text-xs text-primary-secondary max-w-md mx-auto leading-relaxed">
                           {item.timelineNotes ||
                             'Discussion events and review comments were not collected during the initial metadata synchronization tier.'}
                         </p>
-                        <div className="pt-2">
-                          <a
-                            href={item.htmlUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-link hover:underline font-mono"
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={fetchTimelineOnDemand}
+                            disabled={isLoadingTimeline}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border-strong rounded text-xs font-mono text-accent hover:bg-surface-subtle transition-colors shadow-xs"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Inspect full discussion thread on GitHub
-                          </a>
+                            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTimeline ? 'animate-spin' : ''}`} />
+                            Fetch Live Comments from GitHub
+                          </button>
+                          {item.htmlUrl && (
+                            <a
+                              href={item.htmlUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-link hover:underline font-mono"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View on GitHub
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* TAB 3: DIFF */}
+                {/* TAB 4: DIFF */}
                 {activeTab === 'diff' && item.type === 'pull_request' && (
                   <div className="space-y-4">
-                    {item.diffAvailable && item.diffSummary ? (
+                    {isLoadingDiff ? (
+                      <DiffSkeleton />
+                    ) : item.diffAvailable && item.diffSummary ? (
                       <div className="space-y-3">
                         <div className="p-3 bg-surface-subtle rounded-md border border-border-subtle flex items-center justify-between text-xs font-mono">
-                          <span>
-                            {item.diffSummary.changedFiles} changed files
+                          <span className="font-semibold text-primary">
+                            {item.diffSummary.changedFiles} changed file{item.diffSummary.changedFiles === 1 ? '' : 's'}
                           </span>
                           <span className="flex items-center gap-3">
-                            <span className="text-emerald-700 font-semibold">
+                            <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                               +{item.diffSummary.additions}
                             </span>
-                            <span className="text-rose-700 font-semibold">
+                            <span className="text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                               -{item.diffSummary.deletions}
                             </span>
+                            <button
+                              type="button"
+                              onClick={fetchDiffOnDemand}
+                              disabled={isLoadingDiff}
+                              className="inline-flex items-center gap-1 text-[11px] text-link hover:underline ml-2"
+                              title="Re-query diff patch from GitHub"
+                            >
+                              <RefreshCw className={`w-3 h-3 ${isLoadingDiff ? 'animate-spin text-accent' : ''}`} />
+                              Refresh Diff
+                            </button>
                           </span>
                         </div>
 
                         {item.diffSummary.files.map((file, idx) => (
                           <div
                             key={idx}
-                            className="border border-border-subtle rounded-md overflow-hidden bg-surface"
+                            className="border border-border-subtle rounded-md overflow-hidden bg-surface shadow-xs"
                           >
-                            <div className="p-2.5 bg-surface-subtle/60 border-b border-border-subtle flex items-center justify-between text-xs font-mono">
+                            <div className="p-2.5 bg-surface-subtle/80 border-b border-border-subtle flex items-center justify-between text-xs font-mono">
                               <span className="font-semibold text-primary truncate max-w-md">
                                 {file.filename}
                               </span>
-                              <span className="text-primary-muted flex items-center gap-2">
-                                <span className="text-emerald-700">+{file.additions}</span>
-                                <span className="text-rose-700">-{file.deletions}</span>
+                              <span className="text-primary-muted flex items-center gap-2 shrink-0">
+                                <span className="text-emerald-700 font-semibold">+{file.additions}</span>
+                                <span className="text-rose-700 font-semibold">-{file.deletions}</span>
                               </span>
                             </div>
-                            {file.patch && (
+                            {file.patch ? (
                               <pre className="p-3 bg-slate-900 text-slate-100 text-[11px] font-mono overflow-x-auto whitespace-pre leading-tight">
                                 {file.patch}
                               </pre>
+                            ) : (
+                              <div className="p-3 text-xs text-primary-muted font-mono italic">
+                                Binary file or large patch not previewed inline.
+                              </div>
                             )}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="p-6 text-center border border-dashed border-border-subtle rounded-md bg-surface-subtle/40 space-y-2">
+                      <div className="p-6 text-center border border-dashed border-border-subtle rounded-md bg-surface-subtle/40 space-y-3">
                         <div className="inline-flex p-2 bg-surface rounded-full border border-border-subtle text-primary-muted mb-1">
-                          <FileCode className="w-5 h-5" />
+                          <FileCode className="w-5 h-5 text-accent" />
                         </div>
                         <h4 className="text-xs font-semibold text-primary font-mono">
                           Diff Content Not Ingested
@@ -976,16 +1144,27 @@ export function WorkItemDetailDrawer({
                           {item.diffNotes ||
                             'Code patch diffs and per-file changes were not collected in the initial repository metadata synchronization tier.'}
                         </p>
-                        <div className="pt-2">
-                          <a
-                            href={`${item.htmlUrl}/files`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-link hover:underline font-mono"
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={fetchDiffOnDemand}
+                            disabled={isLoadingDiff}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border-strong rounded text-xs font-mono text-accent hover:bg-surface-subtle transition-colors shadow-xs"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            View pull request file changes on GitHub
-                          </a>
+                            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDiff ? 'animate-spin' : ''}`} />
+                            Fetch Pull Request Code Diff
+                          </button>
+                          {item.htmlUrl && (
+                            <a
+                              href={`${item.htmlUrl}/files`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-link hover:underline font-mono"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View files on GitHub
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}

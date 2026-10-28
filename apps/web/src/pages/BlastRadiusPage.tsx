@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Panel } from '../components/ui/Panel.js';
 import { Button } from '../components/ui/Button.js';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton.js';
+import { AnalysisSkeleton } from '../components/ui/LoadingSkeleton.js';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type { BlastRadiusImpact } from '@codeforensics/shared';
@@ -177,11 +177,7 @@ export function BlastRadiusPage() {
       </Panel>
 
       {isSimulating ? (
-        <div className="p-8 space-y-4">
-          <LoadingSkeleton className="h-6 w-1/4" />
-          <LoadingSkeleton className="h-28 w-full" />
-          <LoadingSkeleton className="h-48 w-full" />
-        </div>
+        <AnalysisSkeleton message="Simulating cascade impact & transitive architectural blast radius..." />
       ) : error ? (
         <div className="p-6 text-center text-rose-600 font-mono text-xs border border-rose-200 rounded-lg bg-surface">
           <p>{error}</p>
