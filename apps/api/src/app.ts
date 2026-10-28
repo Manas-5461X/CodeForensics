@@ -56,6 +56,13 @@ export function buildApp(config: AppConfig, options?: BuildAppOptions): FastifyI
     void reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   });
 
+  // Backward compatibility: rewrite un-prefixed /repositories paths to /api/v1/repositories
+  app.addHook('onRequest', async (request) => {
+    if (request.url.startsWith('/repositories')) {
+      request.raw.url = `/api/v1${request.raw.url}`;
+    }
+  });
+
   // Initialize and register authentication plugin
   const tokenVerifier = createTokenVerifier(config, options?.tokenVerifier);
   void app.register(authPlugin, { tokenVerifier });

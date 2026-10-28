@@ -66,7 +66,9 @@ export function RepositoryMapPage() {
     setIsLoading(true);
     setError(null);
 
-    get<RepositoryMapData>(`/repositories/${activeRepo.owner}/${activeRepo.name}/map`)
+    get<RepositoryMapData>(
+      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map`
+    )
       .then((res) => {
         if (!isMounted) return;
         if (res.success && res.data) {
