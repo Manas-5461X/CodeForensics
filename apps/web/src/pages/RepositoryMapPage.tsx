@@ -102,22 +102,13 @@ export function RepositoryMapPage() {
         if (!isMounted) return;
         if (res.success && res.data) {
           setMapData(res.data);
-          // Auto-expand root and first level directories safely
+          // Auto-expand root and first level directories safely for tree
           const initialExpanded = new Set<string>(['root']);
           const initialGraphExpanded = new Set<string>(['root']);
           if (res.data.root?.children) {
-            let firstDirAdded = false;
             for (const child of res.data.root.children) {
               if (child && child.type === 'directory') {
                 initialExpanded.add(child.path);
-                if (!firstDirAdded) {
-                  initialGraphExpanded.add(child.path);
-                  firstDirAdded = true;
-                  if (child.children) {
-                    const firstSub = child.children.find((c) => c && c.type === 'directory');
-                    if (firstSub) initialGraphExpanded.add(firstSub.path);
-                  }
-                }
                 child.children?.forEach((sub) => {
                   if (sub && sub.type === 'directory') initialExpanded.add(sub.path);
                 });
@@ -888,16 +879,6 @@ export function RepositoryMapPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode('mermaid')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'mermaid' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
-                  }`}
-                >
-                  <Code2 className="w-3.5 h-3.5 text-accent" />
-                  <span>Mermaid</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setViewMode('text')}
                   className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'text' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
@@ -960,55 +941,6 @@ export function RepositoryMapPage() {
                   <span>{showChurnGuide ? 'Hide Churn Guide' : 'What is Churn & Hotspot?'}</span>
                 </button>
               </div>
-
-              {/* Tree Expansion & Zoom controls */}
-              {viewMode === 'tree' && (
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <button
-                    type="button"
-                    onClick={expandAll}
-                    className="px-2 py-0.5 text-[11px] text-primary-muted hover:text-primary hover:underline"
-                  >
-                    Expand All
-                  </button>
-                  <span className="text-border-subtle">|</span>
-                  <button
-                    type="button"
-                    onClick={collapseAll}
-                    className="px-2 py-0.5 text-[11px] text-primary-muted hover:text-primary hover:underline"
-                  >
-                    Collapse All
-                  </button>
-                  <span className="text-border-subtle">|</span>
-                  <button
-                    type="button"
-                    onClick={handleZoomOut}
-                    className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[10px] text-primary-muted min-w-[36px] text-center">
-                    {Math.round(zoomLevel * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleZoomIn}
-                    className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetZoom}
-                    className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                    title="Reset Zoom"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Interactive Code Churn & Hotspot Knowledge Card */}
@@ -1803,15 +1735,85 @@ export function RepositoryMapPage() {
                   ) : null}
                 </div>
               ) : viewMode === 'tree' ? (
-                <div
-                  style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: 'top left',
-                    transition: 'transform 0.15s ease-out',
-                  }}
-                  className="space-y-1"
-                >
-                  <TreeNode node={mapData.root} level={0} />
+                <div className="space-y-3">
+                  {/* Dedicated Interactive Tree Toolbar Bar */}
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono py-1.5 px-3 bg-surface border border-border-subtle rounded-md shadow-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-primary-muted uppercase tracking-wider font-semibold">
+                        Directory Tree:
+                      </span>
+                      <span className="text-[11px] text-accent font-semibold flex items-center gap-1">
+                        <Folder className="w-3.5 h-3.5" />
+                        {mapData.fullName}
+                      </span>
+                      <span className="text-[10px] text-primary-muted">
+                        ({expandedNodes.size} {expandedNodes.size === 1 ? 'folder' : 'folders'} expanded)
+                      </span>
+                      {searchQuery && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">
+                          Filter: "{searchQuery}"
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        onClick={expandAll}
+                        className="text-[11px] text-primary-muted hover:text-primary hover:underline font-medium"
+                      >
+                        Expand All
+                      </button>
+                      <span className="text-border-subtle">|</span>
+                      <button
+                        type="button"
+                        onClick={collapseAll}
+                        className="text-[11px] text-primary-muted hover:text-primary hover:underline font-medium"
+                      >
+                        Collapse All
+                      </button>
+                      <div className="h-3 w-px bg-border-subtle mx-1" />
+                      <button
+                        type="button"
+                        onClick={handleZoomOut}
+                        className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[10px] text-primary-muted min-w-[34px] text-center font-semibold font-mono">
+                        {Math.round(zoomLevel * 100)}%
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleZoomIn}
+                        className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetZoom}
+                        className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                        title="Reset Zoom (100%)"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Interactive Directory Hierarchy */}
+                  <div
+                    style={{
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: 'top left',
+                      transition: 'transform 0.15s ease-out',
+                    }}
+                    className="space-y-1 p-2"
+                  >
+                    <TreeNode node={mapData.root} level={0} />
+                  </div>
                 </div>
               ) : viewMode === 'mermaid' ? (
                 <div className="space-y-2">

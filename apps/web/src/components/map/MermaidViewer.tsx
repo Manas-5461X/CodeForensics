@@ -40,17 +40,22 @@ export function MermaidViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
-  const hasDraggedRef = useRef(false);
+  const mouseDownPosRef = useRef({ x: 0, y: 0, time: 0 });
 
-  // Extract intrinsic dimensions from the SVG viewBox to prevent clipping and negative coordinate bugs
+  // Extract intrinsic dimensions and offset from the SVG viewBox to prevent clipping and negative coordinate bugs
   const svgDimensions = useMemo(() => {
     if (!svgContent) return null;
     const match = svgContent.match(/viewBox=["']([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)["']/);
     if (match) {
+      const minX = parseFloat(match[1]) || 0;
+      const minY = parseFloat(match[2]) || 0;
       const width = parseFloat(match[3]);
       const height = parseFloat(match[4]);
       if (width > 0 && height > 0) {
-        return { width, height };
+        // If minX is negative, the graph content extends into negative X space.
+        // We add Math.abs(minX) + 140px to ensure the entire left branch is fully visible and scrollable.
+        const leftPadding = minX < 0 ? Math.abs(minX) + 140 : 140;
+        return { minX, minY, width, height, leftPadding };
       }
     }
     return null;
@@ -244,14 +249,16 @@ export function MermaidViewer({
 
   // Drag-to-pan handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement)?.closest('.node') || (e.target as HTMLElement)?.closest('button')) {
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+
+    // Don't drag if clicking buttons
+    if ((e.target as HTMLElement)?.closest('button')) {
       return;
     }
     const container = containerRef.current;
     if (!container) return;
 
     isDraggingRef.current = true;
-    hasDraggedRef.current = false;
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -268,8 +275,7 @@ export function MermaidViewer({
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
 
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      hasDraggedRef.current = true;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       container.style.cursor = 'grabbing';
     }
 
@@ -309,8 +315,13 @@ export function MermaidViewer({
 
   // Handle interactive clicks on SVG nodes (folders & files)
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Ignore click if user was dragging or double-clicking
-    if (hasDraggedRef.current || e.detail > 1) {
+    // Check total movement distance between mousedown and click
+    const dist = Math.hypot(
+      e.clientX - mouseDownPosRef.current.x,
+      e.clientY - mouseDownPosRef.current.y
+    );
+    // If user dragged more than 5px or double-clicked, ignore as a click
+    if (dist > 5 || e.detail > 1) {
       return;
     }
     if (!onNodeClick) return;
@@ -320,14 +331,8 @@ export function MermaidViewer({
     if (!nodeEl) return;
 
     const rawId = nodeEl.getAttribute('id') || '';
-    let cleanId = rawId;
-    const match = rawId.match(/^flowchart-([a-zA-Z0-9_]+?)(?:-\d+)?$/);
-    if (match && match[1]) {
-      cleanId = match[1];
-    } else {
-      cleanId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '');
-    }
-
+    // Strip flowchart- prefix and trailing -number (e.g. flowchart-n_packages-1 -> n_packages)
+    const cleanId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '');
     const textContent = nodeEl.textContent?.trim() || '';
     onNodeClick(cleanId, textContent);
   };
@@ -434,8 +439,12 @@ export function MermaidViewer({
           onMouseLeave={handleMouseUp}
           className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg select-none mermaid-canvas"
         >
-          {/* Interactive Node Hover CSS */}
+          {/* Interactive Node Hover CSS & Canvas Overflow Fix */}
           <style>{`
+            .mermaid-canvas svg {
+              overflow: visible !important;
+              max-width: none !important;
+            }
             .mermaid-canvas .node {
               cursor: pointer !important;
               transition: filter 0.15s ease, opacity 0.15s ease;
@@ -522,11 +531,19 @@ export function MermaidViewer({
             </div>
           ) : svgContent ? (
             <div
-              className="p-8 inline-block select-none"
+              className="inline-block select-none"
               style={{
-                width: svgDimensions ? `${Math.ceil(svgDimensions.width * zoomLevel) + 64}px` : 'max-content',
-                height: svgDimensions ? `${Math.ceil(svgDimensions.height * zoomLevel) + 64}px` : 'max-content',
+                width: svgDimensions
+                  ? `${Math.ceil((svgDimensions.width + (svgDimensions.leftPadding || 140) + 140) * zoomLevel)}px`
+                  : 'max-content',
+                height: svgDimensions
+                  ? `${Math.ceil((svgDimensions.height + 96) * zoomLevel)}px`
+                  : 'max-content',
                 minWidth: '100%',
+                paddingLeft: `${Math.ceil((svgDimensions?.leftPadding || 140) * zoomLevel)}px`,
+                paddingRight: `${Math.ceil(140 * zoomLevel)}px`,
+                paddingTop: `${Math.ceil(48 * zoomLevel)}px`,
+                paddingBottom: `${Math.ceil(48 * zoomLevel)}px`,
               }}
             >
               <div

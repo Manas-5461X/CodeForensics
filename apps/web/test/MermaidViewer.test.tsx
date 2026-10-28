@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MermaidViewer } from '../src/components/map/MermaidViewer.js';
 
 describe('MermaidViewer Component', () => {
+  afterEach(() => {
+    cleanup();
+  });
   const sampleChart = `graph TD
   root["📁 repo"]:::rootClass
   root --> n_apps["📁 apps (▾ 10 files)"]:::dirClass
