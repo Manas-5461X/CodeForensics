@@ -7,20 +7,15 @@ import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
 import type {
   CoChangeReport,
-  RepositoryMapTimeline,
   KnowledgeLossSummary,
   BlastRadiusImpact,
 } from '@codeforensics/shared';
 import {
   GitMerge,
-  Clock,
   ShieldAlert,
   Zap,
-  Play,
-  Pause,
   FolderGit2,
   RefreshCw,
-  Sparkles,
   Flame,
   AlertTriangle,
   Code2,
@@ -32,10 +27,10 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-export type ForensicTab = 'co-change' | 'timeline' | 'bus-factor' | 'blast-radius';
+export type ForensicTab = 'co-change' | 'bus-factor' | 'blast-radius';
 
 export function ForensicAnalysisPage() {
-  const { activeRepo } = useRepository();
+  const { activeRepo, isLoadingRepos } = useRepository();
   const { get, post } = useApiClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -43,7 +38,7 @@ export function ForensicAnalysisPage() {
   // Tab State
   const initialTab = (searchParams.get('tab') as ForensicTab) || 'co-change';
   const [activeTab, setActiveTab] = useState<ForensicTab>(
-    ['co-change', 'timeline', 'bus-factor', 'blast-radius'].includes(initialTab)
+    ['co-change', 'bus-factor', 'blast-radius'].includes(initialTab)
       ? initialTab
       : 'co-change'
   );
@@ -51,7 +46,6 @@ export function ForensicAnalysisPage() {
   // Explanation Guide State per Tab
   const [showGuide, setShowGuide] = useState<Record<ForensicTab, boolean>>({
     'co-change': false,
-    'timeline': false,
     'bus-factor': false,
     'blast-radius': false,
   });
@@ -70,7 +64,7 @@ export function ForensicAnalysisPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab') as ForensicTab;
-    if (tabParam && ['co-change', 'timeline', 'bus-factor', 'blast-radius'].includes(tabParam) && tabParam !== activeTab) {
+    if (tabParam && ['co-change', 'bus-factor', 'blast-radius'].includes(tabParam) && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -119,60 +113,6 @@ export function ForensicAnalysisPage() {
     }
     return coChangeReport.pairs;
   }, [coChangeReport, coChangeFilter]);
-
-  // ==========================================
-  // TAB 2: TIMELINE STATE & ACTIONS
-  // ==========================================
-  const [timelineData, setTimelineData] = useState<RepositoryMapTimeline | null>(null);
-  const [activeMilestoneId, setActiveMilestoneId] = useState<string>('milestone-now');
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isTimelineLoading, setIsTimelineLoading] = useState<boolean>(false);
-  const [timelineError, setTimelineError] = useState<string | null>(null);
-
-  const loadTimeline = () => {
-    if (!activeRepo) return;
-    setIsTimelineLoading(true);
-    setTimelineError(null);
-    get<RepositoryMapTimeline>(
-      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/timeline`
-    )
-      .then((res) => {
-        if (res.success && res.data) {
-          setTimelineData(res.data);
-          setActiveMilestoneId(res.data.milestones[res.data.milestones.length - 1]?.id || 'milestone-now');
-        } else {
-          setTimelineError(res.error?.message || 'Failed to load architectural timeline');
-        }
-      })
-      .catch((err) => {
-        setTimelineError(err instanceof Error ? err.message : 'Network error loading timeline');
-      })
-      .finally(() => setIsTimelineLoading(false));
-  };
-
-  useEffect(() => {
-    if (activeTab === 'timeline' && !timelineData && activeRepo) {
-      loadTimeline();
-    }
-  }, [activeTab, activeRepo?.owner, activeRepo?.name]);
-
-  useEffect(() => {
-    if (!isPlaying || !timelineData) return;
-    const interval = setInterval(() => {
-      setActiveMilestoneId((prev) => {
-        const milestones = timelineData.milestones;
-        const currentIdx = milestones.findIndex((m) => m.id === prev);
-        const nextIdx = (currentIdx + 1) % milestones.length;
-        return milestones[nextIdx].id;
-      });
-    }, 1800);
-    return () => clearInterval(interval);
-  }, [isPlaying, timelineData]);
-
-  const activeMilestone = useMemo(() => {
-    if (!timelineData) return null;
-    return timelineData.milestones.find((m) => m.id === activeMilestoneId) || timelineData.milestones[0];
-  }, [timelineData, activeMilestoneId]);
 
   // ==========================================
   // TAB 3: BUS FACTOR STATE & ACTIONS
@@ -273,6 +213,32 @@ export function ForensicAnalysisPage() {
   }, [searchParams]);
 
   // ==========================================
+  // RENDER: INITIAL RESTORING / LOADING STATE
+  // ==========================================
+  if (isLoadingRepos && !activeRepo) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
+        <div className="p-10 border border-border-strong rounded-2xl bg-surface shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mx-auto animate-pulse">
+            <Activity className="w-6 h-6 animate-spin" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-primary">Restoring Forensic Telemetry</h3>
+            <p className="text-xs text-primary-secondary max-w-md mx-auto leading-relaxed">
+              Connecting to repository synchronization and restoring your active forensic target...
+            </p>
+          </div>
+          <div className="max-w-xs mx-auto pt-2">
+            <div className="h-1.5 w-full bg-surface-subtle rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
   // RENDER: NO REPOSITORY SELECTED
   // ==========================================
   if (!activeRepo) {
@@ -282,7 +248,7 @@ export function ForensicAnalysisPage() {
           <Activity className="w-10 h-10 text-primary-muted mx-auto" />
           <h3 className="text-base font-semibold text-primary">No Repository Selected</h3>
           <p className="text-xs text-primary-secondary max-w-sm mx-auto">
-            Select a synchronized repository to perform deep-dive forensic analysis across co-change matrices, timeline scrubbers, bus factor heatmaps, and blast-radius predictors.
+            Select a synchronized repository to perform deep-dive forensic analysis across co-change matrices, bus factor risk heatmaps, and blast-radius predictors.
           </p>
           <Link to="/app" className="inline-block mt-2">
             <Button size="sm" variant="primary">
@@ -310,7 +276,7 @@ export function ForensicAnalysisPage() {
             Forensic Analysis Workbench
           </h2>
           <p className="text-xs text-primary-secondary mt-1 max-w-2xl">
-            Unified deep-dive laboratory for temporal co-change coupling, architectural time-machine scrubbers, bus factor knowledge risk heatmaps, and blast-radius impact simulators.
+            Unified deep-dive laboratory for temporal co-change coupling, bus factor knowledge risk heatmaps, and blast-radius impact simulators.
           </p>
         </div>
 
@@ -325,7 +291,6 @@ export function ForensicAnalysisPage() {
             variant="outline"
             onClick={() => {
               if (activeTab === 'co-change') loadCoChange();
-              if (activeTab === 'timeline') loadTimeline();
               if (activeTab === 'bus-factor') loadKnowledge();
               if (activeTab === 'blast-radius') runSimulation();
             }}
@@ -336,7 +301,7 @@ export function ForensicAnalysisPage() {
         </div>
       </div>
 
-      {/* 4-in-1 Forensic Engine Segmented Tab Bar */}
+      {/* 3-in-1 Forensic Engine Segmented Tab Bar */}
       <div className="flex items-center gap-2 border-b border-border-subtle pb-2 overflow-x-auto">
         <button
           type="button"
@@ -356,28 +321,6 @@ export function ForensicAnalysisPage() {
               }`}
             >
               {coChangeReport.pairs.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('timeline')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-            activeTab === 'timeline'
-              ? 'bg-accent text-accent-contrast shadow-sm'
-              : 'text-primary-muted hover:text-primary hover:bg-surface-subtle'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span>Time-Machine</span>
-          {timelineData?.milestones && (
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
-                activeTab === 'timeline' ? 'bg-black/20 text-white' : 'bg-surface-subtle text-primary-muted'
-              }`}
-            >
-              {timelineData.milestones.length}
             </span>
           )}
         </button>
@@ -444,9 +387,13 @@ export function ForensicAnalysisPage() {
             <button
               type="button"
               onClick={() => toggleGuide('co-change')}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer ${
+                showGuide['co-change']
+                  ? 'bg-cyan-700 hover:bg-cyan-800 text-white border border-cyan-700'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-600'
+              }`}
             >
-              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <HelpCircle className="w-4 h-4 text-white shrink-0" />
               <span>{showGuide['co-change'] ? 'Hide Co-Change Guide' : 'What is Co-Change Matrix?'}</span>
             </button>
           </div>
@@ -713,252 +660,7 @@ export function ForensicAnalysisPage() {
       )}
 
       {/* ========================================================= */}
-      {/* TAB 2: TIME-MACHINE TIMELINE VIEW                         */}
-      {/* ========================================================= */}
-      {activeTab === 'timeline' && (
-        <div className="space-y-6 animate-in fade-in">
-          {/* Tab Engine Header & Explanation Button */}
-          <div className="p-4 bg-surface border border-border-subtle rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-            <div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-accent" />
-                <h3 className="font-bold text-primary text-sm font-mono">Time-Machine Architecture Timeline Engine</h3>
-              </div>
-              <p className="text-xs text-primary-secondary mt-0.5">
-                Reconstructs codebase topology, directory footprints, and hotspot migrations across historical release eras.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toggleGuide('timeline')}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-              <span>{showGuide['timeline'] ? 'Hide Timeline Guide' : 'What is Time-Machine Timeline?'}</span>
-            </button>
-          </div>
-
-          {/* Expandable Overview Guide */}
-          {showGuide['timeline'] && (
-            <Panel className="p-4 bg-cyan-500/5 border-cyan-500/30 text-xs space-y-2 animate-in fade-in">
-              <div className="font-bold text-primary flex items-center gap-2 font-mono">
-                <BookOpen className="w-4 h-4 text-accent" />
-                <span>Quick Guide: Understanding Codebase Evolution</span>
-              </div>
-              <p className="text-primary-secondary leading-relaxed">
-                Codebases are not static artifacts. The <strong>Time-Machine Timeline</strong> scrubs through chronological milestone eras (e.g., initial baseline &rarr; v0.5.0 &rarr; v1.0.0 &rarr; present) to show when architectural complexity expanded. Use this to determine if a hotspot is recent experimental feature churn or entrenched architectural debt.
-              </p>
-            </Panel>
-          )}
-
-          {isTimelineLoading ? (
-            <div className="space-y-4">
-              <LoadingSkeleton className="h-28 w-full" />
-              <LoadingSkeleton className="h-64 w-full" />
-            </div>
-          ) : timelineError ? (
-            <Panel className="p-6 text-center border-rose-500/30 bg-rose-500/5 space-y-2">
-              <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
-              <div className="text-sm font-semibold text-rose-500">{timelineError}</div>
-              <Button size="sm" variant="outline" onClick={loadTimeline} className="mt-2">
-                Retry Loading Timeline
-              </Button>
-            </Panel>
-          ) : timelineData && activeMilestone ? (
-            <>
-              {/* Timeline Scrubber Controller */}
-              <Panel className="p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase font-mono tracking-wider text-accent font-bold">
-                        Architecture Evolution Scrubber
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-subtle text-primary-muted border border-border-subtle font-mono">
-                        {timelineData.milestones.length} Historical Eras
-                      </span>
-                    </div>
-                    <div className="text-base font-bold text-primary mt-1 flex items-center gap-2">
-                      <span>{activeMilestone.label}</span>
-                      <span className="text-xs text-primary-muted font-normal font-mono">
-                        ({activeMilestone.relativeTime})
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant={isPlaying ? 'primary' : 'outline'}
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      leftIcon={isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                    >
-                      {isPlaying ? 'Pause Auto-Play' : 'Simulate Evolution'}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Range Slider */}
-                <div className="space-y-2 pt-2">
-                  <input
-                    type="range"
-                    min={0}
-                    max={timelineData.milestones.length - 1}
-                    value={timelineData.milestones.findIndex((m) => m.id === activeMilestoneId)}
-                    onChange={(e) => {
-                      setIsPlaying(false);
-                      const idx = parseInt(e.target.value, 10);
-                      setActiveMilestoneId(timelineData.milestones[idx].id);
-                    }}
-                    className="w-full accent-accent h-2 bg-surface-subtle rounded-lg cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] font-mono text-primary-muted">
-                    <span>{timelineData.milestones[0]?.label}</span>
-                    <span className="text-accent font-semibold">{activeMilestone.label}</span>
-                    <span>{timelineData.milestones[timelineData.milestones.length - 1]?.label}</span>
-                  </div>
-                </div>
-              </Panel>
-
-              {/* Active Era Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Panel className="p-4">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-primary-muted font-semibold">
-                    Files in Era
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-primary mt-1">
-                    {activeMilestone.totalFiles}
-                  </div>
-                  <div className="text-xs text-primary-muted mt-0.5">Codebase footprint</div>
-                </Panel>
-
-                <Panel className="p-4">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-primary-muted font-semibold">
-                    Total Directories
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-primary mt-1">
-                    {activeMilestone.totalDirectories}
-                  </div>
-                  <div className="text-xs text-primary-muted mt-0.5">Directory hierarchy depth</div>
-                </Panel>
-
-                <Panel className="p-4 border-rose-500/30 bg-rose-500/5">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-rose-500 font-semibold">
-                    Hotspots Count
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-rose-500 mt-1">
-                    {activeMilestone.hotspotCount}
-                  </div>
-                  <div className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">
-                    High volatility files in era
-                  </div>
-                </Panel>
-
-                <Panel className="p-4">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-primary-muted font-semibold">
-                    Subsystems
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-accent mt-1">
-                    {activeMilestone.topSubsystems?.length || 1}
-                  </div>
-                  <div className="text-xs text-primary-muted mt-0.5">Architectural domains</div>
-                </Panel>
-              </div>
-
-              {/* Milestone Timeline Card List */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-primary font-mono flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-accent" />
-                  Chronological Architectural Eras
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {timelineData.milestones.map((m) => {
-                    const isSelected = m.id === activeMilestoneId;
-                    return (
-                      <div
-                        key={m.id}
-                        onClick={() => {
-                          setIsPlaying(false);
-                          setActiveMilestoneId(m.id);
-                        }}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-accent/10 border-accent shadow-sm'
-                            : 'bg-surface border-border-subtle hover:border-border-strong'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                          <span className={`font-bold ${isSelected ? 'text-accent' : 'text-primary'}`}>
-                            {m.label}
-                          </span>
-                          <span className="text-[10px] text-primary-muted">
-                            {m.relativeTime}
-                          </span>
-                        </div>
-                        <p className="text-xs text-primary-secondary line-clamp-2 leading-relaxed">
-                          {m.summaryText}
-                        </p>
-                        <div className="mt-3 pt-2 border-t border-border-subtle/60 flex items-center justify-between text-[10px] font-mono text-primary-muted">
-                          <span>{m.totalFiles} files</span>
-                          <span>{m.totalDirectories} dirs</span>
-                          <span className="font-semibold text-rose-500">{m.hotspotCount} hotspots</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Comprehensive Time-Machine Analysis Guide (Downside) */}
-              <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4 font-sans text-xs">
-                <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
-                  <BookOpen className="w-4 h-4 text-accent" />
-                  <h4 className="font-bold text-primary text-sm font-mono">Time-Machine Evolution &amp; Architectural Drift Guide</h4>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
-                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
-                      <Clock className="w-3.5 h-3.5 text-accent" />
-                      <span>1. Era Reconstruction</span>
-                    </div>
-                    <p className="text-[11px] text-primary-secondary leading-relaxed">
-                      CodeForensics buckets Git history into distinct architectural eras based on release tags and quarterly commit clusters.
-                    </p>
-                    <p className="text-[10px] text-primary-muted">
-                      Allows comparing historical baseline complexity against current head states.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
-                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
-                      <Flame className="w-3.5 h-3.5 text-rose-500" />
-                      <span>2. Hotspot Trajectories</span>
-                    </div>
-                    <p className="text-[11px] text-primary-secondary leading-relaxed">
-                      Watch files migrate from emerald (stable) to crimson (hotspot). If a core engine suddenly sparks high churn in a recent era, inspect recent PRs for feature bloat.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
-                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>3. Historical Remediation</span>
-                    </div>
-                    <p className="text-[11px] text-primary-secondary leading-relaxed">
-                      Use milestone telemetry to schedule refactoring sprints immediately after rapid feature expansions before technical debt solidifies.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : null}
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* TAB 3: BUS FACTOR RISK & KNOWLEDGE LOSS VIEW              */}
+      {/* TAB 2: BUS FACTOR RISK & KNOWLEDGE LOSS VIEW              */}
       {/* ========================================================= */}
       {activeTab === 'bus-factor' && (
         <div className="space-y-6 animate-in fade-in">
@@ -976,9 +678,13 @@ export function ForensicAnalysisPage() {
             <button
               type="button"
               onClick={() => toggleGuide('bus-factor')}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer ${
+                showGuide['bus-factor']
+                  ? 'bg-cyan-700 hover:bg-cyan-800 text-white border border-cyan-700'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-600'
+              }`}
             >
-              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <HelpCircle className="w-4 h-4 text-white shrink-0" />
               <span>{showGuide['bus-factor'] ? 'Hide Bus Factor Guide' : 'What is Bus Factor & Zombie Hotspot?'}</span>
             </button>
           </div>
@@ -1315,7 +1021,7 @@ export function ForensicAnalysisPage() {
       )}
 
       {/* ========================================================= */}
-      {/* TAB 4: BLAST RADIUS PREDICTOR VIEW                        */}
+      {/* TAB 3: BLAST RADIUS PREDICTOR VIEW                        */}
       {/* ========================================================= */}
       {activeTab === 'blast-radius' && (
         <div className="space-y-6 animate-in fade-in">
@@ -1333,9 +1039,13 @@ export function ForensicAnalysisPage() {
             <button
               type="button"
               onClick={() => toggleGuide('blast-radius')}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer ${
+                showGuide['blast-radius']
+                  ? 'bg-cyan-700 hover:bg-cyan-800 text-white border border-cyan-700'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-600'
+              }`}
             >
-              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <HelpCircle className="w-4 h-4 text-white shrink-0" />
               <span>{showGuide['blast-radius'] ? 'Hide Blast Guide' : 'What is Blast Radius Predictor?'}</span>
             </button>
           </div>

@@ -23,12 +23,13 @@ import {
   X,
   CheckCircle2,
   Link2,
+  RefreshCw,
 } from 'lucide-react';
 
 export function IssuesPage() {
   const searchInputId = useId();
   const sortSelectId = useId();
-  const { activeRepo, syncState, isSyncing, triggerSync } = useRepository();
+  const { activeRepo, syncState, isSyncing, triggerSync, isLoadingRepos } = useRepository();
   const { get } = useApiClient();
 
   // Filters & Pagination State
@@ -111,6 +112,30 @@ export function IssuesPage() {
     },
     enabled: Boolean(activeRepo),
   });
+
+  // State 0: Restoring repository state
+  if (isLoadingRepos && !activeRepo) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
+        <div className="p-10 border border-border-strong rounded-2xl bg-surface shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mx-auto animate-pulse">
+            <RefreshCw className="w-6 h-6 animate-spin" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-primary">Restoring Issue & PR Explorer</h3>
+            <p className="text-xs text-primary-secondary max-w-md mx-auto leading-relaxed">
+              Connecting to repository synchronization and restoring work items...
+            </p>
+          </div>
+          <div className="max-w-xs mx-auto pt-2">
+            <div className="h-1.5 w-full bg-surface-subtle rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // State 1: No active repository selected
   if (!activeRepo) {

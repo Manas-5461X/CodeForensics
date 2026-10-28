@@ -121,11 +121,10 @@ An interactive visual hierarchy generator mapping repository folders, files, and
 - **Architecture Inspector**: Inspects file size, line counts, lead maintainers, co-changed companion snippets, and links to trace AST history in Code Archaeology.
 
 ### 05. Forensic Analysis Workbench (`/app/analysis`)
-A unified laboratory combining all 4 deep-dive forensic analysis engines in a single workbench with segmented tab controls and URL deep-linking:
+A unified laboratory combining the 3 core deep-dive forensic analysis engines in a single workbench with segmented tab controls and URL deep-linking:
 - **1. Temporal Co-Change Coupling Matrix (`?tab=co-change`)**: Measures statistical commit co-occurrence across pull requests to detect invisible dependencies. Highlights cross-subsystem boundary leaks in crimson where changes in one domain breach another.
-- **2. Time-Machine Architecture Timeline (`?tab=timeline`)**: Chronological architecture evolution scrubber with milestone playback, tracking directory growth, codebase footprint expansions, and hotspot migrations across quarterly release eras.
-- **3. Bus Factor Risk & Zombie Hotspots Heatmap (`?tab=bus-factor`)**: Visual risk density matrix evaluating maintainer activity. Identifies critical single-maintainer dependencies (Bus Factor = 1) and "Zombie Hotspots" (high-churn files authored by departed or dormant engineers).
-- **4. Automated Architectural Blast-Radius Predictor (`?tab=blast-radius`)**: Interactive pre-commit simulator where engineers input target files to calculate downstream ripple impacts, companion files, regression test suites marked `MUST PASS`, and recommended peer reviewers.
+- **2. Bus Factor Risk & Zombie Hotspots Heatmap (`?tab=bus-factor`)**: Visual risk density matrix evaluating maintainer activity. Identifies critical single-maintainer dependencies (Bus Factor = 1) and "Zombie Hotspots" (high-churn files authored by departed or dormant engineers).
+- **3. Automated Architectural Blast-Radius Predictor (`?tab=blast-radius`)**: Interactive pre-commit simulator where engineers input target files to calculate downstream ripple impacts, companion files, regression test suites marked `MUST PASS`, and recommended peer reviewers.
 - **Interactive "What is ...?" Playbooks**: Every engine features a dedicated, prominent educational button and downside remediation guide providing actionable refactoring strategies for new and experienced engineers.
 
 ### 06. Contribution Finder & Team Risk (`/app/contributions`)

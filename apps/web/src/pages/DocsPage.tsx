@@ -191,7 +191,7 @@ Stage 4: Compute deterministic cross-entity relationships and cache results`,
         {
           heading: 'Step 4: Conduct Deep Forensic Analytics in the Workbench',
           stepNumber: 4,
-          body: 'Navigate to "Forensic Analysis" (/app/analysis) in the sidebar. Switch between 4 dedicated forensic engines:\n\n• Co-Change Matrix: Detect statistical co-occurrence and cross-subsystem leaks.\n• Time-Machine: Scrub across historical milestone eras to observe codebase growth.\n• Bus Factor Risk: Identify single-maintainer dependencies and Zombie Hotspots.\n• Blast Radius: Simulate proposed changes to predict companion files and test suites at risk.\n\nClick the "What is ...?" explanation buttons at the top of each tab for quick guides, and consult the downside remediation playbooks at the bottom for concrete engineering tactics.',
+          body: 'Navigate to "Forensic Analysis" (/app/analysis) in the sidebar. Switch between 3 high-impact forensic engines:\n\n• Co-Change Matrix: Detect statistical co-occurrence and cross-subsystem leaks.\n• Bus Factor Risk: Identify single-maintainer dependencies and Zombie Hotspots.\n• Blast Radius: Simulate proposed changes to predict companion files and test suites at risk.\n\nClick the high-visibility "What is ...?" explanation buttons at the top of each tab for quick guides, and consult the downside remediation playbooks at the bottom for concrete engineering tactics.',
         },
         {
           heading: 'Step 5: Explore Issues & PRs with Evidentiary Confidence',
@@ -344,15 +344,15 @@ GET /api/v1/repositories/:owner/:repo/map/dossier      # Standalone single-file 
     title: 'Forensic Analysis Workbench',
     category: 'Intelligence Engines',
     icon: Activity,
-    summary: 'Dedicated forensic deep-dive laboratory for temporal co-change, time-machine scrubbers, bus factor risk heatmaps, and blast-radius simulators.',
-    readTime: '6 min read',
-    tags: ['Forensic Analysis', 'Co-Change Matrix', 'Time-Machine', 'Bus Factor', 'Blast Radius', 'Downside Playbooks'],
+    summary: 'Dedicated forensic deep-dive laboratory for temporal co-change coupling, bus factor risk heatmaps, and blast-radius simulators.',
+    readTime: '5 min read',
+    tags: ['Forensic Analysis', 'Co-Change Matrix', 'Bus Factor', 'Blast Radius', 'Downside Playbooks'],
     content: {
-      lead: 'The Forensic Analysis Workbench (/app/analysis) is a dedicated investigation laboratory providing focused analytics for temporal coupling, architectural evolution milestones, bus factor knowledge-loss risks, and blast radius simulations—free from visual clutter.',
+      lead: 'The Forensic Analysis Workbench (/app/analysis) is a dedicated investigation laboratory providing focused analytics for temporal coupling, bus factor knowledge-loss risks, and blast radius simulations—free from visual clutter.',
       sections: [
         {
           heading: 'Unified Forensic Workbench Architecture (/app/analysis)',
-          body: 'To avoid visual clutter on the Repository Map, the 4 forensic deep-dive engines are unified in their own dedicated workbench accessible from the sidebar. Each engine is accessed via segmented tabs with URL query parameter persistence (?tab=co-change, ?tab=timeline, ?tab=bus-factor, ?tab=blast-radius):\n\n• Seamless Navigation: Switch between engines instantly without reloading.\n• Header Explanation Buttons: Every tab features a prominent "What is ...?" explanation toggle button next to the engine title.\n• Downside Analysis & Remediation Playbooks: Every tab includes a comprehensive downside guide at the bottom detailing why the risk matters, what negative consequences happen if ignored, and concrete engineering actions.',
+          body: 'To avoid visual clutter on the Repository Map, the 3 forensic deep-dive engines are unified in their own dedicated workbench accessible from the sidebar. Each engine is accessed via segmented tabs with URL query parameter persistence (?tab=co-change, ?tab=bus-factor, ?tab=blast-radius):\n\n• Seamless Navigation: Switch between engines instantly without reloading.\n• Header Explanation Buttons: Every tab features a prominent "What is ...?" explanation toggle button next to the engine title.\n• Downside Analysis & Remediation Playbooks: Every tab includes a comprehensive downside guide at the bottom detailing why the risk matters, what negative consequences happen if ignored, and concrete engineering actions.',
         },
         {
           heading: '1. Temporal Co-Change & Coupling Matrix',
@@ -361,19 +361,13 @@ GET /api/v1/repositories/:owner/:repo/map/dossier      # Standalone single-file 
 GET /api/v1/repositories/:owner/:repo/map/co-change`,
         },
         {
-          heading: '2. Time-Machine Architecture Timeline Scrubber',
-          body: 'The Time-Machine feature provides an interactive playback scrubber across 4 chronological milestones (6 Months Ago → 3 Months Ago → 1 Month Ago → Present Snapshot):\n\n• Architectural Evolution: Tracks how file count, directory depth, and subsystem count expanded across release eras.\n• Hotspot Migration Tracking: Identifies exactly when stable files became volatile churn hotspots during rapid feature expansion or major refactors.\n• Automated Playback: Click "Play Timeline" to automatically scrub through milestones with 2.8s intervals.\n• Downside Playbook: The bottom guide details how unmanaged codebase sprawl increases cognitive load and onboarding overhead, advising architecture freezes and modular sub-packaging.',
-          codeSnippet: `// API Endpoint for Historical Timeline Milestones:
-GET /api/v1/repositories/:owner/:repo/map/timeline`,
-        },
-        {
-          heading: '3. Bus Factor Risk & Zombie Hotspots Heatmap',
+          heading: '2. Bus Factor Risk & Zombie Hotspots Heatmap',
           body: 'Correlates Churn Hotspot velocity with Contribution Finder maintainer activity to uncover organizational vulnerabilities:\n\n• Visual Risk Heatmap: Files are color-coded into Critical Risk (crimson), Moderate Risk (amber), and Healthy Distribution (emerald).\n• Zombie Hotspots: High-churn files (score ≥ 60) where 80%+ of original lines were authored by engineers who are dormant or departed.\n• Single-Maintainer Dependencies: Critical files with a Bus Factor of 1 where institutional knowledge resides with a single engineer.\n• Downside Playbook: The bottom guide highlights project paralysis risks when lead maintainers take leave, recommending pair programming, mandatory rotational reviews, and targeted documentation briefs.',
           codeSnippet: `// API Endpoint for Bus Factor & Knowledge Loss:
 GET /api/v1/repositories/:owner/:repo/map/knowledge-loss`,
         },
         {
-          heading: '4. Automated Architectural Blast-Radius Predictor',
+          heading: '3. Automated Architectural Blast-Radius Predictor',
           body: 'An interactive pre-commit simulator where engineers input target files or branches to calculate ripple impacts before merging:\n\n• Hazard Score (0–100): Categorizes proposed modifications into CRITICAL, HIGH, MODERATE, or LOW hazard.\n• Downstream Coupled Files: Pinpoints hidden companion files that should likely be updated in the same PR.\n• Regression Test Suites at Risk: Surfaces unit, integration, and e2e test files marked MUST PASS.\n• Boundary Crossing Warnings: Highlights changes that breach subsystem tiers.\n• Recommended Reviewers: Identifies verified domain experts to invite to the PR review.\n• Downside Playbook: The bottom guide explains how undetected blast ripples cause silent production regressions, recommending regression test additions and feature flag gating.',
           codeSnippet: `// API Endpoint for Blast Radius Simulation:
 POST /api/v1/repositories/:owner/:repo/map/blast-radius
@@ -611,25 +605,26 @@ export function DocsPage() {
         </div>
 
         {/* Direct Action Links */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             to="/"
-            className="hidden md:inline-flex items-center text-xs font-mono text-slate-600 hover:text-slate-900 transition-colors px-2 py-1"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-mono text-xs font-medium shadow-2xs transition-all"
           >
-            Home
+            <Compass className="w-3.5 h-3.5 text-slate-500" />
+            <span>Home</span>
           </Link>
           <a
             href="https://github.com/Manas-5461X/CodeForensics"
             target="_blank"
             rel="noreferrer"
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-white shadow-xs transition-colors"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-mono text-xs font-medium shadow-2xs transition-all"
           >
             <Terminal className="w-3.5 h-3.5 text-cyan-600" />
             <span>GitHub</span>
           </a>
           <Link
             to="/app"
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900 hover:bg-slate-800 text-white font-mono font-semibold text-xs uppercase tracking-wider rounded-lg transition-all duration-200 shadow-xs hover:-translate-y-0.5"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-900 bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-semibold shadow-2xs transition-all hover:-translate-y-0.5"
           >
             <span>Workbench</span>
             <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />

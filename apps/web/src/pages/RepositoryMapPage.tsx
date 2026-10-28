@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 
 export function RepositoryMapPage() {
-  const { activeRepo } = useRepository();
+  const { activeRepo, isLoadingRepos } = useRepository();
   const { get } = useApiClient();
   const navigate = useNavigate();
 
@@ -661,6 +661,29 @@ export function RepositoryMapPage() {
     );
   };
 
+  if (isLoadingRepos && !activeRepo) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
+        <div className="p-10 border border-border-strong rounded-2xl bg-surface shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mx-auto animate-pulse">
+            <Activity className="w-6 h-6 animate-spin" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-primary">Restoring Architecture Telemetry</h3>
+            <p className="text-xs text-primary-secondary max-w-md mx-auto leading-relaxed">
+              Connecting to repository synchronization and restoring your active architecture map...
+            </p>
+          </div>
+          <div className="max-w-xs mx-auto pt-2">
+            <div className="h-1.5 w-full bg-surface-subtle rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!activeRepo) {
     return (
       <EmptyState
@@ -692,9 +715,13 @@ export function RepositoryMapPage() {
             <button
               type="button"
               onClick={() => setShowChurnGuide((prev) => !prev)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs hover:shadow-sm cursor-pointer"
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer ${
+                showChurnGuide
+                  ? 'bg-cyan-700 hover:bg-cyan-800 text-white border border-cyan-700'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-600'
+              }`}
             >
-              <Flame className="w-4 h-4 text-amber-500 shrink-0" />
+              <Flame className="w-4 h-4 text-amber-300 shrink-0" />
               <span>{showChurnGuide ? 'Hide Churn & Hotspot Guide' : 'What is Code Churn & Hotspot?'}</span>
             </button>
           </div>

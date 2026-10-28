@@ -65,10 +65,9 @@ export function WorkflowPage() {
       badge: 'Step 3',
       badgeColor: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30',
       description:
-        'A dedicated laboratory unifying all 4 forensic intelligence engines with segmented tabs, prominent "What is ...?" educational guides, and actionable downside remediation playbooks.',
+        'A dedicated laboratory unifying all 3 forensic intelligence engines with segmented tabs, high-visibility "What is ...?" educational guides, and actionable downside remediation playbooks.',
       details: [
         'Temporal Co-Change Matrix: Pinpoints files frequently modified together across PRs and alerts on cross-subsystem architectural leaks.',
-        'Time-Machine Architecture Timeline: Interactive milestone scrubber with automated playback to trace codebase expansion and hotspot migrations.',
         'Bus Factor Risk Heatmap: Highlights single-maintainer dependencies and "Zombie Hotspots" where high-churn code is maintained by departed engineers.',
         'Automated Blast Radius Predictor: Pre-commit simulation predicting downstream companion files, affected test suites, and recommended reviewers.',
         'Downside Remediation Playbooks: Concrete engineering actions, safety checks, and risk indicators for every forensic engine.',
@@ -316,7 +315,7 @@ export function WorkflowPage() {
                 </td>
               </tr>
               <tr>
-                <td className="py-2.5 px-3 font-medium text-primary">Deep-dive co-changes, time-machine & blast radius</td>
+                <td className="py-2.5 px-3 font-medium text-primary">Deep-dive co-changes, bus factor & blast radius</td>
                 <td className="py-2.5 px-3">Forensic Workbench</td>
                 <td className="py-2.5 px-3 font-mono text-[11px]">Co-Change Matrix + Bus Factor + Blast Simulator</td>
                 <td className="py-2.5 px-3 text-right">

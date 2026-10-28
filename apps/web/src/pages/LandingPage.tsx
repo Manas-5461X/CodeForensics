@@ -809,6 +809,12 @@ export function LandingPage() {
             <Link to="/app" className="hover:text-white transition-colors">
               Workbench
             </Link>
+            <Link to="/app/map" className="hover:text-white transition-colors">
+              Architecture Map
+            </Link>
+            <Link to="/app/analysis" className="hover:text-white transition-colors">
+              Forensic Analysis
+            </Link>
             <Link to="/app/issues" className="hover:text-white transition-colors">
               Issues & PRs
             </Link>

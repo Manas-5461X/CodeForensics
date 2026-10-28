@@ -22,6 +22,7 @@ import {
   FileQuestion,
   X,
   FolderGit2,
+  RefreshCw,
 } from 'lucide-react';
 
 export interface ScopePresetOption {
@@ -151,7 +152,7 @@ interface LocationState {
 }
 
 export function InvestigationsPage() {
-  const { activeRepo } = useRepository();
+  const { activeRepo, isLoadingRepos } = useRepository();
   const { get, post, patch, del } = useApiClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -429,6 +430,29 @@ export function InvestigationsPage() {
         return <Badge category="HYPOTHESIS">OPEN</Badge>;
     }
   };
+
+  if (isLoadingRepos && !activeRepo) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
+        <div className="p-10 border border-border-strong rounded-2xl bg-surface shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mx-auto animate-pulse">
+            <RefreshCw className="w-6 h-6 animate-spin" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-primary">Restoring Saved Investigations</h3>
+            <p className="text-xs text-primary-secondary max-w-md mx-auto leading-relaxed">
+              Connecting to repository synchronization and restoring investigation briefs...
+            </p>
+          </div>
+          <div className="max-w-xs mx-auto pt-2">
+            <div className="h-1.5 w-full bg-surface-subtle rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!activeRepo) {
     return (

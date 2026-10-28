@@ -25,15 +25,24 @@ export interface RepositoryContextType {
 
 const RepositoryContext = createContext<RepositoryContextType | null>(null);
 
+const ACTIVE_REPO_STORAGE_KEY = 'codeforensics_active_repo';
+
 export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { request } = useApiClient();
   const { user } = useAuth();
 
   const [repositories, setRepositories] = useState<RepositoryInfo[]>([]);
-  const [activeRepo, setActiveRepo] = useState<RepositoryInfo | null>(null);
+  const [activeRepo, setActiveRepo] = useState<RepositoryInfo | null>(() => {
+    try {
+      const saved = localStorage.getItem(ACTIVE_REPO_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [syncState, setSyncState] = useState<RepositorySyncStateInfo | null>(null);
   const [installations, setInstallations] = useState<GitHubInstallationInfo[]>([]);
-  const [isLoadingRepos, setIsLoadingRepos] = useState<boolean>(false);
+  const [isLoadingRepos, setIsLoadingRepos] = useState<boolean>(true);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -42,6 +51,7 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const refreshRepositories = useCallback(async () => {
     if (!user) {
       setRepositories([]);
+      setIsLoadingRepos(false);
       return;
     }
     try {
@@ -51,11 +61,19 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setRepositories(res.data);
         // If activeRepo is not set or not in list, default to first tracked repo
         setActiveRepo((current) => {
+          let target: RepositoryInfo | null = null;
           if (current) {
-            const found = res.data?.find((r) => r.id === current.id);
-            return found || current;
+            const found = res.data?.find((r) => r.id === current.id || (r.owner === current.owner && r.name === current.name));
+            target = found || current;
+          } else {
+            target = res.data && res.data.length > 0 ? res.data[0] : null;
           }
-          return res.data && res.data.length > 0 ? res.data[0] : null;
+          if (target) {
+            try {
+              localStorage.setItem(ACTIVE_REPO_STORAGE_KEY, JSON.stringify(target));
+            } catch {}
+          }
+          return target;
         });
       }
     } catch (err) {
@@ -152,6 +170,9 @@ export const RepositoryProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const selectRepository = useCallback((repo: RepositoryInfo) => {
     setActiveRepo(repo);
+    try {
+      localStorage.setItem(ACTIVE_REPO_STORAGE_KEY, JSON.stringify(repo));
+    } catch {}
     if (repo.syncState) {
       setSyncState(repo.syncState);
     }
