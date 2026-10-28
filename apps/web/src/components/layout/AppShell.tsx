@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar.js';
 import { TopBar } from './TopBar.js';
+import { ErrorBoundary } from '../ui/ErrorBoundary.js';
 
 export function AppShell() {
   const location = useLocation();
@@ -39,7 +40,9 @@ export function AppShell() {
         />
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6">
           <div className="max-w-7xl mx-auto w-full">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

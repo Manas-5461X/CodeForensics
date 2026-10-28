@@ -57,7 +57,7 @@ export function RepositoryMapPage() {
 
   // Fetch repository architecture map data
   useEffect(() => {
-    if (!activeRepo) {
+    if (!activeRepo || !activeRepo.owner || !activeRepo.name) {
       setMapData(null);
       return;
     }
@@ -73,14 +73,14 @@ export function RepositoryMapPage() {
         if (!isMounted) return;
         if (res.success && res.data) {
           setMapData(res.data);
-          // Auto-expand root and first level directories
+          // Auto-expand root and first level directories safely
           const initialExpanded = new Set<string>(['root']);
-          if (res.data.root.children) {
+          if (res.data.root?.children) {
             for (const child of res.data.root.children) {
-              if (child.type === 'directory') {
+              if (child && child.type === 'directory') {
                 initialExpanded.add(child.path);
                 child.children?.forEach((sub) => {
-                  if (sub.type === 'directory') initialExpanded.add(sub.path);
+                  if (sub && sub.type === 'directory') initialExpanded.add(sub.path);
                 });
               }
             }
@@ -286,13 +286,14 @@ export function RepositoryMapPage() {
 
   // Recursive Tree Node component
   const TreeNode = ({ node, level = 0 }: { node: RepositoryMapNode; level?: number }) => {
-    if (!isNodeVisible(node)) return null;
+    if (!node || !isNodeVisible(node)) return null;
 
     const isDir = node.type === 'directory';
     const isExpanded = expandedNodes.has(node.path);
     const isSelected = selectedNode?.path === node.path;
-    const isHotspot = node.churnScore >= 65;
-    const isModerate = node.churnScore >= 40 && node.churnScore < 65;
+    const churnScore = node.churnScore ?? 0;
+    const isHotspot = churnScore >= 65;
+    const isModerate = churnScore >= 40 && churnScore < 65;
 
     return (
       <div className="select-none">
@@ -454,10 +455,10 @@ export function RepositoryMapPage() {
               Total Code Files
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-primary mt-1">
-              {mapData.summary.totalFiles}
+              {mapData.summary?.totalFiles ?? 0}
             </div>
             <div className="text-[11px] text-primary-secondary mt-0.5">
-              Across {mapData.summary.totalDirectories} directories
+              Across {mapData.summary?.totalDirectories ?? 0} directories
             </div>
           </Panel>
 
@@ -467,7 +468,7 @@ export function RepositoryMapPage() {
               Churn Hotspots
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-rose-600 mt-1">
-              {mapData.summary.hotspotCount}
+              {mapData.summary?.hotspotCount ?? 0}
             </div>
             <div className="text-[11px] text-primary-secondary mt-0.5">
               High-volatility change files (≥60)
@@ -479,10 +480,10 @@ export function RepositoryMapPage() {
               Primary Subsystems
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-primary mt-1">
-              {mapData.summary.topSubsystems.length}
+              {mapData.summary?.topSubsystems?.length ?? 0}
             </div>
             <div className="text-[11px] text-primary-secondary mt-0.5">
-              {mapData.summary.topSubsystems[0]?.name || 'root'} (largest)
+              {mapData.summary?.topSubsystems?.[0]?.name || 'root'} (largest)
             </div>
           </Panel>
 
@@ -804,7 +805,7 @@ export function RepositoryMapPage() {
           </Panel>
 
           {/* Subsystems Breakdown List */}
-          {mapData && (
+          {mapData?.summary?.topSubsystems && mapData.summary.topSubsystems.length > 0 && (
             <Panel className="p-4 space-y-3">
               <h3 className="text-xs font-bold text-primary font-mono uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-accent" />
@@ -822,7 +823,7 @@ export function RepositoryMapPage() {
                   }`}
                 >
                   <span>All Subsystems</span>
-                  <span className="text-[10px] text-primary-muted">{mapData.summary.totalFiles} files</span>
+                  <span className="text-[10px] text-primary-muted">{mapData.summary.totalFiles ?? 0} files</span>
                 </button>
 
                 {mapData.summary.topSubsystems.map((sub) => (
