@@ -12,6 +12,7 @@ import {
   Layers,
   Terminal,
   ExternalLink,
+  Network,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button.js';
 import { useRepository } from '../context/RepositoryContext.js';
@@ -39,10 +40,28 @@ export function WorkflowPage() {
     },
     {
       step: '02',
+      title: 'Repository Architecture Map & Churn Heatmap',
+      category: 'Topography & Churn Risk',
+      icon: Network,
+      badge: 'Step 2',
+      badgeColor: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+      description:
+        'Visualize high-level codebase structure and folder hierarchies with interactive Mermaid vector flowcharts and drill-down maps. Identify high-volatility churn hotspots before diving into code archaeology.',
+      details: [
+        'Interactive Mermaid Vector Flowchart: Dynamic zoomable flowchart rendered client-side, showing root subsystems and directory relationships.',
+        'Deep Folder Drill-Down: Click folders directly in the flowchart to expand nested folders and files with code churn scores.',
+        'Visual Churn Hotspots: Volatility hotspots (🔥 churn ≥ 65/100) are highlighted in crimson for immediate architectural risk detection.',
+        'Multi-Format Architecture Export: Export full-resolution SVGs, Mermaid syntax (.mmd), markdown summaries (.md), or ASCII directory trees.',
+      ],
+      actionLink: '/app/map',
+      actionText: 'Explore Architecture Map',
+    },
+    {
+      step: '03',
       title: 'Code Archaeology & AST Blast Radius',
       category: 'Static Analysis & Code Forensics',
       icon: GitBranch,
-      badge: 'Step 2',
+      badge: 'Step 3',
       badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
       description:
         'Instead of guessing with git blame, CodeForensics parses JavaScript and TypeScript source files in memory using the official TypeScript AST Compiler. Search functions, classes, and React hooks to trace exact line spans and commit histories.',
@@ -55,11 +74,11 @@ export function WorkflowPage() {
       actionText: 'Launch Code Archaeology',
     },
     {
-      step: '03',
+      step: '04',
       title: 'Issue & PR Lineage Tracing',
       category: 'Causal Relationship Detection',
       icon: GitPullRequest,
-      badge: 'Step 3',
+      badge: 'Step 4',
       badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
       description:
         'Discover WHY a code decision was made. CodeForensics correlates issues and pull requests, surfacing deterministic references ("fixes #123", "closes #456") and heuristic links with explainable confidence ratings.',
@@ -72,11 +91,11 @@ export function WorkflowPage() {
       actionText: 'Explore Issues & PRs',
     },
     {
-      step: '04',
+      step: '05',
       title: 'Contribution & Mentorship Finder',
       category: 'Team Expertise & Risk Scoring',
       icon: Sparkles,
-      badge: 'Step 4',
+      badge: 'Step 5',
       badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
       description:
         'Identify who actually knows the subsystem best. Our mathematical Contributor Impact score balances merged PRs, active commit velocity, code churn, review contributions, and time freshness.',
@@ -89,11 +108,11 @@ export function WorkflowPage() {
       actionText: 'View Contribution Finder',
     },
     {
-      step: '05',
+      step: '06',
       title: 'Forensic Investigations & Evidence Vault',
       category: 'Hypothesis Formulation & Citable Cases',
       icon: BookOpen,
-      badge: 'Step 5',
+      badge: 'Step 6',
       badgeColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
       description:
         'Create structured investigation workspaces to diagnose regressions, audit pull requests, or benchmark subsystems. Log testable hypotheses, note observations, attach verified evidence citations, and publish immutable findings.',
@@ -120,7 +139,7 @@ export function WorkflowPage() {
             How to Use CodeForensics
           </h1>
           <p className="text-xs sm:text-sm text-primary-secondary leading-relaxed">
-            CodeForensics bridges the gap between raw git histories, issue conversations, and source code ASTs. Follow this 5-stage workflow to investigate regressions, assess architecture changes, and preserve reproducible findings.
+            CodeForensics bridges the gap between raw git histories, issue conversations, and source code ASTs. Follow this 6-stage workflow to investigate regressions, assess architecture changes, and preserve reproducible findings.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -153,12 +172,12 @@ export function WorkflowPage() {
         )}
       </div>
 
-      {/* 5-Stage Interactive Workflow Cards */}
+      {/* 6-Stage Interactive Workflow Cards */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
             <Layers className="w-4 h-4 text-accent" />
-            <span>The 5-Stage Investigative Lifecycle</span>
+            <span>The 6-Stage Investigative Lifecycle</span>
           </h2>
           <span className="text-xs text-primary-muted font-mono">End-to-End Forensics</span>
         </div>
@@ -268,6 +287,14 @@ export function WorkflowPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle text-primary-secondary">
+              <tr>
+                <td className="py-2.5 px-3 font-medium text-primary">Map codebase structure & churn hotspots</td>
+                <td className="py-2.5 px-3">Architecture Map</td>
+                <td className="py-2.5 px-3 font-mono text-[11px]">Interactive Mermaid Flowchart + Churn Hotspots</td>
+                <td className="py-2.5 px-3 text-right">
+                  <Link to="/app/map" className="text-link hover:underline font-semibold">Open &rarr;</Link>
+                </td>
+              </tr>
               <tr>
                 <td className="py-2.5 px-3 font-medium text-primary">Diagnose which PR broke a function</td>
                 <td className="py-2.5 px-3">Code Archaeology</td>

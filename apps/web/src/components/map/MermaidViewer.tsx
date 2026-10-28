@@ -10,13 +10,12 @@ import {
   AlertCircle,
   Network,
 } from 'lucide-react';
-import { Button } from '../ui/Button.js';
 
 export interface MermaidViewerProps {
   chart: string;
   title?: string;
   filename?: string;
-  onNodeClick?: (nodeId: string) => void;
+  onNodeClick?: (nodeId: string, nodeText?: string) => void;
   className?: string;
 }
 
@@ -24,6 +23,7 @@ export function MermaidViewer({
   chart,
   title = 'Repository Architecture Flowchart',
   filename = 'architecture-map',
+  onNodeClick,
   className = '',
 }: MermaidViewerProps) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
@@ -116,100 +116,97 @@ export function MermaidViewer({
     URL.revokeObjectURL(url);
   };
 
+  // Handle interactive clicks on SVG nodes (folders & files)
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onNodeClick) return;
+    const target = e.target as HTMLElement | SVGElement | null;
+    if (!target) return;
+    const nodeEl = target.closest('.node');
+    if (!nodeEl) return;
+
+    const rawId = nodeEl.getAttribute('id') || '';
+    let cleanId = rawId;
+    const match = rawId.match(/^flowchart-([a-zA-Z0-9_]+?)(?:-\d+)?$/);
+    if (match && match[1]) {
+      cleanId = match[1];
+    } else {
+      cleanId = rawId.replace(/^flowchart-/, '').replace(/-\d+$/, '');
+    }
+
+    const textContent = nodeEl.textContent?.trim() || '';
+    onNodeClick(cleanId, textContent);
+  };
+
   return (
-    <div className={`flex flex-col h-full space-y-3 ${className}`}>
-      {/* Viewer Header Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <Network className="w-4 h-4 text-accent" />
-          <span className="text-xs font-semibold text-primary font-mono">{title}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-            SVG Vector Graph
+    <div className={`flex flex-col h-full space-y-2.5 ${className}`}>
+      {/* Sleek, Space-Saving Header Controls */}
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-border-subtle">
+        {/* Left: Small, clean written title */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Network className="w-3.5 h-3.5 text-accent shrink-0" />
+          <span className="text-xs font-mono font-medium text-primary truncate max-w-[220px] sm:max-w-md">
+            {title}
+          </span>
+          <span className="hidden sm:inline-block text-[9px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono border border-emerald-500/20 shrink-0">
+            SVG
           </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap ml-auto">
+        {/* Right: Compact Visual/Code Toggle & Logo/Icon Buttons */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           {/* Visual vs Code Mode Toggle */}
-          <div className="flex items-center p-0.5 bg-surface-subtle border border-border-subtle rounded-md text-xs font-mono">
+          <div className="flex items-center p-0.5 bg-surface-subtle border border-border-subtle rounded text-[11px] font-mono">
             <button
               type="button"
               onClick={() => setActiveTab('visual')}
-              className={`px-2.5 py-1 rounded transition-colors ${
+              className={`px-2 py-0.5 rounded transition-colors ${
                 activeTab === 'visual'
                   ? 'bg-surface text-primary shadow-xs font-semibold'
                   : 'text-primary-muted hover:text-primary'
               }`}
             >
-              Visual Graph
+              Graph
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('code')}
-              className={`px-2.5 py-1 rounded transition-colors ${
+              className={`px-2 py-0.5 rounded transition-colors ${
                 activeTab === 'code'
                   ? 'bg-surface text-primary shadow-xs font-semibold'
                   : 'text-primary-muted hover:text-primary'
               }`}
             >
-              Mermaid Syntax
+              Code
             </button>
           </div>
 
-          {/* Zoom Controls (only in visual mode) */}
-          {activeTab === 'visual' && !isLoading && !error && (
-            <div className="flex items-center gap-1 border border-border-subtle rounded-md px-1 py-0.5 bg-surface">
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded"
-                title="Reset Zoom (100%)"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Action Buttons */}
+          {/* Download Logo Button */}
           {activeTab === 'visual' && svgContent && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={handleDownloadSvg}
-              leftIcon={<Download className="w-3.5 h-3.5" />}
-              className="text-xs"
+              title="Download SVG Vector Image"
+              aria-label="Download SVG"
+              className="p-1.5 text-primary-muted hover:text-primary hover:bg-surface-subtle border border-border-subtle rounded transition-colors"
             >
-              Download SVG
-            </Button>
+              <Download className="w-3.5 h-3.5" />
+            </button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
+          {/* Copy Logo Button */}
+          <button
+            type="button"
             onClick={handleCopyCode}
-            leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            className="text-xs"
+            title={copied ? 'Copied code to clipboard!' : 'Copy Mermaid Code'}
+            aria-label="Copy Code"
+            className="p-1.5 text-primary-muted hover:text-primary hover:bg-surface-subtle border border-border-subtle rounded transition-colors relative"
           >
-            {copied ? 'Copied!' : 'Copy Code'}
-          </Button>
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
         </div>
       </div>
 
@@ -217,8 +214,66 @@ export function MermaidViewer({
       {activeTab === 'visual' ? (
         <div
           ref={containerRef}
-          className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg p-6 flex items-center justify-center select-none"
+          onClick={handleContainerClick}
+          className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg p-6 flex items-center justify-center select-none mermaid-canvas"
         >
+          {/* Interactive Node Hover CSS */}
+          <style>{`
+            .mermaid-canvas .node {
+              cursor: pointer !important;
+              transition: filter 0.15s ease, opacity 0.15s ease;
+            }
+            .mermaid-canvas .node:hover {
+              filter: brightness(1.25);
+              opacity: 0.95;
+            }
+            .mermaid-canvas .node:active {
+              filter: brightness(0.92);
+            }
+          `}</style>
+
+          {/* Helper hint inside canvas */}
+          {!isLoading && !error && svgContent && (
+            <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-1.5 px-2 py-1 rounded bg-surface/90 backdrop-blur-md border border-border-subtle text-[10px] font-mono text-primary-muted shadow-xs pointer-events-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              <span>Click folder to expand/collapse • Files show churn score</span>
+            </div>
+          )}
+
+          {/* In-Image Floating Zoom Overlay */}
+          {!isLoading && !error && svgContent && (
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-surface/90 backdrop-blur-md border border-border-subtle rounded-md px-1.5 py-1 shadow-md text-xs font-mono">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-primary-muted font-mono min-w-[34px] text-center select-none">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <div className="h-3 w-px bg-border-subtle mx-0.5" />
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="p-1 text-primary-muted hover:text-primary hover:bg-surface-subtle rounded transition-colors"
+                title="Reset Zoom (100%)"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex flex-col items-center justify-center space-y-3 py-16 text-primary-muted font-mono text-xs">
               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -229,9 +284,13 @@ export function MermaidViewer({
               <AlertCircle className="w-6 h-6 text-rose-600 mx-auto" />
               <h4 className="text-xs font-bold text-primary font-mono">Flowchart Compilation Fallback</h4>
               <p className="text-[11px] text-primary-muted font-mono leading-relaxed">{error}</p>
-              <Button variant="secondary" size="sm" onClick={() => setActiveTab('code')}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('code')}
+                className="px-3 py-1.5 rounded bg-surface border border-border-subtle text-xs font-mono hover:bg-surface-subtle"
+              >
                 View Mermaid Source Code
-              </Button>
+              </button>
             </div>
           ) : svgContent ? (
             <div

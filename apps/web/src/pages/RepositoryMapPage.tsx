@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRepository } from '../context/RepositoryContext.js';
 import { useApiClient } from '../utils/apiClient.js';
@@ -51,6 +51,7 @@ export function RepositoryMapPage() {
   // Zoom & Pan Canvas State
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root', 'apps', 'packages', 'apps/api', 'apps/web', 'packages/shared']));
+  const [expandedGraphFolders, setExpandedGraphFolders] = useState<Set<string>>(new Set(['root']));
   const [selectedNode, setSelectedNode] = useState<RepositoryMapNode | null>(null);
 
   // Export Feedback
@@ -76,10 +77,20 @@ export function RepositoryMapPage() {
           setMapData(res.data);
           // Auto-expand root and first level directories safely
           const initialExpanded = new Set<string>(['root']);
+          const initialGraphExpanded = new Set<string>(['root']);
           if (res.data.root?.children) {
+            let firstDirAdded = false;
             for (const child of res.data.root.children) {
               if (child && child.type === 'directory') {
                 initialExpanded.add(child.path);
+                if (!firstDirAdded) {
+                  initialGraphExpanded.add(child.path);
+                  firstDirAdded = true;
+                  if (child.children) {
+                    const firstSub = child.children.find((c) => c && c.type === 'directory');
+                    if (firstSub) initialGraphExpanded.add(firstSub.path);
+                  }
+                }
                 child.children?.forEach((sub) => {
                   if (sub && sub.type === 'directory') initialExpanded.add(sub.path);
                 });
@@ -87,6 +98,7 @@ export function RepositoryMapPage() {
             }
           }
           setExpandedNodes(initialExpanded);
+          setExpandedGraphFolders(initialGraphExpanded);
         } else {
           setError(res.error?.message || 'Failed to load repository architecture map');
         }
@@ -134,6 +146,36 @@ export function RepositoryMapPage() {
     setExpandedNodes(new Set(['root']));
   };
 
+  // Toggle graph folder drill-down
+  const toggleGraphFolder = (path: string) => {
+    setExpandedGraphFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const expandAllGraphFolders = () => {
+    if (!mapData) return;
+    const allDirs = new Set<string>(['root']);
+    const collectDirs = (node: RepositoryMapNode) => {
+      if (node.type === 'directory') {
+        allDirs.add(node.path);
+        node.children?.forEach(collectDirs);
+      }
+    };
+    collectDirs(mapData.root);
+    setExpandedGraphFolders(allDirs);
+  };
+
+  const collapseAllGraphFolders = () => {
+    setExpandedGraphFolders(new Set(['root']));
+  };
+
   // Zoom handlers
   const handleZoomIn = () => setZoomLevel((z) => Math.min(2, Math.round((z + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.15) * 100) / 100));
@@ -150,6 +192,151 @@ export function RepositoryMapPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  // Export generators
+  const generateMermaidExportWithMap = (
+    data: RepositoryMapData,
+    expandedFolders: Set<string>,
+    churnThreshold: number = 0
+  ): { chart: string; nodeMap: Map<string, RepositoryMapNode> } => {
+    const lines: string[] = ['graph TD'];
+    const nodeMap = new Map<string, RepositoryMapNode>();
+    const addedNodes = new Set<string>();
+
+    // Root node
+    const safeFullName = (data.fullName || 'Repository').replace(/["\\]/g, '');
+    lines.push(`  root["📁 ${safeFullName}"]:::rootClass`);
+    nodeMap.set('root', data.root);
+    addedNodes.add('root');
+
+    const renderChildren = (parentNode: RepositoryMapNode, parentSafeId: string) => {
+      if (!parentNode.children || parentNode.children.length === 0) return;
+
+      const dirChildren = parentNode.children.filter((c) => c && c.type === 'directory');
+      let fileChildren = parentNode.children.filter((c) => c && c.type === 'file');
+
+      if (churnThreshold > 0) {
+        fileChildren = fileChildren.filter((f) => (f.churnScore ?? 0) >= churnThreshold);
+      }
+
+      // 1. Render child directories
+      for (const dir of dirChildren) {
+        const safeDirId = 'n_' + (dir.path || dir.name).replace(/[^a-zA-Z0-9]/g, '_');
+        nodeMap.set(safeDirId, dir);
+
+        const isExpanded = expandedFolders.has(dir.path);
+        const churn = dir.churnScore ?? 0;
+        const isHot = churn >= 65;
+        const isWarm = churn >= 40 && !isHot;
+        const nodeClass = isHot ? ':::hotClass' : isWarm ? ':::warnClass' : ':::dirClass';
+        const expandIcon = isExpanded ? '▾' : '▸';
+        const hotTag = isHot ? ' [🔥 Hotspot]' : '';
+        const safeName = dir.name.replace(/["\\]/g, '');
+        const dirLabel = `📁 ${safeName} (${expandIcon} ${dir.fileCount ?? 0} files)${hotTag}`;
+
+        if (!addedNodes.has(safeDirId)) {
+          lines.push(`  ${parentSafeId} --> ${safeDirId}["${dirLabel}"]${nodeClass}`);
+          addedNodes.add(safeDirId);
+        }
+
+        // If expanded, recursively render its children!
+        if (isExpanded) {
+          renderChildren(dir, safeDirId);
+        }
+      }
+
+      // 2. Render child files (with churn indicators and hotspot styling)
+      if (fileChildren.length > 0) {
+        // Sort files by churn score descending so highest risk is always visible
+        const sortedFiles = [...fileChildren].sort((a, b) => (b.churnScore ?? 0) - (a.churnScore ?? 0));
+        const maxFilesToShow = 14;
+        const visibleFiles = sortedFiles.slice(0, maxFilesToShow);
+        const remaining = sortedFiles.length - visibleFiles.length;
+
+        for (const file of visibleFiles) {
+          const safeFileId = 'n_' + (file.path || file.name).replace(/[^a-zA-Z0-9]/g, '_');
+          nodeMap.set(safeFileId, file);
+
+          const churn = file.churnScore ?? 0;
+          const isHot = churn >= 65;
+          const isWarm = churn >= 40 && !isHot;
+          const fileClass = isHot ? ':::hotClass' : isWarm ? ':::warnClass' : ':::fileClass';
+          const badge = isHot ? ` [🔥 ${churn}/100]` : churn > 0 ? ` [${churn}/100]` : '';
+          const safeFileName = file.name.replace(/["\\]/g, '');
+          const fileLabel = `📄 ${safeFileName}${badge}`;
+
+          if (!addedNodes.has(safeFileId)) {
+            lines.push(`  ${parentSafeId} --> ${safeFileId}["${fileLabel}"]${fileClass}`);
+            addedNodes.add(safeFileId);
+          }
+        }
+
+        if (remaining > 0) {
+          const moreId = `${parentSafeId}_more`;
+          lines.push(`  ${parentSafeId} --> ${moreId}["... +${remaining} more files"]:::fileClass`);
+        }
+      }
+    };
+
+    // Render tree starting from root
+    renderChildren(data.root, 'root');
+
+    // CSS Style Definitions
+    lines.push('  classDef rootClass fill:#0f172a,stroke:#38bdf8,stroke-width:2.5px,color:#f8fafc;');
+    lines.push('  classDef dirClass fill:#1e293b,stroke:#0284c7,stroke-width:1.5px,color:#f8fafc;');
+    lines.push('  classDef fileClass fill:#0f172a,stroke:#475569,stroke-width:1px,color:#e2e8f0;');
+    lines.push('  classDef warnClass fill:#451a03,stroke:#f59e0b,stroke-width:1.5px,color:#fef3c7;');
+    lines.push('  classDef hotClass fill:#450a0a,stroke:#f43f5e,stroke-width:2.5px,color:#fecdd3;');
+
+    return { chart: lines.join('\n'), nodeMap };
+  };
+
+  const generateMermaidExport = (data: RepositoryMapData): string => {
+    return generateMermaidExportWithMap(data, expandedGraphFolders, minChurn).chart;
+  };
+
+  // Helper to find node in tree
+  const findNodeInTree = (
+    root: RepositoryMapNode,
+    predicate: (n: RepositoryMapNode) => boolean
+  ): RepositoryMapNode | undefined => {
+    if (predicate(root)) return root;
+    if (root.children) {
+      for (const child of root.children) {
+        const match = findNodeInTree(child, predicate);
+        if (match) return match;
+      }
+    }
+    return undefined;
+  };
+
+  // Computed Mermaid chart and node mapping
+  const { chart: mermaidChart, nodeMap: graphNodeMap } = useMemo(() => {
+    if (!mapData) return { chart: '', nodeMap: new Map<string, RepositoryMapNode>() };
+    return generateMermaidExportWithMap(mapData, expandedGraphFolders, minChurn);
+  }, [mapData, expandedGraphFolders, minChurn]);
+
+  // Handle click on node in Mermaid diagram
+  const handleGraphNodeClick = (nodeSafeId: string, nodeText?: string) => {
+    if (!mapData) return;
+    let targetNode: RepositoryMapNode | undefined = graphNodeMap.get(nodeSafeId);
+
+    if (!targetNode && (nodeText || nodeSafeId)) {
+      targetNode = findNodeInTree(mapData.root, (n) => {
+        const safeId = 'n_' + (n.path || n.name).replace(/[^a-zA-Z0-9]/g, '_');
+        if (safeId === nodeSafeId || n.id === nodeSafeId) return true;
+        if (nodeText && (nodeText.includes(n.name) || n.name.includes(nodeText))) return true;
+        return false;
+      });
+    }
+
+    if (targetNode) {
+      setSelectedNode(targetNode);
+      if (targetNode.type === 'directory') {
+        toggleGraphFolder(targetNode.path);
+      }
+    }
   };
 
   const handleDownloadMarkdown = () => {
@@ -174,33 +361,6 @@ export function RepositoryMapPage() {
     downloadFile(txt, `${activeRepo?.name || 'repo'}-tree.txt`, 'text/plain;charset=utf-8');
     setCopiedStatus('Text tree downloaded!');
     setTimeout(() => setCopiedStatus(null), 3000);
-  };
-
-  // Export generators
-  const generateMermaidExport = (data: RepositoryMapData): string => {
-    const lines: string[] = ['graph TD', `  root["📁 ${data.fullName}"]:::rootClass`];
-    for (const sub of data.root?.children || []) {
-      const subId = (sub.name || 'node').replace(/[^a-zA-Z0-9]/g, '_');
-      const isHot = (sub.churnScore ?? 0) >= 65;
-      const churnLabel = isHot ? ' 🔥 HOTSPOT' : '';
-      const nodeClass = isHot ? ':::hotClass' : ':::dirClass';
-      lines.push(`  root --> ${subId}["📁 ${sub.name} (${sub.fileCount ?? 0} files)${churnLabel}"]${nodeClass}`);
-      if (sub.children) {
-        for (const child of sub.children.slice(0, 8)) {
-          const childId = `${subId}_${(child.name || 'file').replace(/[^a-zA-Z0-9]/g, '_')}`;
-          const icon = child.type === 'directory' ? '📁' : '📄';
-          const childHot = (child.churnScore ?? 0) >= 75;
-          const badge = childHot ? ' [🔥 High Churn]' : '';
-          const childClass = childHot ? ':::hotClass' : child.type === 'directory' ? ':::dirClass' : ':::fileClass';
-          lines.push(`  ${subId} --> ${childId}["${icon} ${child.name}${badge}"]${childClass}`);
-        }
-      }
-    }
-    lines.push('  classDef rootClass fill:#0f172a,stroke:#38bdf8,stroke-width:2.5px,color:#f8fafc;');
-    lines.push('  classDef dirClass fill:#1e293b,stroke:#0284c7,stroke-width:1.5px,color:#f8fafc;');
-    lines.push('  classDef fileClass fill:#0f172a,stroke:#475569,stroke-width:1px,color:#e2e8f0;');
-    lines.push('  classDef hotClass fill:#450a0a,stroke:#f43f5e,stroke-width:2px,color:#fecdd3;');
-    return lines.join('\n');
   };
 
   const generateTextTreeExport = (data: RepositoryMapData): string => {
@@ -677,11 +837,61 @@ export function RepositoryMapPage() {
               </div>
             ) : mapData ? (
               viewMode === 'graph' ? (
-                <MermaidViewer
-                  chart={generateMermaidExport(mapData)}
-                  title={`${mapData.fullName} Architecture Flowchart`}
-                  filename={`${activeRepo?.name || 'repo'}-architecture-flowchart`}
-                />
+                <div className="space-y-3">
+                  {/* Active Folders Drill-down Pill Bar */}
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono py-1.5 px-3 bg-surface border border-border-subtle rounded-md">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-primary-muted uppercase tracking-wider font-semibold">
+                        Expanded:
+                      </span>
+                      {Array.from(expandedGraphFolders)
+                        .filter((p) => p !== 'root')
+                        .map((path) => (
+                          <button
+                            key={path}
+                            type="button"
+                            onClick={() => toggleGraphFolder(path)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-subtle border border-accent/30 text-accent hover:border-rose-400 hover:text-rose-600 transition-colors text-[11px]"
+                            title={`Click to collapse ${path}`}
+                          >
+                            <FolderOpen className="w-3 h-3 shrink-0" />
+                            <span>{path}</span>
+                            <span className="text-primary-muted hover:text-rose-600 ml-0.5 font-bold">✕</span>
+                          </button>
+                        ))}
+                      {expandedGraphFolders.size <= 1 && (
+                        <span className="text-[11px] text-primary-muted italic">
+                          Root (Click any folder in diagram to reveal its files & churn)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        onClick={expandAllGraphFolders}
+                        className="text-[11px] text-primary-muted hover:text-primary hover:underline"
+                      >
+                        Expand All
+                      </button>
+                      <span className="text-border-subtle">|</span>
+                      <button
+                        type="button"
+                        onClick={collapseAllGraphFolders}
+                        className="text-[11px] text-primary-muted hover:text-primary hover:underline"
+                      >
+                        Collapse to Root
+                      </button>
+                    </div>
+                  </div>
+
+                  <MermaidViewer
+                    chart={mermaidChart}
+                    title={`${mapData.fullName} Architecture Flowchart`}
+                    filename={`${activeRepo?.name || 'repo'}-architecture-flowchart`}
+                    onNodeClick={handleGraphNodeClick}
+                  />
+                </div>
               ) : viewMode === 'tree' ? (
                 <div
                   style={{
