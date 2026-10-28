@@ -208,3 +208,37 @@ All API endpoints are hosted under `http://localhost:4000/api/v1` (unless otherw
 ### `POST /webhooks/github`
 - **Auth:** HMAC-SHA256 Signature Header (`X-Hub-Signature-256`)
 - **Description:** Ingests live GitHub webhook events (`installation`, `installation_repositories`, `issues`, `pull_request`). Automatically verified against `GITHUB_WEBHOOK_SECRET`.
+
+---
+
+## 11. Architecture Map & Forensic Analysis Workbench
+
+### `GET /api/v1/repositories/:owner/:repo/map`
+- **Auth:** Bearer Token (Required)
+- **Description:** Compiles repository directory hierarchy, subsystem groupings, file sizes, commit touch frequencies, and 0–100 churn volatility scores.
+
+### `GET /api/v1/repositories/:owner/:repo/map/dossier`
+- **Auth:** Bearer Token (Required)
+- **Description:** Generates a standalone, air-gapped single-file HTML Forensic Audit Dossier with embedded vector flowcharts, co-change matrices, bus factor registers, and issue verification cards. Zero external dependencies.
+
+### `GET /api/v1/repositories/:owner/:repo/map/co-change`
+- **Auth:** Bearer Token (Required)
+- **Description:** Computes statistical temporal coupling across pull requests using Jaccard similarity. Flags cross-subsystem boundary violations where mutations leak across architectural tiers.
+
+### `GET /api/v1/repositories/:owner/:repo/map/timeline`
+- **Auth:** Bearer Token (Required)
+- **Description:** Retrieves historical architectural milestone snapshots across 4 release eras (6 Months Ago, 3 Months Ago, 1 Month Ago, Present) for time-machine scrubbers.
+
+### `GET /api/v1/repositories/:owner/:repo/map/knowledge-loss`
+- **Auth:** Bearer Token (Required)
+- **Description:** Correlates file churn with maintainer activity to identify single-maintainer dependencies (Bus Factor = 1) and Zombie Hotspots (high churn authored by departed/dormant engineers).
+
+### `POST /api/v1/repositories/:owner/:repo/map/blast-radius`
+- **Auth:** Bearer Token (Required)
+- **Body:**
+  ```json
+  {
+    "targetFiles": ["apps/api/src/db/repositoryStore.ts"]
+  }
+  ```
+- **Description:** Simulates pre-commit ripple hazards (0–100 score), downstream coupled companion files, affected unit/integration test suites marked `MUST PASS`, and recommended peer reviewers.

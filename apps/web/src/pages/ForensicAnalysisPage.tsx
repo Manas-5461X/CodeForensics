@@ -29,6 +29,7 @@ import {
   User,
   Activity,
   Layers,
+  BookOpen,
 } from 'lucide-react';
 
 export type ForensicTab = 'co-change' | 'timeline' | 'bus-factor' | 'blast-radius';
@@ -46,6 +47,18 @@ export function ForensicAnalysisPage() {
       ? initialTab
       : 'co-change'
   );
+
+  // Explanation Guide State per Tab
+  const [showGuide, setShowGuide] = useState<Record<ForensicTab, boolean>>({
+    'co-change': false,
+    'timeline': false,
+    'bus-factor': false,
+    'blast-radius': false,
+  });
+
+  const toggleGuide = (tab: ForensicTab) => {
+    setShowGuide((prev) => ({ ...prev, [tab]: !prev[tab] }));
+  };
 
   // Sync tab with URL
   const handleTabChange = (tab: ForensicTab) => {
@@ -328,7 +341,7 @@ export function ForensicAnalysisPage() {
         <button
           type="button"
           onClick={() => handleTabChange('co-change')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
             activeTab === 'co-change'
               ? 'bg-accent text-accent-contrast shadow-sm'
               : 'text-primary-muted hover:text-primary hover:bg-surface-subtle'
@@ -350,7 +363,7 @@ export function ForensicAnalysisPage() {
         <button
           type="button"
           onClick={() => handleTabChange('timeline')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
             activeTab === 'timeline'
               ? 'bg-accent text-accent-contrast shadow-sm'
               : 'text-primary-muted hover:text-primary hover:bg-surface-subtle'
@@ -372,7 +385,7 @@ export function ForensicAnalysisPage() {
         <button
           type="button"
           onClick={() => handleTabChange('bus-factor')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
             activeTab === 'bus-factor'
               ? 'bg-accent text-accent-contrast shadow-sm'
               : 'text-primary-muted hover:text-primary hover:bg-surface-subtle'
@@ -394,7 +407,7 @@ export function ForensicAnalysisPage() {
         <button
           type="button"
           onClick={() => handleTabChange('blast-radius')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
             activeTab === 'blast-radius'
               ? 'bg-accent text-accent-contrast shadow-sm'
               : 'text-primary-muted hover:text-primary hover:bg-surface-subtle'
@@ -417,6 +430,40 @@ export function ForensicAnalysisPage() {
       {/* ========================================================= */}
       {activeTab === 'co-change' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Tab Engine Header & Explanation Button */}
+          <div className="p-4 bg-surface border border-border-subtle rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <GitMerge className="w-4 h-4 text-accent" />
+                <h3 className="font-bold text-primary text-sm font-mono">Temporal Co-Change Coupling Engine</h3>
+              </div>
+              <p className="text-xs text-primary-secondary mt-0.5">
+                Measures statistical commit co-occurrence across pull requests to discover hidden architectural coupling leaks.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleGuide('co-change')}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <span>{showGuide['co-change'] ? 'Hide Co-Change Guide' : 'What is Co-Change Matrix?'}</span>
+            </button>
+          </div>
+
+          {/* Expandable Overview Guide */}
+          {showGuide['co-change'] && (
+            <Panel className="p-4 bg-cyan-500/5 border-cyan-500/30 text-xs space-y-2 animate-in fade-in">
+              <div className="font-bold text-primary flex items-center gap-2 font-mono">
+                <BookOpen className="w-4 h-4 text-accent" />
+                <span>Quick Guide: Why Temporal Co-Change Matters</span>
+              </div>
+              <p className="text-primary-secondary leading-relaxed">
+                Unlike static code analysis that only checks <code className="text-accent font-mono">import</code> statements, <strong>Temporal Co-Change</strong> analyzes historical pull requests to detect files that are always modified together in the same PRs. If changing an API route repeatedly requires editing a database schema or UI screen, they share high coupling. When this coupling crosses top-level boundaries, it represents an <strong>Architectural Leak</strong> that frequently causes forgotten file updates and production regressions.
+              </p>
+            </Panel>
+          )}
+
           {isCoChangeLoading ? (
             <div className="space-y-4">
               <LoadingSkeleton className="h-28 w-full" />
@@ -495,7 +542,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setCoChangeFilter('all')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         coChangeFilter === 'all'
                           ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -506,7 +553,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setCoChangeFilter('cross')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         coChangeFilter === 'cross'
                           ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -517,7 +564,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setCoChangeFilter('high')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         coChangeFilter === 'high'
                           ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -607,6 +654,59 @@ export function ForensicAnalysisPage() {
                   </div>
                 </div>
               </Panel>
+
+              {/* Comprehensive Forensic Analysis & Remediation Guide (Downside) */}
+              <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
+                  <BookOpen className="w-4 h-4 text-accent" />
+                  <h4 className="font-bold text-primary text-sm font-mono">Co-Change Coupling Analysis &amp; Remediation Playbook</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <GitMerge className="w-3.5 h-3.5 text-accent" />
+                      <span>1. Statistical Formulation</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Coupling probability is computed using Jaccard similarity across merged PR commit sets:
+                    </p>
+                    <div className="p-2 bg-canvas border border-border-subtle rounded text-[10px] space-y-1 font-mono text-primary-muted">
+                      <div>Coupling% = (PRs(A ∩ B) / PRs(A ∪ B)) × 100</div>
+                      <div><span className="text-rose-500 font-bold">&ge;70%</span> • Critical tight mutation linkage</div>
+                      <div><span className="text-amber-500 font-bold">50–69%</span> • High co-occurrence correlation</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      <span>2. Cross-Subsystem Leaks</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      When coupled files belong to separate root modules (e.g. <span className="font-mono text-primary">apps/api</span> and <span className="font-mono text-primary">packages/shared</span>), modifying one forces developer cognitive overhead across repository domains.
+                    </p>
+                    <p className="text-[10px] text-primary-muted">
+                      This breach of separation of concerns is the #1 reason PR authors forget companion test updates.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>3. Decoupling Remediation</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Recommended engineering remediation strategies:
+                    </p>
+                    <ul className="text-[10px] text-primary-muted space-y-1 list-disc pl-3">
+                      <li>Extract shared data transfer models into <span className="font-mono text-accent">packages/shared</span></li>
+                      <li>Implement publish/subscribe events to eliminate synchronous file dependencies</li>
+                      <li>Click "Blast Radius" on high-risk pairs to simulate regression fallout</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </>
           ) : null}
         </div>
@@ -617,6 +717,40 @@ export function ForensicAnalysisPage() {
       {/* ========================================================= */}
       {activeTab === 'timeline' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Tab Engine Header & Explanation Button */}
+          <div className="p-4 bg-surface border border-border-subtle rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-accent" />
+                <h3 className="font-bold text-primary text-sm font-mono">Time-Machine Architecture Timeline Engine</h3>
+              </div>
+              <p className="text-xs text-primary-secondary mt-0.5">
+                Reconstructs codebase topology, directory footprints, and hotspot migrations across historical release eras.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleGuide('timeline')}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <span>{showGuide['timeline'] ? 'Hide Timeline Guide' : 'What is Time-Machine Timeline?'}</span>
+            </button>
+          </div>
+
+          {/* Expandable Overview Guide */}
+          {showGuide['timeline'] && (
+            <Panel className="p-4 bg-cyan-500/5 border-cyan-500/30 text-xs space-y-2 animate-in fade-in">
+              <div className="font-bold text-primary flex items-center gap-2 font-mono">
+                <BookOpen className="w-4 h-4 text-accent" />
+                <span>Quick Guide: Understanding Codebase Evolution</span>
+              </div>
+              <p className="text-primary-secondary leading-relaxed">
+                Codebases are not static artifacts. The <strong>Time-Machine Timeline</strong> scrubs through chronological milestone eras (e.g., initial baseline &rarr; v0.5.0 &rarr; v1.0.0 &rarr; present) to show when architectural complexity expanded. Use this to determine if a hotspot is recent experimental feature churn or entrenched architectural debt.
+              </p>
+            </Panel>
+          )}
+
           {isTimelineLoading ? (
             <div className="space-y-4">
               <LoadingSkeleton className="h-28 w-full" />
@@ -715,7 +849,9 @@ export function ForensicAnalysisPage() {
                   <div className="text-2xl font-bold font-mono text-rose-500 mt-1">
                     {activeMilestone.hotspotCount}
                   </div>
-                  <div className="text-xs text-primary-muted mt-0.5">High volatility files in era</div>
+                  <div className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-0.5">
+                    High volatility files in era
+                  </div>
                 </Panel>
 
                 <Panel className="p-4">
@@ -773,6 +909,49 @@ export function ForensicAnalysisPage() {
                   })}
                 </div>
               </div>
+
+              {/* Comprehensive Time-Machine Analysis Guide (Downside) */}
+              <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
+                  <BookOpen className="w-4 h-4 text-accent" />
+                  <h4 className="font-bold text-primary text-sm font-mono">Time-Machine Evolution &amp; Architectural Drift Guide</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-accent" />
+                      <span>1. Era Reconstruction</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      CodeForensics buckets Git history into distinct architectural eras based on release tags and quarterly commit clusters.
+                    </p>
+                    <p className="text-[10px] text-primary-muted">
+                      Allows comparing historical baseline complexity against current head states.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <Flame className="w-3.5 h-3.5 text-rose-500" />
+                      <span>2. Hotspot Trajectories</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Watch files migrate from emerald (stable) to crimson (hotspot). If a core engine suddenly sparks high churn in a recent era, inspect recent PRs for feature bloat.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>3. Historical Remediation</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Use milestone telemetry to schedule refactoring sprints immediately after rapid feature expansions before technical debt solidifies.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </>
           ) : null}
         </div>
@@ -783,6 +962,40 @@ export function ForensicAnalysisPage() {
       {/* ========================================================= */}
       {activeTab === 'bus-factor' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Tab Engine Header & Explanation Button */}
+          <div className="p-4 bg-surface border border-border-subtle rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-500" />
+                <h3 className="font-bold text-primary text-sm font-mono">Bus Factor &amp; Knowledge Loss Risk Engine</h3>
+              </div>
+              <p className="text-xs text-primary-secondary mt-0.5">
+                Correlates code churn velocity with maintainer activity to uncover single-points-of-failure and abandoned Zombie Hotspots.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleGuide('bus-factor')}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <span>{showGuide['bus-factor'] ? 'Hide Bus Factor Guide' : 'What is Bus Factor & Zombie Hotspot?'}</span>
+            </button>
+          </div>
+
+          {/* Expandable Overview Guide */}
+          {showGuide['bus-factor'] && (
+            <Panel className="p-4 bg-cyan-500/5 border-cyan-500/30 text-xs space-y-2 animate-in fade-in">
+              <div className="font-bold text-primary flex items-center gap-2 font-mono">
+                <BookOpen className="w-4 h-4 text-accent" />
+                <span>Quick Guide: Maintainer Dormancy &amp; Institutional Risk</span>
+              </div>
+              <p className="text-primary-secondary leading-relaxed">
+                <strong>Bus Factor</strong> measures how many engineers can leave before a module becomes unmaintainable. When a file has a Bus Factor of 1, only one person understands its edge cases. If that maintainer is <em>departed or dormant</em>, modifying that file is high-risk. We classify these as <strong>Zombie Hotspots</strong>: files with rapid code churn where 80%+ of original authorship belongs to inactive developers.
+              </p>
+            </Panel>
+          )}
+
           {isBusLoading ? (
             <div className="space-y-4">
               <LoadingSkeleton className="h-28 w-full" />
@@ -930,7 +1143,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setBusFilter('all')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         busFilter === 'all'
                           ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -941,7 +1154,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setBusFilter('zombie')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         busFilter === 'zombie'
                           ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -952,7 +1165,7 @@ export function ForensicAnalysisPage() {
                     <button
                       type="button"
                       onClick={() => setBusFilter('critical')}
-                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                      className={`px-3 py-1 rounded text-xs transition-colors cursor-pointer ${
                         busFilter === 'critical'
                           ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
                           : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
@@ -1049,16 +1262,53 @@ export function ForensicAnalysisPage() {
                 </div>
               </Panel>
 
-              {/* Diagnostic Advice */}
-              <Panel className="p-4 bg-surface-subtle/30 border-border-subtle space-y-2">
-                <h4 className="text-xs font-bold font-mono text-primary flex items-center gap-1.5 uppercase tracking-wider">
-                  <HelpCircle className="w-3.5 h-3.5 text-accent" />
-                  What is a Zombie Hotspot?
-                </h4>
-                <p className="text-xs text-primary-secondary leading-relaxed">
-                  A <strong>Zombie Hotspot</strong> is a file with high mutation churn (&ge;60/100) where 80%+ of original lines were authored by engineers who have left the team or have been dormant for &gt;12 months. Modifying these without deep archaeological inspection causes regressions at 3x normal velocity.
-                </p>
-              </Panel>
+              {/* Comprehensive Bus Factor & Knowledge Loss Guide (Downside) */}
+              <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
+                  <BookOpen className="w-4 h-4 text-accent" />
+                  <h4 className="font-bold text-primary text-sm font-mono">Bus Factor &amp; Zombie Hotspot Remediation Guide</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                      <span>1. Zombie Hotspots</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      A <strong>Zombie Hotspot</strong> is a file with high mutation churn (&ge;60/100) where 80%+ of original lines were authored by engineers who have left the team or have been dormant for &gt;12 months.
+                    </p>
+                    <p className="text-[10px] text-primary-muted">
+                      Modifying these files without institutional memory causes regressions at 3x the normal rate.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      <span>2. Bus Factor = 1 Hazards</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      When a single engineer authored almost the entire logic of a critical file, the project is exposed to knowledge evaporation if that engineer becomes unavailable.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>3. Knowledge Transfer Playbook</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Recommended risk mitigation protocols:
+                    </p>
+                    <ul className="text-[10px] text-primary-muted space-y-1 list-disc pl-3">
+                      <li>Click "Trace AST" to understand exact symbol lineage in Code Archaeology</li>
+                      <li>Assign co-reviewers to all PRs modifying Zombie Hotspots</li>
+                      <li>Schedule targeted architectural documentation passes</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </>
           ) : null}
         </div>
@@ -1069,15 +1319,48 @@ export function ForensicAnalysisPage() {
       {/* ========================================================= */}
       {activeTab === 'blast-radius' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Tab Engine Header & Explanation Button */}
+          <div className="p-4 bg-surface border border-border-subtle rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-primary text-sm font-mono">Architectural Blast Radius Predictor</h3>
+              </div>
+              <p className="text-xs text-primary-secondary mt-0.5">
+                Simulate mutation ripple effects, transitively coupled files, and regression test suites before committing modifications.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleGuide('blast-radius')}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <span>{showGuide['blast-radius'] ? 'Hide Blast Guide' : 'What is Blast Radius Predictor?'}</span>
+            </button>
+          </div>
+
+          {/* Expandable Overview Guide */}
+          {showGuide['blast-radius'] && (
+            <Panel className="p-4 bg-cyan-500/5 border-cyan-500/30 text-xs space-y-2 animate-in fade-in">
+              <div className="font-bold text-primary flex items-center gap-2 font-mono">
+                <BookOpen className="w-4 h-4 text-accent" />
+                <span>Quick Guide: Pre-Commit Hazard Simulation</span>
+              </div>
+              <p className="text-primary-secondary leading-relaxed">
+                The <strong>Blast Radius Predictor</strong> analyzes static dependencies and historical co-change linkages to simulate what breaks if you modify a specific file. It flags which downstream companion files must be updated, highlights regression test suites marked <strong>MUST PASS</strong>, and recommends active maintainers who should review the pull request.
+              </p>
+            </Panel>
+          )}
+
           {/* Target File Input Simulator */}
           <Panel className="p-5 space-y-4">
             <div>
-              <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500" />
-                Architectural Blast Radius Predictor
+              <h4 className="text-xs font-bold text-primary font-mono uppercase tracking-wider">
+                Select or Enter Target Source File
               </h4>
               <p className="text-xs text-primary-secondary mt-1">
-                Simulate ripple effects, transitively coupled files, and regression test suites before committing modifications.
+                Enter any file path in the repository to simulate its architectural blast radius.
               </p>
             </div>
 
@@ -1291,6 +1574,46 @@ export function ForensicAnalysisPage() {
                   </div>
                 </Panel>
               )}
+
+              {/* Comprehensive Blast Radius Simulation Guide (Downside) */}
+              <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
+                  <BookOpen className="w-4 h-4 text-accent" />
+                  <h4 className="font-bold text-primary text-sm font-mono">Blast Radius &amp; Safe Release Playbook</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
+                      <span>1. Simulation Mechanism</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Combines Abstract Syntax Tree symbol import graphs with historical PR commit linkages to identify both direct and transitive fallout.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>2. Required Verification</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Always execute the test suites marked <span className="font-semibold text-emerald-600 dark:text-emerald-400">MUST PASS</span> locally or in CI before requesting code review.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                    <div className="font-bold text-primary flex items-center gap-1.5 font-mono">
+                      <User className="w-3.5 h-3.5 text-accent" />
+                      <span>3. Recommended Approvers</span>
+                    </div>
+                    <p className="text-[11px] text-primary-secondary leading-relaxed">
+                      Tag the recommended PR reviewers derived from recent merged PRs and domain expertise scoring to ensure safe deployment.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </>
           ) : null}
         </div>

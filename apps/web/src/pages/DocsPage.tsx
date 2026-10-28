@@ -186,31 +186,36 @@ Stage 4: Compute deterministic cross-entity relationships and cache results`,
         {
           heading: 'Step 3: Map Codebase Topography & Churn Hotspots',
           stepNumber: 3,
-          body: 'Navigate to "Architecture Map" (/app/map) in the sidebar. CodeForensics compiles the directory hierarchy into an interactive client-side Mermaid vector flowchart. Click any folder node directly in the diagram to expand its nested folders and files, reveal code churn volatility scores (🔥 churn ≥ 65/100 highlighted in crimson), and export high-resolution SVGs or ASCII trees.',
+          body: 'Navigate to "Architecture Map" (/app/map) in the sidebar. CodeForensics compiles the directory hierarchy into an interactive client-side Mermaid vector flowchart and 2D Churn Heatmap. Click "What is Code Churn & Hotspot?" to understand churn volatility thresholds (🔥 score ≥ 65/100). Use the neatly aligned side toolbar to export Markdown (.md), Mermaid (.mmd), ASCII Tree (.txt), or a single-file Offline Audit Dossier (.html).',
         },
         {
-          heading: 'Step 4: Explore Issues & PRs with Evidentiary Confidence',
+          heading: 'Step 4: Conduct Deep Forensic Analytics in the Workbench',
           stepNumber: 4,
+          body: 'Navigate to "Forensic Analysis" (/app/analysis) in the sidebar. Switch between 4 dedicated forensic engines:\n\n• Co-Change Matrix: Detect statistical co-occurrence and cross-subsystem leaks.\n• Time-Machine: Scrub across historical milestone eras to observe codebase growth.\n• Bus Factor Risk: Identify single-maintainer dependencies and Zombie Hotspots.\n• Blast Radius: Simulate proposed changes to predict companion files and test suites at risk.\n\nClick the "What is ...?" explanation buttons at the top of each tab for quick guides, and consult the downside remediation playbooks at the bottom for concrete engineering tactics.',
+        },
+        {
+          heading: 'Step 5: Explore Issues & PRs with Evidentiary Confidence',
+          stepNumber: 5,
           body: 'Navigate to "Issues & PRs" in the sidebar. Use the search bar to query keywords (e.g. "memory leak", "auth bypass", "hydration"). The table displays type icons, issue numbers, titles, and real-time state badges. Click any row to slide out the WorkItemDetailDrawer.',
         },
         {
-          heading: 'Step 5: Inspect "Why Linked?" Cards and Closure Proofs',
-          stepNumber: 5,
+          heading: 'Step 6: Inspect "Why Linked?" Cards and Closure Proofs',
+          stepNumber: 6,
           body: 'Inside the drawer, switch to the "Relationships & Resolution" tab. CodeForensics analyzes why this work item is linked to other PRs or issues. Look for the "Why Linked?" card:\n\n• If closed by a verified commit with "fixes #123", the badge displays FACT with 100% confidence.\n• If linked via PR branch name or title keyword, it displays INFERENCE.\n• If closed without an associated PR, it displays UNKNOWN CLOSURE.',
         },
         {
-          heading: 'Step 6: Trace Function Evolution with Code Archaeology',
-          stepNumber: 6,
+          heading: 'Step 7: Trace Function Evolution with Code Archaeology',
+          stepNumber: 7,
           body: 'Navigate to "Code Archaeology". Enter a file path (e.g. packages/shared/src/index.ts) and a function or symbol name. Click "Trace Symbol History". CodeForensics parses the file AST in memory, extracts exact line spans, and overlays historical git blame revisions with linked PR pills.',
         },
         {
-          heading: 'Step 7: Assess Contributor Expertise & Ownership Risks',
-          stepNumber: 7,
+          heading: 'Step 8: Assess Contributor Expertise & Ownership Risks',
+          stepNumber: 8,
           body: 'Navigate to "Contribution Finder". Review the ranked list of maintainers categorized into DOMAIN EXPERT, ACTIVE, and HISTORICAL. Inspect the Subsystem Ownership Risk banner at the top to discover single-maintainer dependencies and bus-factor vulnerabilities.',
         },
         {
-          heading: 'Step 8: Record and Export Saved Forensic Investigations',
-          stepNumber: 8,
+          heading: 'Step 9: Record and Export Saved Forensic Investigations',
+          stepNumber: 9,
           body: 'Navigate to "Investigations". Click "+ New Investigation" to create an audit record. Attach observed issue/PR citations, add hypothesis cards (e.g. "Fix was reverted in commit #a1b2c3d"), and record uncertainty notes. Your investigation is cryptographically secured to your user account.',
           callout: {
             type: 'note',
@@ -290,13 +295,13 @@ FIXED_BY    # Confirmed resolution where a merged PR definitively closed an issu
     icon: Network,
     summary: 'Interactive hierarchical graph of codebase architecture, modules, and code churn hotspot distribution.',
     readTime: '4 min read',
-    tags: ['Architecture Map', 'Tree View', 'Churn Heatmap', 'Mermaid Export', 'Codebase Navigation'],
+    tags: ['Architecture Map', 'Tree View', 'Churn Heatmap', 'Side Downloads', 'Mermaid Export', 'Codebase Navigation'],
     content: {
-      lead: 'The Repository Architecture Map visualizes the complete structural hierarchy of a repository, calculates code churn volatility (0-100) per file and directory, and exports multi-format diagrams.',
+      lead: 'The Repository Architecture Map visualizes the complete structural hierarchy of a repository, calculates code churn volatility (0-100) per file and directory, and exports multi-format diagrams from an aligned side toolbar.',
       sections: [
         {
           heading: 'What is Code Churn and Why Do Hotspots Matter?',
-          body: 'Code Churn measures the velocity and volume of modifications across a file or module over time. While new code is often harmless, frequently churned code is the #1 leading indicator of software defects.\n\nEmpirical code forensics research reveals that files in the top 10% of churn accumulate over 60% of all regression bugs and merge conflicts. When multiple developers repeatedly rewrite the same file across sprints, it signals architectural ambiguity, tight coupling, or insufficient unit test coverage.',
+          body: 'Code Churn measures the velocity and volume of modifications across a file or module over time. While new code is often harmless, frequently churned code is the #1 leading indicator of software defects.\n\nEmpirical code forensics research reveals that files in the top 10% of churn accumulate over 60% of all regression bugs and merge conflicts. When multiple developers repeatedly rewrite the same file across sprints, it signals architectural ambiguity, tight coupling, or insufficient unit test coverage.\n\nClick the prominent, vibrant "What is Code Churn & Hotspot?" educational button right below the page heading to toggle a deep-dive walkthrough explaining churn mathematics and refactoring heuristics.',
           callout: {
             type: 'note',
             text: 'Code churn is not inherently bad — during early feature incubation, high churn is normal. However, persistent high churn in mature code indicates a technical debt hotspot requiring refactoring.',
@@ -313,39 +318,70 @@ ChurnScore = Normalize(
 )`,
         },
         {
+          heading: 'Visual Code Churn & Hotspot Heatmap (2D Matrix)',
+          body: 'Located directly above the Mermaid flowchart, the visual Churn Heatmap displays a dense 2D grid matrix of all repository files grouped by architectural subsystem. Each file block is color-coded using a continuous chromatic gradient from emerald (0 - Stable Core) to deep crimson (100 - Extreme Hotspot). Hovering over any cell reveals exact churn score, line turnover, and commit count, while clicking loads the file into the Architecture Inspector.',
+        },
+        {
           heading: 'Interactive Vector Flowchart, Folder Drill-Down & Smooth Zoom',
           body: 'The Architecture Map compiles the repository directory hierarchy into an interactive vector flowchart rendered with Mermaid:\n\n• Folder Drill-Down: Click any directory node directly inside the flowchart to expand its child folders and files inline. Click again to collapse.\n• Smooth Pan & Damped Zoom: Pinch with two fingers on a trackpad or hold Ctrl and scroll with a mouse wheel. Smooth logarithmic damping prevents jarring zoom jumps.\n• Double-Click Zoom: Double-click any area to smoothly zoom into that exact location, or double-click when zoomed in to reset back to 100%.\n• Drag to Pan: Click and drag anywhere on the canvas to inspect large codebases without scrollbar boundaries.\n• Negative-Coordinate Protection: All scaled diagram nodes are bounded in positive layout space, ensuring the left half of wide diagrams is never cut off.',
         },
         {
-          heading: 'Multi-Format Architecture Export & Standalone Audit Dossier (.html)',
-          body: 'Investigators can export the repository map into industry-standard documentation formats, or generate a 100% self-contained Offline Forensic Audit Dossier:\n\n• Standalone Audit Dossier (.html): A single-file, air-gapped forensic audit pack with embedded SVG vector flowcharts, co-change matrices, bus factor registers, and issue verification cards. Contains zero external CDN or JavaScript dependencies.\n• Markdown Report (.md): Complete documentation briefing with executive summary, subsystem table, and embedded Mermaid graph.\n• Mermaid Architecture Diagram (.mmd): Ready-to-embed flowchart diagram compatible with GitHub, Notion, and Obsidian markdown renderers.\n• ASCII Directory Tree (.txt): Clean formatted text tree with file sizes, counts, and churn badges.',
-          codeSnippet: `// API Endpoints for Architecture Intelligence & Dossier Export:
+          heading: 'Side-Aligned Multi-Format Export Toolbar',
+          body: 'All 4 export and download actions are neatly aligned together on the side of the header in a symmetrical 2x2 grid on medium displays and a unified row on desktop:\n\n• Markdown (.md): Complete documentation briefing with executive summary, subsystem table, and embedded Mermaid graph.\n• Mermaid (.mmd): Ready-to-embed flowchart diagram compatible with GitHub, Notion, and Obsidian markdown renderers.\n• ASCII Tree (.txt): Clean formatted text tree with file sizes, counts, and churn badges.\n• Standalone Audit Dossier (.html): A single-file, air-gapped forensic audit pack with embedded SVG vector flowcharts, co-change matrices, bus factor registers, and issue verification cards with zero external dependencies.',
+          codeSnippet: `// Export endpoints:
 GET /api/v1/repositories/:owner/:repo/map
-GET /api/v1/repositories/:owner/:repo/map/dossier      # Standalone single-file HTML audit pack
-GET /api/v1/repositories/:owner/:repo/map/co-change    # Temporal co-change & coupling matrix
-GET /api/v1/repositories/:owner/:repo/map/timeline     # 4-era chronological milestones
-GET /api/v1/repositories/:owner/:repo/map/knowledge-loss # Bus factor & zombie hotspot register
-POST /api/v1/repositories/:owner/:repo/map/blast-radius # Blast radius ripple simulator`,
+GET /api/v1/repositories/:owner/:repo/map/dossier      # Standalone single-file HTML audit pack`,
+        },
+        {
+          heading: 'Subsystem Import Dependency Flow Overlay',
+          body: 'In the Architecture flowchart, click the "Dependency Flow" toolbar button to overlay directional dependency arrows between subsystems based on static import/export analysis:\n\n• Directional Arrows: Renders dashed links showing import frequency between subsystems (e.g., apps/web → packages/shared).\n• Layer Boundary Compliance: Validates architectural layering, ensuring shared packages do not illegally import from application roots.',
+        },
+      ],
+    },
+  },
+  {
+    id: 'forensic-analysis',
+    title: 'Forensic Analysis Workbench',
+    category: 'Intelligence Engines',
+    icon: Activity,
+    summary: 'Dedicated forensic deep-dive laboratory for temporal co-change, time-machine scrubbers, bus factor risk heatmaps, and blast-radius simulators.',
+    readTime: '6 min read',
+    tags: ['Forensic Analysis', 'Co-Change Matrix', 'Time-Machine', 'Bus Factor', 'Blast Radius', 'Downside Playbooks'],
+    content: {
+      lead: 'The Forensic Analysis Workbench (/app/analysis) is a dedicated investigation laboratory providing focused analytics for temporal coupling, architectural evolution milestones, bus factor knowledge-loss risks, and blast radius simulations—free from visual clutter.',
+      sections: [
+        {
+          heading: 'Unified Forensic Workbench Architecture (/app/analysis)',
+          body: 'To avoid visual clutter on the Repository Map, the 4 forensic deep-dive engines are unified in their own dedicated workbench accessible from the sidebar. Each engine is accessed via segmented tabs with URL query parameter persistence (?tab=co-change, ?tab=timeline, ?tab=bus-factor, ?tab=blast-radius):\n\n• Seamless Navigation: Switch between engines instantly without reloading.\n• Header Explanation Buttons: Every tab features a prominent "What is ...?" explanation toggle button next to the engine title.\n• Downside Analysis & Remediation Playbooks: Every tab includes a comprehensive downside guide at the bottom detailing why the risk matters, what negative consequences happen if ignored, and concrete engineering actions.',
         },
         {
           heading: '1. Temporal Co-Change & Coupling Matrix',
-          body: 'Temporal co-change detects files that frequently change together in the same PRs, even if they reside in completely different directory roots (e.g., modifying apps/api/auth.ts almost always requires editing apps/web/AuthContext.tsx).\n\n• Coupling Percentage: Calculated using Jaccard similarity across historical PR batches.\n• Boundary Violation Alerts: Flags cross-subsystem co-changes in crimson, revealing hidden architectural leaks and predicting files a developer might forget to update in a PR.\n• One-Click Simulation: Click "Simulate Blast" on any pair to predict downstream ripple effects.',
+          body: 'Temporal co-change measures statistical commit co-occurrence across pull requests to detect invisible architectural dependencies:\n\n• Jaccard Similarity Coupling: Quantifies how often file pairs mutate together across historical PR batches (e.g., 92% coupling between an API store and database schema).\n• Cross-Subsystem Leak Detection: Flags files in different architectural tiers that co-change frequently in crimson with a warning badge, signaling leaky abstractions.\n• One-Click Blast Radius Simulation: Click "Blast Radius" on any coupled pair to test ripple impact.\n• Downside Playbook: The bottom guide outlines how high co-change drives regression loops and merge conflicts, and provides refactoring tactics like event buses and domain boundary enforcement.',
+          codeSnippet: `// API Endpoint for Temporal Co-Change:
+GET /api/v1/repositories/:owner/:repo/map/co-change`,
         },
         {
           heading: '2. Time-Machine Architecture Timeline Scrubber',
-          body: 'The Time-Machine feature provides a temporal playback scrubber allowing users to scrub between chronological milestones (e.g., 6 Months Ago → 3 Months Ago → 1 Month Ago → Present Snapshot).\n\n• Codebase Evolution: Visualizes how the codebase grew in file count, directory depth, and subsystem count.\n• Hotspot Migration: Reveals exactly when stable files became volatile churn hotspots during major refactors or rapid feature expansion.\n• Auto Playback: Click "Play Timeline" to automatically scrub through milestones with 2.8s intervals.',
+          body: 'The Time-Machine feature provides an interactive playback scrubber across 4 chronological milestones (6 Months Ago → 3 Months Ago → 1 Month Ago → Present Snapshot):\n\n• Architectural Evolution: Tracks how file count, directory depth, and subsystem count expanded across release eras.\n• Hotspot Migration Tracking: Identifies exactly when stable files became volatile churn hotspots during rapid feature expansion or major refactors.\n• Automated Playback: Click "Play Timeline" to automatically scrub through milestones with 2.8s intervals.\n• Downside Playbook: The bottom guide details how unmanaged codebase sprawl increases cognitive load and onboarding overhead, advising architecture freezes and modular sub-packaging.',
+          codeSnippet: `// API Endpoint for Historical Timeline Milestones:
+GET /api/v1/repositories/:owner/:repo/map/timeline`,
         },
         {
-          heading: '3. Bus Factor & Knowledge Loss Heatmap ("Zombie Hotspots")',
-          body: 'By cross-referencing Churn Hotspot velocity with Contribution Finder maintainer activity, CodeForensics highlights severe knowledge loss risks:\n\n• Zombie Hotspots: High-churn files (score ≥ 60) where 80%+ of original lines were authored by engineers who have left or have zero recent activity.\n• Single-Maintainer Dependencies: Critical files with a Bus Factor of 1 where institutional knowledge resides with a single person.\n• Actionable Diagnostics: Color-coded maintainer badges (ACTIVE in green, DORMANT in amber, DEPARTED in crimson) with targeted refactoring recommendations.',
+          heading: '3. Bus Factor Risk & Zombie Hotspots Heatmap',
+          body: 'Correlates Churn Hotspot velocity with Contribution Finder maintainer activity to uncover organizational vulnerabilities:\n\n• Visual Risk Heatmap: Files are color-coded into Critical Risk (crimson), Moderate Risk (amber), and Healthy Distribution (emerald).\n• Zombie Hotspots: High-churn files (score ≥ 60) where 80%+ of original lines were authored by engineers who are dormant or departed.\n• Single-Maintainer Dependencies: Critical files with a Bus Factor of 1 where institutional knowledge resides with a single engineer.\n• Downside Playbook: The bottom guide highlights project paralysis risks when lead maintainers take leave, recommending pair programming, mandatory rotational reviews, and targeted documentation briefs.',
+          codeSnippet: `// API Endpoint for Bus Factor & Knowledge Loss:
+GET /api/v1/repositories/:owner/:repo/map/knowledge-loss`,
         },
         {
           heading: '4. Automated Architectural Blast-Radius Predictor',
-          body: 'An interactive simulator where an engineer inputs a proposed file or branch change, and CodeForensics calculates the ripple impacts before merging:\n\n• Blast Radius Hazard Score (0–100): Overall change hazard rating (CRITICAL, HIGH, MODERATE, LOW).\n• Downstream Coupled Files: Discovered through historical PR linkages and AST symbol imports.\n• Regression Test Suites at Risk: Identifies unit and integration tests that must pass to prevent regressions.\n• Boundary Crossing Warnings: Flags changes that breach subsystem boundaries.\n• Recommended Reviewers: Recommends domain maintainers to inspect the PR.',
+          body: 'An interactive pre-commit simulator where engineers input target files or branches to calculate ripple impacts before merging:\n\n• Hazard Score (0–100): Categorizes proposed modifications into CRITICAL, HIGH, MODERATE, or LOW hazard.\n• Downstream Coupled Files: Pinpoints hidden companion files that should likely be updated in the same PR.\n• Regression Test Suites at Risk: Surfaces unit, integration, and e2e test files marked MUST PASS.\n• Boundary Crossing Warnings: Highlights changes that breach subsystem tiers.\n• Recommended Reviewers: Identifies verified domain experts to invite to the PR review.\n• Downside Playbook: The bottom guide explains how undetected blast ripples cause silent production regressions, recommending regression test additions and feature flag gating.',
+          codeSnippet: `// API Endpoint for Blast Radius Simulation:
+POST /api/v1/repositories/:owner/:repo/map/blast-radius
+Body: { "targetFiles": ["apps/api/src/db/repositoryStore.ts"] }`,
         },
         {
-          heading: '5. Subsystem Import Dependency Flow Overlay',
-          body: 'In the Architecture flowchart, click the "Dependency Flow" toolbar button to overlay directional dependency arrows between subsystems based on static import/export analysis:\n\n• Directional Arrows: Renders dashed links showing import frequency between subsystems (e.g., apps/web → packages/shared).\n• Layer Boundary Compliance: Validates architectural layering, ensuring shared packages do not illegally import from application roots.',
+          heading: 'Interactive Educational Guides & Actionable Downside Playbooks',
+          body: 'Every tab in the Forensic Analysis Workbench includes:\n\n1. "What is [Engine]?" Toggle Button: Positioned directly beside the engine heading with vibrant high-contrast styling. Clicking opens an expandable quick guide.\n2. Comprehensive Downside Playbook: Positioned at the bottom of the active tab, providing four structured panels:\n   - ⚠️ What Happens If Ignored: Real-world risks like regression loops, project stalls, and merge conflicts.\n   - 🔍 Key Indicators to Watch: Thresholds (e.g. coupling ≥ 60%, bus factor = 1, zombie hotspots).\n   - 🛡️ Recommended Engineering Actions: Practical steps for refactoring, test coverage, and documentation.\n   - 🚀 Verification & Safety Checks: Pre-merge validation steps.',
         },
       ],
     },

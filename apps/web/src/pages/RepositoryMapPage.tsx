@@ -692,52 +692,56 @@ export function RepositoryMapPage() {
             <button
               type="button"
               onClick={() => setShowChurnGuide((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors shadow-xs"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500/50 bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-500/25 transition-all shadow-xs hover:shadow-sm cursor-pointer"
             >
-              <HelpCircle className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <Flame className="w-4 h-4 text-amber-500 shrink-0" />
               <span>{showChurnGuide ? 'Hide Churn & Hotspot Guide' : 'What is Code Churn & Hotspot?'}</span>
             </button>
           </div>
         </div>
 
-        {/* Global Export & Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Global Export & Action Controls: All 4 neatly aligned on side */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
+            className="whitespace-nowrap font-medium"
             onClick={handleDownloadMarkdown}
             disabled={!mapData}
             leftIcon={<Download className="w-3.5 h-3.5" />}
           >
-            Export Markdown (.md)
+            Markdown (.md)
           </Button>
 
           <Button
             variant="outline"
             size="sm"
+            className="whitespace-nowrap font-medium"
             onClick={handleDownloadMermaid}
             disabled={!mapData}
             leftIcon={<Code2 className="w-3.5 h-3.5" />}
           >
-            Mermaid Diagram
+            Mermaid (.mmd)
           </Button>
 
           <Button
             variant="outline"
             size="sm"
+            className="whitespace-nowrap font-medium"
             onClick={handleDownloadTextTree}
             disabled={!mapData}
             leftIcon={<FileText className="w-3.5 h-3.5" />}
           >
-            ASCII Tree
+            ASCII Tree (.txt)
           </Button>
 
           <Button
             variant="primary"
             size="sm"
+            className="whitespace-nowrap font-semibold shadow-xs"
             onClick={handleDownloadDossier}
             disabled={!mapData}
-            leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-cyan-200" />}
+            leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-accent-contrast" />}
           >
             Audit Dossier (.html)
           </Button>

@@ -112,31 +112,35 @@ A unified data grid tracking all issues, pull requests, authors, and states (`OP
 - **Historical Precedents & Prior Art Engine**: Multi-factor matching surfaces past merged PRs and closed issues that modified identical files, shared subsystem scopes (`fix(auth)`), or exhibited identical error signatures (`TokenExpiredError`).
 - **Citation Vault**: One-click evidence citation copying for immediate insertion into forensic case briefs.
 
-### 04. Repository Architecture Map & Forensic Intelligence (`/app/map`)
+### 04. Repository Architecture Map & Churn Heatmap (`/app/map`)
 An interactive visual hierarchy generator mapping repository folders, files, and architectural relationships:
 - **Interactive Mermaid Vector Flowchart**: Client-side vector flowchart with smooth trackpad pinch-to-zoom, double-click focus, drag-to-pan, and in-diagram folder drill-downs.
-- **Code Churn Volatility Scoring (0-100)**: Highlights high-risk change hotspots (score ≥ 65) in crimson, moderate iteration areas in amber, and stable foundational modules in emerald.
-- **Temporal Co-Change & Coupling Matrix**: Identifies files that frequently modify together across PRs even across different directory trees, flagging architectural leaks and forgotten files.
-- **Time-Machine Architecture Timeline**: A temporal playback scrubber allowing monthly milestone playback to observe codebase growth and hotspot migrations over time.
-- **Bus Factor & Zombie Hotspot Heatmap**: Correlates churn velocity with contributor activity to highlight high-churn files where original authors have departed or have zero recent activity ("Zombie Hotspots").
-- **Automated Architectural Blast-Radius Predictor**: Interactive simulator where engineers input target files to calculate downstream ripple impacts, affected test suites, subsystem boundary violations, and recommended PR reviewers.
-- **Subsystem Dependency Flow Overlay**: Toggle directional dependency arrows between subsystems based on static import/export topology to detect circular cycles and layer boundary breaches.
-- **Standalone Offline Forensic Audit Dossier (.html)**: 1-click export generating an air-gapped, single-file HTML audit report with embedded SVG vector flowcharts and audit tables with zero external dependencies.
+- **Visual Code Churn & Hotspot Heatmap (2D Matrix)**: Dense, interactive 2D matrix of file volatility (0–100) grouped by subsystem with continuous color gradient scale (`0 Stable` → `100 Hotspot`), floating tooltips, and click-to-inspect in the Architecture Inspector.
+- **"What is Code Churn & Hotspot?" Forensic Guide**: Built-in interactive primer explaining why the top 10% churned files accumulate over 60% of all software defects and merge conflicts.
+- **Side-by-Side Multi-Format Export Toolbar**: Instant exports for Markdown (`.md`), Mermaid (`.mmd`), ASCII Tree (`.txt`), and 1-click generation of the self-contained Offline Forensic Audit Dossier (`.html`).
 - **Architecture Inspector**: Inspects file size, line counts, lead maintainers, co-changed companion snippets, and links to trace AST history in Code Archaeology.
 
-### 05. Contribution Finder & Team Risk (`/app/contributions`)
+### 05. Forensic Analysis Workbench (`/app/analysis`)
+A unified laboratory combining all 4 deep-dive forensic analysis engines in a single workbench with segmented tab controls and URL deep-linking:
+- **1. Temporal Co-Change Coupling Matrix (`?tab=co-change`)**: Measures statistical commit co-occurrence across pull requests to detect invisible dependencies. Highlights cross-subsystem boundary leaks in crimson where changes in one domain breach another.
+- **2. Time-Machine Architecture Timeline (`?tab=timeline`)**: Chronological architecture evolution scrubber with milestone playback, tracking directory growth, codebase footprint expansions, and hotspot migrations across quarterly release eras.
+- **3. Bus Factor Risk & Zombie Hotspots Heatmap (`?tab=bus-factor`)**: Visual risk density matrix evaluating maintainer activity. Identifies critical single-maintainer dependencies (Bus Factor = 1) and "Zombie Hotspots" (high-churn files authored by departed or dormant engineers).
+- **4. Automated Architectural Blast-Radius Predictor (`?tab=blast-radius`)**: Interactive pre-commit simulator where engineers input target files to calculate downstream ripple impacts, companion files, regression test suites marked `MUST PASS`, and recommended peer reviewers.
+- **Interactive "What is ...?" Playbooks**: Every engine features a dedicated, prominent educational button and downside remediation guide providing actionable refactoring strategies for new and experienced engineers.
+
+### 06. Contribution Finder & Team Risk (`/app/contributions`)
 Identifies true subsystem experts using our mathematical impact formula. Categorizes maintainers into Domain Experts, Active Maintainers, Historical Contributors, and Occasional Reviewers, while flagging single-point-of-failure risks.
 
-### 06. Code Archaeology & AST Blast Radius (`/app/archaeology`)
+### 07. Code Archaeology & AST Blast Radius (`/app/archaeology`)
 Uses the official TypeScript AST Compiler in memory (`ts.createSourceFile`) to extract functions, classes, and React hooks with exact 1-indexed line spans. Pinpoints which commits and pull requests modified an exact symbol over the project's lifetime.
 
-### 07. Forensic Investigations & Evidence Vault (`/app/investigations`)
+### 08. Forensic Investigations & Evidence Vault (`/app/investigations`)
 A structured research workspace for diagnosing bugs, auditing pull requests, and benchmarking subsystems. Allows engineers to formulate testable hypotheses, log observations, attach immutable citations (commit SHAs, AST lines, PR links), and publish verified findings.
 
-### 08. User Profile & Account Settings (`/app/profile`)
+### 09. User Profile & Account Settings (`/app/profile`)
 Directly integrated in the TopBar and accessible via modal dialog: allows users to update their display name, change their password, view authentication provider credentials, and manage account sessions.
 
-### 09. In-App Technical Documentation (`/app/docs`)
+### 10. In-App Technical Documentation (`/docs` and `/app/docs`)
 A comprehensive, 11-chapter developer reference covering architecture, REST API contracts, database schemas, scoring formulas, and troubleshooting procedures.
 
 ---
