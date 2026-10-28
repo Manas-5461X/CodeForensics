@@ -295,12 +295,26 @@ FIXED_BY    # Confirmed resolution where a merged PR definitively closed an issu
       lead: 'The Repository Architecture Map visualizes the complete structural hierarchy of a repository, calculates code churn volatility (0-100) per file and directory, and exports multi-format diagrams.',
       sections: [
         {
-          heading: 'Code Churn Hotspot Score (0-100)',
-          body: 'Every file and folder is evaluated using a normalized code churn metric based on pull request modification frequency, issue associations, and commit volatility:\n\n• High Churn Hotspot (>= 65): Highlighted in rose/red with a flame badge. Signifies frequently changed, volatile code requiring extra testing and caution during refactoring.\n• Moderate Churn (40 - 64): Highlighted in amber. Indicates active development areas with regular iterations.\n• Stable Code (< 40): Highlighted in emerald or neutral slate. Represents mature, stable library modules, foundational types, or baseline configurations.',
+          heading: 'What is Code Churn and Why Do Hotspots Matter?',
+          body: 'Code Churn measures the velocity and volume of modifications across a file or module over time. While new code is often harmless, frequently churned code is the #1 leading indicator of software defects.\n\nEmpirical code forensics research reveals that files in the top 10% of churn accumulate over 60% of all regression bugs and merge conflicts. When multiple developers repeatedly rewrite the same file across sprints, it signals architectural ambiguity, tight coupling, or insufficient unit test coverage.',
+          callout: {
+            type: 'note',
+            text: 'Code churn is not inherently bad — during early feature incubation, high churn is normal. However, persistent high churn in mature code indicates a technical debt hotspot requiring refactoring.',
+          },
         },
         {
-          heading: 'Interactive Zoom, Pan & Subsystem Navigation',
-          body: 'The map interface features interactive zoom controls (+ / - / Reset), search-as-you-type file filtering, folder expansion toggles, and subsystem isolation filters (e.g., isolating apps/api vs. packages/shared). Clicking any node displays the Architecture Inspector card with lead maintainers and direct archaeology trace actions.',
+          heading: '0–100 Churn Volatility Scoring Formula',
+          body: 'CodeForensics normalizes code churn into a standardized 0–100 index computed from three weighted signals:\n\n• 40% Commit Frequency: The number of distinct commits touching the file relative to the repository maximum.\n• 35% Line Turnover: Cumulative volume of lines added and deleted (delta churn volume).\n• 25% Pull Request Velocity: Number of distinct PR reviews and merges modifying this file.\n\nThe resulting score maps to three forensic tiers:\n\n• 🔴 Critical Hotspot (≥ 65/100): Crimson node with flame icon. High defect risk, frequent rewrites, architectural bottleneck.\n• 🟡 Moderate Churn (40–64/100): Amber node. Active feature evolution requiring watchful review.\n• 🟢 Stable Core (< 40/100): Slate/emerald node. Foundational, battle-tested utilities with low volatility.',
+          codeSnippet: `// 0–100 Churn Score Calculation Formula:
+ChurnScore = Normalize(
+  (0.40 * CommitTouches) +
+  (0.35 * LineTurnoverDelta) +
+  (0.25 * PRTouchVelocity)
+)`,
+        },
+        {
+          heading: 'Interactive Vector Flowchart, Folder Drill-Down & Smooth Zoom',
+          body: 'The Architecture Map compiles the repository directory hierarchy into an interactive vector flowchart rendered with Mermaid:\n\n• Folder Drill-Down: Click any directory node directly inside the flowchart to expand its child folders and files inline. Click again to collapse.\n• Smooth Pan & Damped Zoom: Pinch with two fingers on a trackpad or hold Ctrl and scroll with a mouse wheel. Smooth logarithmic damping prevents jarring zoom jumps.\n• Double-Click Zoom: Double-click any area to smoothly zoom into that exact location, or double-click when zoomed in to reset back to 100%.\n• Drag to Pan: Click and drag anywhere on the canvas to inspect large codebases without scrollbar boundaries.\n• Negative-Coordinate Protection: All scaled diagram nodes are bounded in positive layout space, ensuring the left half of wide diagrams is never cut off.',
         },
         {
           heading: 'Multi-Format Architecture Export',

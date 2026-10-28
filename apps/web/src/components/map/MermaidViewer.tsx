@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   ZoomIn,
   ZoomOut,
@@ -37,6 +37,20 @@ export function MermaidViewer({
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const hasDraggedRef = useRef(false);
+
+  // Extract intrinsic dimensions from the SVG viewBox to prevent clipping and negative coordinate bugs
+  const svgDimensions = useMemo(() => {
+    if (!svgContent) return null;
+    const match = svgContent.match(/viewBox=["']([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)["']/);
+    if (match) {
+      const width = parseFloat(match[3]);
+      const height = parseFloat(match[4]);
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+    }
+    return null;
+  }, [svgContent]);
   // Dynamically compile and render Mermaid chart into SVG
   useEffect(() => {
     let isMounted = true;
@@ -102,10 +116,13 @@ export function MermaidViewer({
         e.preventDefault();
         e.stopPropagation();
 
-        const zoomDelta = e.deltaY < 0 ? 0.12 : -0.12;
+        // Dampen trackpad pinch and wheel events to prevent high sensitivity
+        const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 16);
+        const zoomStep = Math.max(-0.025, Math.min(0.025, -normalizedDelta * 0.001));
+
         setZoomLevel((prevZoom) => {
-          const nextZoom = Math.min(3.0, Math.max(0.4, Math.round((prevZoom + zoomDelta) * 100) / 100));
-          if (nextZoom === prevZoom) return prevZoom;
+          const nextZoom = Math.min(2.5, Math.max(0.35, Math.round((prevZoom + zoomStep) * 1000) / 1000));
+          if (Math.abs(nextZoom - prevZoom) < 0.001) return prevZoom;
 
           const rect = container.getBoundingClientRect();
           const cursorX = e.clientX - rect.left;
@@ -138,7 +155,7 @@ export function MermaidViewer({
         const [t1, t2] = [e.touches[0], e.touches[1]];
         const currentDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const scale = currentDistance / initialDistance;
-        const nextZoom = Math.min(3.0, Math.max(0.4, Math.round(startZoom * scale * 100) / 100));
+        const nextZoom = Math.min(2.5, Math.max(0.35, Math.round(startZoom * scale * 100) / 100));
         setZoomLevel(nextZoom);
       }
     };
@@ -160,18 +177,39 @@ export function MermaidViewer({
     };
   }, [zoomLevel]);
 
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, Math.round((z + 0.15) * 100) / 100));
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.4, Math.round((z - 0.15) * 100) / 100));
-  const handleResetZoom = () => setZoomLevel(1);
+  // Auto-center scroll view when chart renders or expands
+  useEffect(() => {
+    if (svgContent && containerRef.current) {
+      const container = containerRef.current;
+      requestAnimationFrame(() => {
+        if (container.scrollWidth > container.clientWidth) {
+          container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+        }
+      });
+    }
+  }, [svgContent]);
 
-  // Double-click zoom at the specific clicked place
+  const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, Math.round((z + 0.1) * 100) / 100));
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.35, Math.round((z - 0.1) * 100) / 100));
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    if (containerRef.current) {
+      const container = containerRef.current;
+      requestAnimationFrame(() => {
+        container.scrollLeft = Math.max(0, (container.scrollWidth - container.clientWidth) / 2);
+        container.scrollTop = 0;
+      });
+    }
+  };
+
+  // Double-click zoom at the specific clicked place with gentle zoom step
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = containerRef.current;
     if (!container) return;
 
     // If already zoomed in (>= 1.5x), double-click smoothly resets back to 1.0x (100%)
     if (zoomLevel >= 1.5) {
-      setZoomLevel(1);
+      handleResetZoom();
       return;
     }
 
@@ -179,7 +217,7 @@ export function MermaidViewer({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const targetZoom = Math.min(2.8, Math.round((zoomLevel + 0.5) * 100) / 100);
+    const targetZoom = Math.min(2.2, Math.round((zoomLevel + 0.3) * 10) / 10);
     const factor = targetZoom / zoomLevel;
 
     // Center the double-clicked coordinates in the viewport
@@ -373,7 +411,7 @@ export function MermaidViewer({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg p-6 flex items-center justify-center select-none mermaid-canvas"
+          className="relative flex-1 min-h-[520px] max-h-[720px] overflow-auto bg-slate-50/50 dark:bg-slate-900/40 border border-border-subtle rounded-lg select-none mermaid-canvas"
         >
           {/* Interactive Node Hover CSS */}
           <style>{`
@@ -444,12 +482,12 @@ export function MermaidViewer({
           )}
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center space-y-3 py-16 text-primary-muted font-mono text-xs">
+            <div className="flex flex-col items-center justify-center space-y-3 py-24 text-primary-muted font-mono text-xs">
               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               <p>Synthesizing visual architecture flowchart...</p>
             </div>
           ) : error ? (
-            <div className="max-w-md p-6 text-center space-y-3 bg-surface border border-rose-200 rounded-md">
+            <div className="max-w-md mx-auto my-12 p-6 text-center space-y-3 bg-surface border border-rose-200 rounded-md">
               <AlertCircle className="w-6 h-6 text-rose-600 mx-auto" />
               <h4 className="text-xs font-bold text-primary font-mono">Flowchart Compilation Fallback</h4>
               <p className="text-[11px] text-primary-muted font-mono leading-relaxed">{error}</p>
@@ -463,14 +501,25 @@ export function MermaidViewer({
             </div>
           ) : svgContent ? (
             <div
+              className="p-8 inline-block select-none"
               style={{
-                transform: `scale(${zoomLevel})`,
-                transformOrigin: 'top center',
-                transition: isDraggingRef.current ? 'none' : 'transform 0.12s ease-out',
+                width: svgDimensions ? `${Math.ceil(svgDimensions.width * zoomLevel) + 64}px` : 'max-content',
+                height: svgDimensions ? `${Math.ceil(svgDimensions.height * zoomLevel) + 64}px` : 'max-content',
+                minWidth: '100%',
               }}
-              className="w-full flex justify-center py-4 min-w-max"
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-            />
+            >
+              <div
+                style={{
+                  width: svgDimensions ? `${svgDimensions.width}px` : undefined,
+                  height: svgDimensions ? `${svgDimensions.height}px` : undefined,
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: '0 0',
+                  transition: isDraggingRef.current ? 'none' : 'transform 0.12s ease-out',
+                }}
+                className="inline-block"
+                dangerouslySetInnerHTML={{ __html: svgContent }}
+              />
+            </div>
           ) : null}
         </div>
       ) : (

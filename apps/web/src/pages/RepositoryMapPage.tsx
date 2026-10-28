@@ -31,6 +31,7 @@ import {
   Layers,
   Code2,
   Check,
+  HelpCircle,
 } from 'lucide-react';
 
 export function RepositoryMapPage() {
@@ -53,6 +54,7 @@ export function RepositoryMapPage() {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root', 'apps', 'packages', 'apps/api', 'apps/web', 'packages/shared']));
   const [expandedGraphFolders, setExpandedGraphFolders] = useState<Set<string>>(new Set(['root']));
   const [selectedNode, setSelectedNode] = useState<RepositoryMapNode | null>(null);
+  const [showChurnGuide, setShowChurnGuide] = useState<boolean>(false);
 
   // Export Feedback
   const [copiedStatus, setCopiedStatus] = useState<string | null>(null);
@@ -767,6 +769,22 @@ export function RepositoryMapPage() {
                 >
                   Hotspots Only (≥65)
                 </button>
+
+                <div className="h-3 w-px bg-border-subtle mx-1 hidden sm:block" />
+
+                <button
+                  type="button"
+                  onClick={() => setShowChurnGuide((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                    showChurnGuide
+                      ? 'bg-accent/15 text-accent border-accent/40 font-bold'
+                      : 'bg-surface-subtle text-primary-muted hover:text-primary border-border-subtle'
+                  }`}
+                  title="Click to learn about Code Churn and Hotspot calculation"
+                >
+                  <HelpCircle className="w-3 h-3 text-accent" />
+                  <span>{showChurnGuide ? 'Hide Churn Guide' : 'What is Churn & Hotspot?'}</span>
+                </button>
               </div>
 
               {/* Tree Expansion & Zoom controls */}
@@ -818,6 +836,79 @@ export function RepositoryMapPage() {
                 </div>
               )}
             </div>
+
+            {/* Interactive Code Churn & Hotspot Knowledge Card */}
+            {showChurnGuide && (
+              <div className="p-4 bg-surface border border-accent/30 rounded-lg shadow-sm space-y-3 animate-in fade-in text-xs font-mono">
+                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-rose-500" />
+                    <h4 className="font-bold text-primary text-sm">Understanding Code Churn & Hotspot Scoring</h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowChurnGuide(false)}
+                    className="text-[11px] text-primary-muted hover:text-primary"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] leading-relaxed text-primary-secondary">
+                  <div className="space-y-1.5">
+                    <p className="font-semibold text-primary">📌 What is Code Churn?</p>
+                    <p>
+                      Code Churn measures how frequently and intensely a file or directory is modified, rewritten, deleted, or committed over time. It quantifies code volatility rather than just static size.
+                    </p>
+                    <p className="font-semibold text-primary pt-1">🔥 What is a Churn Hotspot?</p>
+                    <p>
+                      A Hotspot is a file or module that exhibits disproportionately high churn velocity. Research shows files in the top 10% of churn accumulate over 60% of regression bugs and merge conflicts.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-semibold text-primary">🧮 0–100 Churn Score Formula:</p>
+                    <div className="p-2.5 bg-canvas border border-border-subtle rounded text-[10px] space-y-1 font-mono">
+                      <div><span className="text-accent font-bold">40%</span> • Commit Frequency (touches per sprint)</div>
+                      <div><span className="text-amber-500 font-bold">35%</span> • Line Delta Turnover (lines added/deleted)</div>
+                      <div><span className="text-rose-500 font-bold">25%</span> • Pull Request Velocity (review touchpoints)</div>
+                    </div>
+                    <p className="text-[10px] text-primary-muted">Normalized relative to the highest churn file in the repository.</p>
+                  </div>
+                </div>
+
+                {/* Color-coded Risk Level Legend */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border-subtle text-[11px]">
+                  <div className="p-2.5 rounded bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40">
+                    <div className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
+                      <Flame className="w-3.5 h-3.5 text-rose-600" />
+                      Hotspots (Score ≥ 65)
+                    </div>
+                    <p className="text-[10px] text-primary-secondary mt-1">
+                      Critical volatility. High defect hazard & bottleneck. Primary candidate for refactoring and high-coverage regression testing.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+                    <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                      ⚡ Active Churn (40–64)
+                    </div>
+                    <p className="text-[10px] text-primary-secondary mt-1">
+                      Active feature evolution. Steady commit velocity. Requires vigilant code reviews and architectural boundary monitoring.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40">
+                    <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                      🛡️ Stable Core (Score &lt; 40)
+                    </div>
+                    <p className="text-[10px] text-primary-secondary mt-1">
+                      Dormant & battle-tested. Infrequently modified foundational code with high structural reliability.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </Panel>
 
           {/* Interactive Canvas Viewport */}
@@ -971,17 +1062,44 @@ export function RepositoryMapPage() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60">
                     <span className="text-[10px] text-primary-muted block">Churn Hotspot Score</span>
-                    <span
-                      className={`font-bold text-sm ${
-                        selectedNode.churnScore >= 65
-                          ? 'text-rose-600'
-                          : selectedNode.churnScore >= 40
-                          ? 'text-amber-600'
-                          : 'text-emerald-600'
-                      }`}
-                    >
-                      {selectedNode.churnScore}/100
-                    </span>
+                    <div className="flex items-baseline justify-between mt-0.5">
+                      <span
+                        className={`font-bold text-sm ${
+                          selectedNode.churnScore >= 65
+                            ? 'text-rose-600'
+                            : selectedNode.churnScore >= 40
+                            ? 'text-amber-600'
+                            : 'text-emerald-600'
+                        }`}
+                      >
+                        {selectedNode.churnScore}/100
+                      </span>
+                      <span className="text-[10px] font-semibold text-primary-muted">
+                        {selectedNode.churnScore >= 65 ? 'Hotspot' : selectedNode.churnScore >= 40 ? 'Moderate' : 'Stable'}
+                      </span>
+                    </div>
+
+                    {/* Score Bar */}
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          selectedNode.churnScore >= 65
+                            ? 'bg-rose-500'
+                            : selectedNode.churnScore >= 40
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(5, selectedNode.churnScore))}%` }}
+                      />
+                    </div>
+
+                    <p className="text-[9px] text-primary-muted leading-tight mt-1">
+                      {selectedNode.churnScore >= 65
+                        ? 'High-risk change frequency. Primary bug magnet.'
+                        : selectedNode.churnScore >= 40
+                        ? 'Active feature iterations & changes.'
+                        : 'Infrequently modified stable component.'}
+                    </p>
                   </div>
 
                   <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60">

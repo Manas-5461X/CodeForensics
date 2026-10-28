@@ -51,6 +51,8 @@ export function WorkflowPage() {
         'Interactive Mermaid Vector Flowchart: Dynamic zoomable flowchart rendered client-side, showing root subsystems and directory relationships.',
         'Deep Folder Drill-Down: Click folders directly in the flowchart to expand nested folders and files with code churn scores.',
         'Visual Churn Hotspots: Volatility hotspots (🔥 churn ≥ 65/100) are highlighted in crimson for immediate architectural risk detection.',
+        'Smooth Trackpad & Wheel Pan/Zoom: Logarithmically damped pinch gestures, double-click focus, and smooth pan across both halves with zero clipping.',
+        'Architecture Inspector & Archaeology Trace: One-click jump from any volatile hotspot directly into Code Archaeology AST line traces.',
         'Multi-Format Architecture Export: Export full-resolution SVGs, Mermaid syntax (.mmd), markdown summaries (.md), or ASCII directory trees.',
       ],
       actionLink: '/app/map',
