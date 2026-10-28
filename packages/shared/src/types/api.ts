@@ -249,3 +249,131 @@ export interface WorkItemFilters {
   limit?: number;
 }
 
+// ============================================================================
+// Advanced Architectural & Forensic Intelligence Types
+// ============================================================================
+
+/** 1. Temporal Co-Change & Coupling */
+export interface CoChangePair {
+  sourceFile: string;
+  targetFile: string;
+  coChangeCount: number;
+  couplingPercentage: number; // 0–100%
+  sharedPrs: number[];
+  crossSubsystem: boolean;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface CoChangeReport {
+  repositoryId: string;
+  analyzedPrCount: number;
+  totalCoupledPairs: number;
+  crossSubsystemPairsCount: number;
+  pairs: CoChangePair[];
+}
+
+/** 2. Time-Machine Architecture Timeline */
+export interface ArchitectureMilestone {
+  id: string;
+  label: string;
+  timestamp: string;
+  relativeTime: string;
+  totalFiles: number;
+  totalDirectories: number;
+  hotspotCount: number;
+  summaryText: string;
+  topSubsystems: RepositoryMapSubsystemSummary[];
+  root: RepositoryMapNode;
+}
+
+export interface RepositoryMapTimeline {
+  repositoryId: string;
+  fullName: string;
+  currentMilestoneId: string;
+  milestones: ArchitectureMilestone[];
+}
+
+/** 3. Bus Factor & Knowledge Loss Heatmap */
+export interface KnowledgeLossRiskItem {
+  path: string;
+  subsystem: string;
+  churnScore: number;
+  busFactor: number; // 1 = single point of failure
+  primaryMaintainer: string;
+  maintainerStatus: 'ACTIVE' | 'DORMANT' | 'DEPARTED';
+  ownershipPercentage: number; // e.g., 85% of lines/commits
+  riskLevel: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  isZombieHotspot: boolean; // churnScore >= 60 && maintainerStatus !== 'ACTIVE'
+  reason: string;
+  suggestedAction: string;
+}
+
+export interface KnowledgeLossSummary {
+  repositoryId: string;
+  totalAnalyzedFiles: number;
+  zombieHotspotsCount: number;
+  singleMaintainerFilesCount: number;
+  averageBusFactor: number;
+  riskItems: KnowledgeLossRiskItem[];
+}
+
+/** 4. Automated Architectural Blast-Radius Predictor */
+export interface BlastRadiusInput {
+  targetFiles: string[];
+}
+
+export interface BlastRadiusCoupledCompanion {
+  file: string;
+  couplingPercentage: number;
+  coChangeCount: number;
+  subsystem: string;
+  reason: string;
+}
+
+export interface BlastRadiusImpact {
+  targetFiles: string[];
+  riskLevel: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  blastRadiusScore: number; // 0–100 overall change hazard score
+  directImpactCount: number;
+  indirectImpactCount: number;
+  coupledCompanions: BlastRadiusCoupledCompanion[];
+  affectedTests: string[];
+  affectedSubsystems: string[];
+  architecturalBoundaryCrossings: string[];
+  recommendedReviewers: { name: string; relevance: string }[];
+  summary: string;
+}
+
+/** 5. Subsystem Dependency Flow */
+export interface SubsystemDependencyEdge {
+  sourceSubsystem: string;
+  targetSubsystem: string;
+  importCount: number;
+  isCircular: boolean;
+  isLayerViolation: boolean;
+  sampleImports: string[];
+}
+
+export interface DependencyFlowReport {
+  repositoryId: string;
+  subsystems: string[];
+  edges: SubsystemDependencyEdge[];
+  circularCycles: string[][];
+  layerViolations: string[];
+}
+
+/** 6. Self-Contained Offline Forensic Audit Dossier */
+export interface AuditDossierMetadata {
+  repositoryFullName: string;
+  defaultBranch: string;
+  generatedAt: string;
+  snapshotSha?: string;
+  totalFiles: number;
+  hotspotsCount: number;
+  zombieHotspotsCount: number;
+  criticalCouplingsCount: number;
+  assessedIssuesCount: number;
+  verifiedFactCount: number;
+}
+
+

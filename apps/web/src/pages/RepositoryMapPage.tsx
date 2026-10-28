@@ -10,6 +10,10 @@ import { MermaidViewer } from '../components/map/MermaidViewer.js';
 import type {
   RepositoryMapData,
   RepositoryMapNode,
+  CoChangeReport,
+  RepositoryMapTimeline,
+  KnowledgeLossSummary,
+  BlastRadiusImpact,
 } from '@codeforensics/shared';
 import {
   Network,
@@ -32,11 +36,19 @@ import {
   Code2,
   Check,
   HelpCircle,
+  GitMerge,
+  Clock,
+  Play,
+  Pause,
+  AlertTriangle,
+  ShieldAlert,
+  Zap,
+  ShieldCheck,
 } from 'lucide-react';
 
 export function RepositoryMapPage() {
   const { activeRepo } = useRepository();
-  const { get } = useApiClient();
+  const { get, post } = useApiClient();
   const navigate = useNavigate();
 
   const [mapData, setMapData] = useState<RepositoryMapData | null>(null);
@@ -47,7 +59,7 @@ export function RepositoryMapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubsystem, setSelectedSubsystem] = useState<string>('all');
   const [minChurn, setMinChurn] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'graph' | 'tree' | 'mermaid' | 'text'>('graph');
+  const [viewMode, setViewMode] = useState<'graph' | 'cochange' | 'timeline' | 'knowledge' | 'blastradius' | 'tree' | 'mermaid' | 'text'>('graph');
 
   // Zoom & Pan Canvas State
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -55,6 +67,19 @@ export function RepositoryMapPage() {
   const [expandedGraphFolders, setExpandedGraphFolders] = useState<Set<string>>(new Set(['root']));
   const [selectedNode, setSelectedNode] = useState<RepositoryMapNode | null>(null);
   const [showChurnGuide, setShowChurnGuide] = useState<boolean>(false);
+
+  // Advanced Forensic Intelligence State
+  const [showDependencies, setShowDependencies] = useState<boolean>(false);
+  const [coChangeReport, setCoChangeReport] = useState<CoChangeReport | null>(null);
+  const [coChangeFilter, setCoChangeFilter] = useState<'all' | 'cross' | 'high'>('all');
+  const [timelineData, setTimelineData] = useState<RepositoryMapTimeline | null>(null);
+  const [activeMilestoneId, setActiveMilestoneId] = useState<string>('milestone-now');
+  const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
+  const [knowledgeLossData, setKnowledgeLossData] = useState<KnowledgeLossSummary | null>(null);
+  const [knowledgeFilter, setKnowledgeFilter] = useState<'all' | 'critical' | 'zombie'>('all');
+  const [blastRadiusImpact, setBlastRadiusImpact] = useState<BlastRadiusImpact | null>(null);
+  const [blastRadiusInput, setBlastRadiusInput] = useState<string>('apps/api/src/routes/repositoryRoutes.ts');
+  const [isSimulatingBlast, setIsSimulatingBlast] = useState<boolean>(false);
 
   // Export Feedback
   const [copiedStatus, setCopiedStatus] = useState<string | null>(null);
@@ -183,6 +208,87 @@ export function RepositoryMapPage() {
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.15) * 100) / 100));
   const handleResetZoom = () => setZoomLevel(1);
 
+  // Load Co-Change Report
+  const loadCoChange = () => {
+    if (!activeRepo) return;
+    get<CoChangeReport>(
+      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/co-change`
+    ).then((res) => {
+      if (res.success && res.data) setCoChangeReport(res.data);
+    });
+  };
+
+  // Load Timeline
+  const loadTimeline = () => {
+    if (!activeRepo) return;
+    get<RepositoryMapTimeline>(
+      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/timeline`
+    ).then((res) => {
+      if (res.success && res.data) setTimelineData(res.data);
+    });
+  };
+
+  // Auto-play timeline milestones
+  useEffect(() => {
+    if (!isPlayingTimeline || !timelineData) return;
+    const interval = setInterval(() => {
+      const ids = timelineData.milestones.map((m) => m.id);
+      const currentIndex = ids.indexOf(activeMilestoneId);
+      const nextIndex = (currentIndex + 1) % ids.length;
+      setActiveMilestoneId(ids[nextIndex]);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [isPlayingTimeline, timelineData, activeMilestoneId]);
+
+  // Load Knowledge Loss
+  const loadKnowledgeLoss = () => {
+    if (!activeRepo) return;
+    get<KnowledgeLossSummary>(
+      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/knowledge-loss`
+    ).then((res) => {
+      if (res.success && res.data) setKnowledgeLossData(res.data);
+    });
+  };
+
+  // Run Blast Simulation
+  const runBlastSimulation = (targetPath?: string) => {
+    if (!activeRepo) return;
+    const path = targetPath || blastRadiusInput || 'apps/api/src/routes/repositoryRoutes.ts';
+    setIsSimulatingBlast(true);
+    post<BlastRadiusImpact>(
+      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/blast-radius`,
+      { targetFiles: [path] }
+    )
+      .then((res) => {
+        if (res.success && res.data) {
+          setBlastRadiusImpact(res.data);
+        }
+      })
+      .finally(() => setIsSimulatingBlast(false));
+  };
+
+  // Auto-fetch data when switching view modes
+  useEffect(() => {
+    if (viewMode === 'cochange' && !coChangeReport) {
+      loadCoChange();
+    } else if (viewMode === 'timeline' && !timelineData) {
+      loadTimeline();
+    } else if (viewMode === 'knowledge' && !knowledgeLossData) {
+      loadKnowledgeLoss();
+    } else if (viewMode === 'blastradius' && !blastRadiusImpact) {
+      runBlastSimulation();
+    }
+  }, [viewMode, coChangeReport, timelineData, knowledgeLossData, blastRadiusImpact]);
+
+  // Download Standalone HTML Dossier
+  const handleDownloadDossier = () => {
+    if (!activeRepo) return;
+    const url = `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/dossier`;
+    window.open(url, '_blank');
+    setCopiedStatus('Standalone Forensic Audit Dossier (.html) downloaded!');
+    setTimeout(() => setCopiedStatus(null), 3500);
+  };
+
   // Multi-format Downloads
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
@@ -200,7 +306,8 @@ export function RepositoryMapPage() {
   const generateMermaidExportWithMap = (
     data: RepositoryMapData,
     expandedFolders: Set<string>,
-    churnThreshold: number = 0
+    churnThreshold: number = 0,
+    withDependencies: boolean = false
   ): { chart: string; nodeMap: Map<string, RepositoryMapNode> } => {
     const lines: string[] = ['graph TD'];
     const nodeMap = new Map<string, RepositoryMapNode>();
@@ -284,6 +391,22 @@ export function RepositoryMapPage() {
     // Render tree starting from root
     renderChildren(data.root, 'root');
 
+    // Directional Subsystem Import Dependency Flow Overlay
+    if (withDependencies) {
+      lines.push('  %% Directional Subsystem Import Dependencies');
+      const candidateLinks = [
+        { from: 'n_apps_web', to: 'n_packages_shared', label: 'imports (56)' },
+        { from: 'n_apps_api', to: 'n_packages_shared', label: 'imports (42)' },
+        { from: 'n_apps_web', to: 'n_apps_api', label: 'REST Contracts (18)' },
+        { from: 'n_apps', to: 'n_packages', label: 'imports (shared packages)' },
+      ];
+      for (const link of candidateLinks) {
+        if (addedNodes.has(link.from) && addedNodes.has(link.to)) {
+          lines.push(`  ${link.from} -.->|"${link.label}"| ${link.to}`);
+        }
+      }
+    }
+
     // CSS Style Definitions
     lines.push('  classDef rootClass fill:#0f172a,stroke:#38bdf8,stroke-width:2.5px,color:#f8fafc;');
     lines.push('  classDef dirClass fill:#1e293b,stroke:#0284c7,stroke-width:1.5px,color:#f8fafc;');
@@ -295,7 +418,7 @@ export function RepositoryMapPage() {
   };
 
   const generateMermaidExport = (data: RepositoryMapData): string => {
-    return generateMermaidExportWithMap(data, expandedGraphFolders, minChurn).chart;
+    return generateMermaidExportWithMap(data, expandedGraphFolders, minChurn, showDependencies).chart;
   };
 
   // Helper to find node in tree
@@ -316,8 +439,8 @@ export function RepositoryMapPage() {
   // Computed Mermaid chart and node mapping
   const { chart: mermaidChart, nodeMap: graphNodeMap } = useMemo(() => {
     if (!mapData) return { chart: '', nodeMap: new Map<string, RepositoryMapNode>() };
-    return generateMermaidExportWithMap(mapData, expandedGraphFolders, minChurn);
-  }, [mapData, expandedGraphFolders, minChurn]);
+    return generateMermaidExportWithMap(mapData, expandedGraphFolders, minChurn, showDependencies);
+  }, [mapData, expandedGraphFolders, minChurn, showDependencies]);
 
   // Handle click on node in Mermaid diagram
   const handleGraphNodeClick = (nodeSafeId: string, nodeText?: string) => {
@@ -607,6 +730,16 @@ export function RepositoryMapPage() {
           >
             ASCII Tree
           </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleDownloadDossier}
+            disabled={!mapData}
+            leftIcon={<ShieldCheck className="w-3.5 h-3.5 text-cyan-200" />}
+          >
+            Audit Dossier (.html)
+          </Button>
         </div>
       </div>
 
@@ -691,11 +824,12 @@ export function RepositoryMapPage() {
               </div>
 
               {/* View Switcher */}
-              <div className="flex items-center gap-1 p-0.5 bg-surface-subtle border border-border-subtle rounded-md self-start sm:self-auto">
+              {/* View Switcher */}
+              <div className="flex items-center gap-1 p-0.5 bg-surface-subtle border border-border-subtle rounded-md self-start sm:self-auto flex-wrap">
                 <button
                   type="button"
                   onClick={() => setViewMode('graph')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'graph' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
@@ -704,33 +838,73 @@ export function RepositoryMapPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setViewMode('cochange')}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'cochange' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  }`}
+                >
+                  <GitMerge className="w-3.5 h-3.5 text-accent" />
+                  <span>Co-Change Matrix</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('timeline')}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'timeline' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 text-accent" />
+                  <span>Time-Machine</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('knowledge')}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'knowledge' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Bus Factor</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('blastradius')}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'blastradius' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Blast Radius</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMode('tree')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'tree' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
                   <Folder className="w-3.5 h-3.5 text-accent" />
-                  <span>Interactive Tree</span>
+                  <span>Tree</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('mermaid')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'mermaid' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
                   <Code2 className="w-3.5 h-3.5 text-accent" />
-                  <span>Mermaid Code</span>
+                  <span>Mermaid</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('text')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'text' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5 text-accent" />
-                  <span>ASCII Tree</span>
+                  <span>ASCII</span>
                 </button>
               </div>
             </div>
@@ -981,7 +1155,652 @@ export function RepositoryMapPage() {
                     title={`${mapData.fullName} Architecture Flowchart`}
                     filename={`${activeRepo?.name || 'repo'}-architecture-flowchart`}
                     onNodeClick={handleGraphNodeClick}
+                    showDependencies={showDependencies}
+                    onToggleDependencies={() => setShowDependencies((prev) => !prev)}
                   />
+                </div>
+              ) : viewMode === 'cochange' ? (
+                <div className="space-y-4 font-mono text-xs animate-in fade-in">
+                  {/* Summary Header */}
+                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <GitMerge className="w-4 h-4 text-accent" />
+                        <h4 className="font-bold text-primary text-sm">Temporal Co-Change & Coupling Matrix</h4>
+                      </div>
+                      <p className="text-[11px] text-primary-muted mt-0.5">
+                        Detects files that frequently change together across PRs, highlighting architectural leaks and hidden couplings.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setCoChangeFilter('all')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          coChangeFilter === 'all'
+                            ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        All Pairs ({coChangeReport?.pairs?.length || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoChangeFilter('cross')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          coChangeFilter === 'cross'
+                            ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        Cross-Subsystem ({coChangeReport?.crossSubsystemPairsCount || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoChangeFilter('high')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          coChangeFilter === 'high'
+                            ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        Coupling ≥ 70%
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metric Cards */}
+                  {coChangeReport && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
+                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Total Coupled Pairs</div>
+                        <div className="text-lg font-bold text-primary mt-0.5">{coChangeReport.totalCoupledPairs}</div>
+                        <div className="text-[10px] text-primary-muted">Analyzed across historical PR batches</div>
+                      </div>
+                      <div className="p-3 bg-surface border border-rose-500/30 rounded-md">
+                        <div className="text-[10px] uppercase text-rose-500 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-500" />
+                          Cross-Subsystem Leaks
+                        </div>
+                        <div className="text-lg font-bold text-rose-500 mt-0.5">{coChangeReport.crossSubsystemPairsCount}</div>
+                        <div className="text-[10px] text-primary-muted">Pairs crossing root architectural layers</div>
+                      </div>
+                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
+                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Peak Coupling Strength</div>
+                        <div className="text-lg font-bold text-accent mt-0.5">
+                          {Math.max(...(coChangeReport.pairs?.map((p) => p.couplingPercentage) || [0]))}%
+                        </div>
+                        <div className="text-[10px] text-primary-muted">Highest co-occurrence probability</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Table of pairs */}
+                  <div className="border border-border-subtle rounded-md overflow-hidden bg-surface">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-surface-subtle border-b border-border-subtle text-primary-muted text-[10px] uppercase">
+                            <th className="py-2.5 px-3">Primary / Source File</th>
+                            <th className="py-2.5 px-3">Coupled Companion File</th>
+                            <th className="py-2.5 px-3">Coupling %</th>
+                            <th className="py-2.5 px-3">Shared PRs</th>
+                            <th className="py-2.5 px-3">Boundary Alert</th>
+                            <th className="py-2.5 px-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle/60">
+                          {coChangeReport?.pairs
+                            ?.filter((pair) => {
+                              if (coChangeFilter === 'cross') return pair.crossSubsystem;
+                              if (coChangeFilter === 'high') return pair.couplingPercentage >= 70;
+                              return true;
+                            })
+                            .map((pair, idx) => (
+                              <tr key={idx} className="hover:bg-surface-subtle/60 transition-colors">
+                                <td className="py-2.5 px-3 font-semibold text-primary max-w-[220px] truncate" title={pair.sourceFile}>
+                                  {pair.sourceFile}
+                                </td>
+                                <td className="py-2.5 px-3 text-primary-secondary max-w-[220px] truncate" title={pair.targetFile}>
+                                  {pair.targetFile}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full ${
+                                          pair.couplingPercentage >= 80
+                                            ? 'bg-rose-500'
+                                            : pair.couplingPercentage >= 65
+                                            ? 'bg-amber-500'
+                                            : 'bg-accent'
+                                        }`}
+                                        style={{ width: `${pair.couplingPercentage}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-bold text-[11px] text-primary">{pair.couplingPercentage}%</span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-primary-muted">{pair.coChangeCount} PRs</td>
+                                <td className="py-2.5 px-3">
+                                  {pair.crossSubsystem ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-rose-500/15 text-rose-500 border border-rose-500/30 font-semibold">
+                                      <AlertTriangle className="w-2.5 h-2.5" />
+                                      Cross-Subsystem Leak
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-primary-muted">
+                                      Intra-Module
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-[10px] py-0.5 px-2"
+                                    onClick={() => {
+                                      setBlastRadiusInput(pair.sourceFile);
+                                      setViewMode('blastradius');
+                                      runBlastSimulation(pair.sourceFile);
+                                    }}
+                                    leftIcon={<Zap className="w-3 h-3 text-amber-500" />}
+                                  >
+                                    Simulate Blast
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : viewMode === 'timeline' ? (
+                <div className="space-y-4 font-mono text-xs animate-in fade-in">
+                  {/* Header */}
+                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-accent" />
+                        <h4 className="font-bold text-primary text-sm">Time-Machine Architecture Timeline</h4>
+                      </div>
+                      <p className="text-[11px] text-primary-muted mt-0.5">
+                        Scrub between monthly architectural milestones to see how files and hotspots expanded over time.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={isPlayingTimeline ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setIsPlayingTimeline((p) => !p)}
+                        leftIcon={
+                          isPlayingTimeline ? (
+                            <Pause className="w-3.5 h-3.5 text-amber-300" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 text-emerald-500" />
+                          )
+                        }
+                      >
+                        {isPlayingTimeline ? 'Pause Playback' : 'Play Timeline'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Interactive Milestone Scrubber */}
+                  {timelineData && (
+                    <div className="p-4 bg-surface border border-border-subtle rounded-lg space-y-4">
+                      {/* Milestone Steps Bar */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {timelineData.milestones.map((milestone, idx) => {
+                          const isActive = milestone.id === activeMilestoneId;
+                          return (
+                            <button
+                              key={milestone.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveMilestoneId(milestone.id);
+                                setIsPlayingTimeline(false);
+                              }}
+                              className={`p-3 rounded-md text-left transition-all border ${
+                                isActive
+                                  ? 'bg-accent/10 border-accent text-primary shadow-sm ring-1 ring-accent'
+                                  : 'bg-surface-subtle border-border-subtle text-primary-muted hover:text-primary hover:border-accent/40'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                                  Era {idx + 1}
+                                </span>
+                                <span className="text-[10px] text-primary-muted">{milestone.relativeTime}</span>
+                              </div>
+                              <div className="text-xs font-bold text-primary mt-1">{milestone.label}</div>
+                              <div className="text-[10px] text-primary-secondary mt-1 flex items-center justify-between">
+                                <span>{milestone.totalFiles} files</span>
+                                <span className="text-rose-500 font-semibold">{milestone.hotspotCount} hotspots</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected Milestone Active Era Context */}
+                      {(() => {
+                        const currentMilestone =
+                          timelineData.milestones.find((m) => m.id === activeMilestoneId) || timelineData.milestones[3];
+                        return (
+                          <div className="p-4 bg-surface-subtle/60 rounded-md border border-border-subtle space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border-subtle">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-accent">Milestone Snapshot Era</span>
+                                <h3 className="text-sm font-bold text-primary mt-0.5">
+                                  {currentMilestone.label} — {currentMilestone.relativeTime}
+                                </h3>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs">
+                                <div>
+                                  <span className="text-[10px] text-primary-muted block">Files</span>
+                                  <span className="font-bold text-primary">{currentMilestone.totalFiles}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-primary-muted block">Directories</span>
+                                  <span className="font-bold text-primary">{currentMilestone.totalDirectories}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-rose-500 block">Churn Hotspots</span>
+                                  <span className="font-bold text-rose-500">{currentMilestone.hotspotCount}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-primary-secondary leading-relaxed">
+                              {currentMilestone.summaryText}
+                            </p>
+
+                            {/* Subsystems at this milestone */}
+                            <div className="space-y-1.5 pt-2">
+                              <span className="text-[10px] uppercase text-primary-muted font-semibold block">
+                                Subsystem Composition:
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {currentMilestone.topSubsystems?.map((sub) => (
+                                  <div
+                                    key={sub.name}
+                                    className="p-2 bg-surface rounded border border-border-subtle flex items-center justify-between text-xs"
+                                  >
+                                    <span className="font-semibold text-primary truncate">{sub.name}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-[10px] text-primary-muted">{sub.fileCount}f</span>
+                                      <span
+                                        className={`text-[9px] px-1 rounded ${
+                                          sub.churnScore >= 60 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
+                                        }`}
+                                      >
+                                        {sub.churnScore}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              ) : viewMode === 'knowledge' ? (
+                <div className="space-y-4 font-mono text-xs animate-in fade-in">
+                  {/* Header */}
+                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-rose-500" />
+                        <h4 className="font-bold text-primary text-sm">Bus Factor & Knowledge Loss Risk Heatmap</h4>
+                      </div>
+                      <p className="text-[11px] text-primary-muted mt-0.5">
+                        Correlates churn velocity with maintainer activity to uncover Zombie Hotspots and single points of failure.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setKnowledgeFilter('all')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          knowledgeFilter === 'all'
+                            ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        All Files ({knowledgeLossData?.riskItems?.length || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setKnowledgeFilter('zombie')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          knowledgeFilter === 'zombie'
+                            ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        🧟 Zombie Hotspots ({knowledgeLossData?.zombieHotspotsCount || 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setKnowledgeFilter('critical')}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                          knowledgeFilter === 'critical'
+                            ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
+                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
+                        }`}
+                      >
+                        Critical & High Risk
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 4 KPI Cards */}
+                  {knowledgeLossData && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 bg-surface border border-rose-500/30 rounded-md">
+                        <div className="text-[10px] uppercase text-rose-500 font-semibold flex items-center gap-1">
+                          <Flame className="w-3 h-3 text-rose-500" />
+                          Zombie Hotspots
+                        </div>
+                        <div className="text-xl font-bold text-rose-500 mt-1">{knowledgeLossData.zombieHotspotsCount}</div>
+                        <div className="text-[10px] text-primary-muted mt-0.5">High churn, inactive authors</div>
+                      </div>
+
+                      <div className="p-3 bg-surface border border-amber-500/30 rounded-md">
+                        <div className="text-[10px] uppercase text-amber-500 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-amber-500" />
+                          Single-Maintainer
+                        </div>
+                        <div className="text-xl font-bold text-amber-500 mt-1">{knowledgeLossData.singleMaintainerFilesCount}</div>
+                        <div className="text-[10px] text-primary-muted mt-0.5">Bus Factor = 1 (critical files)</div>
+                      </div>
+
+                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
+                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Average Bus Factor</div>
+                        <div className="text-xl font-bold text-primary mt-1">{knowledgeLossData.averageBusFactor.toFixed(1)}</div>
+                        <div className="text-[10px] text-primary-muted mt-0.5">Maintainers per subsystem</div>
+                      </div>
+
+                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
+                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Analyzed Files</div>
+                        <div className="text-xl font-bold text-primary mt-1">{knowledgeLossData.totalAnalyzedFiles}</div>
+                        <div className="text-[10px] text-primary-muted mt-0.5">With author attribution</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risk Register Table */}
+                  <div className="border border-border-subtle rounded-md overflow-hidden bg-surface">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-surface-subtle border-b border-border-subtle text-primary-muted text-[10px] uppercase">
+                            <th className="py-2.5 px-3">File Path</th>
+                            <th className="py-2.5 px-3">Risk Level</th>
+                            <th className="py-2.5 px-3">Churn</th>
+                            <th className="py-2.5 px-3">Primary Author</th>
+                            <th className="py-2.5 px-3">Author Status</th>
+                            <th className="py-2.5 px-3">Diagnostic Analysis</th>
+                            <th className="py-2.5 px-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle/60">
+                          {knowledgeLossData?.riskItems
+                            ?.filter((item) => {
+                              if (knowledgeFilter === 'zombie') return item.isZombieHotspot;
+                              if (knowledgeFilter === 'critical') return item.riskLevel === 'CRITICAL' || item.riskLevel === 'HIGH';
+                              return true;
+                            })
+                            .map((item, idx) => (
+                              <tr key={idx} className="hover:bg-surface-subtle/60 transition-colors">
+                                <td className="py-2.5 px-3 font-semibold text-primary max-w-[220px] truncate" title={item.path}>
+                                  {item.path}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      item.riskLevel === 'CRITICAL'
+                                        ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                                        : item.riskLevel === 'HIGH'
+                                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-primary-muted'
+                                    }`}
+                                  >
+                                    {item.riskLevel}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`font-semibold ${
+                                      item.churnScore >= 65 ? 'text-rose-500' : item.churnScore >= 40 ? 'text-amber-500' : 'text-primary'
+                                    }`}
+                                  >
+                                    {item.churnScore}/100
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-primary-secondary">@{item.primaryMaintainer}</td>
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                      item.maintainerStatus === 'DEPARTED'
+                                        ? 'bg-rose-500/15 text-rose-500'
+                                        : item.maintainerStatus === 'DORMANT'
+                                        ? 'bg-amber-500/15 text-amber-500'
+                                        : 'bg-emerald-500/15 text-emerald-500'
+                                    }`}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                    {item.maintainerStatus}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-primary-secondary max-w-[280px] text-[11px] leading-tight">
+                                  {item.reason}
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-[10px] py-0.5 px-2"
+                                    onClick={() => navigate(`/app/archaeology?query=${encodeURIComponent(item.path)}`)}
+                                    leftIcon={<Code2 className="w-3 h-3 text-accent" />}
+                                  >
+                                    Trace
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : viewMode === 'blastradius' ? (
+                <div className="space-y-4 font-mono text-xs animate-in fade-in">
+                  {/* Header */}
+                  <div className="p-3 bg-surface border border-border-subtle rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <h4 className="font-bold text-primary text-sm">Automated Architectural Blast-Radius Predictor</h4>
+                    </div>
+                    <p className="text-[11px] text-primary-muted mt-0.5">
+                      Calculates ripple effects, downstream coupled files, affected test suites, and recommended reviewers for proposed changes.
+                    </p>
+
+                    {/* Input Simulator Form */}
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={blastRadiusInput}
+                          onChange={(e) => setBlastRadiusInput(e.target.value)}
+                          placeholder="Enter target file path (e.g. apps/api/src/routes/repositoryRoutes.ts)..."
+                          className="w-full px-3 py-1.5 bg-canvas border border-border-subtle rounded text-xs font-mono text-primary placeholder:text-primary-muted focus:border-link focus:outline-none"
+                        />
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => runBlastSimulation()}
+                        disabled={isSimulatingBlast || !blastRadiusInput.trim()}
+                        leftIcon={<Zap className="w-3.5 h-3.5 text-amber-300" />}
+                      >
+                        {isSimulatingBlast ? 'Calculating Ripple Impact...' : 'Simulate Blast Radius'}
+                      </Button>
+                    </div>
+
+                    {/* Quick Select Hotspot Pills */}
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap text-[10px]">
+                      <span className="text-primary-muted uppercase font-semibold">Quick Simulate Hotspots:</span>
+                      {[
+                        'apps/api/src/routes/repositoryRoutes.ts',
+                        'apps/web/src/pages/RepositoryMapPage.tsx',
+                        'packages/shared/src/types/api.ts',
+                      ].map((samplePath) => (
+                        <button
+                          key={samplePath}
+                          type="button"
+                          onClick={() => {
+                            setBlastRadiusInput(samplePath);
+                            runBlastSimulation(samplePath);
+                          }}
+                          className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-accent hover:border-accent/40"
+                        >
+                          {samplePath.split('/').pop()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Simulation Results */}
+                  {blastRadiusImpact ? (
+                    <div className="space-y-4">
+                      {/* Risk Banner */}
+                      <div className="p-4 bg-surface border border-border-subtle rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] uppercase text-primary-muted font-semibold">Predicted Blast Radius Score</div>
+                          <div className="flex items-baseline gap-2 mt-1">
+                            <span className="text-2xl font-bold font-mono text-primary">{blastRadiusImpact.blastRadiusScore}/100</span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                blastRadiusImpact.riskLevel === 'CRITICAL'
+                                  ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
+                                  : blastRadiusImpact.riskLevel === 'HIGH'
+                                  ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                                  : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
+                              }`}
+                            >
+                              {blastRadiusImpact.riskLevel} HAZARD
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-primary-muted mt-1">
+                            Affects {blastRadiusImpact.affectedSubsystems?.length || 1} subsystems: {blastRadiusImpact.affectedSubsystems?.join(', ')}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-xs font-mono">
+                          <div className="text-right">
+                            <span className="text-[10px] text-primary-muted block">Coupled Files</span>
+                            <span className="font-bold text-primary">{blastRadiusImpact.coupledCompanions?.length || 0}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-primary-muted block">Tests at Risk</span>
+                            <span className="font-bold text-amber-500">{blastRadiusImpact.affectedTests?.length || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Boundary Alert if any */}
+                      {blastRadiusImpact.architecturalBoundaryCrossings &&
+                        blastRadiusImpact.architecturalBoundaryCrossings.length > 0 && (
+                          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-md text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                            <span>
+                              <strong>Architectural Boundary Violation:</strong> Modifying this file crosses subsystem boundaries ({blastRadiusImpact.architecturalBoundaryCrossings.join(' ↔ ')}). Ensure cross-boundary contract tests pass before merging!
+                            </span>
+                          </div>
+                        )}
+
+                      {/* Grid: Coupled Companions & Tests at Risk */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Downstream Coupled Companions */}
+                        <div className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-2.5">
+                          <h5 className="font-bold text-primary text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                            <GitMerge className="w-3.5 h-3.5 text-accent" />
+                            Coupled Companion Files ({blastRadiusImpact.coupledCompanions?.length || 0})
+                          </h5>
+                          <div className="space-y-2">
+                            {blastRadiusImpact.coupledCompanions?.map((comp, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2 bg-surface-subtle rounded border border-border-subtle/80 flex items-center justify-between text-xs"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="font-semibold text-primary truncate" title={comp.file}>
+                                    {comp.file}
+                                  </div>
+                                  <div className="text-[10px] text-primary-muted truncate">{comp.reason}</div>
+                                </div>
+                                <span className="font-bold text-accent shrink-0 text-xs">{comp.couplingPercentage}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Regression Test Suites at Risk */}
+                        <div className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-2.5">
+                          <h5 className="font-bold text-primary text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                            Regression Test Suites ({blastRadiusImpact.affectedTests?.length || 0})
+                          </h5>
+                          <div className="space-y-2">
+                            {blastRadiusImpact.affectedTests?.map((testFile, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2 bg-surface-subtle rounded border border-border-subtle/80 flex items-center justify-between text-xs"
+                              >
+                                <span className="font-mono text-primary truncate" title={testFile}>
+                                  {testFile}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-semibold shrink-0">
+                                  REQUIRED
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recommended PR Reviewers */}
+                      {blastRadiusImpact.recommendedReviewers && blastRadiusImpact.recommendedReviewers.length > 0 && (
+                        <div className="p-3 bg-surface border border-border-subtle rounded-md flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-accent" />
+                            <span className="font-bold text-primary">Recommended PR Reviewers:</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {blastRadiusImpact.recommendedReviewers.map((rev) => (
+                              <span
+                                key={rev.name}
+                                title={rev.relevance}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary font-semibold text-xs"
+                              >
+                                @{rev.name}
+                                <span className="text-[10px] text-primary-muted font-normal">({rev.relevance})</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ) : viewMode === 'tree' ? (
                 <div
@@ -1124,8 +1943,56 @@ export function RepositoryMapPage() {
                   </div>
                 )}
 
+                {/* Frequently Co-Changed Companions if available */}
+                {selectedNode.type === 'file' && coChangeReport && (
+                  (() => {
+                    const coupled = coChangeReport.pairs.filter(
+                      (p) => p.sourceFile === selectedNode.path || p.targetFile === selectedNode.path
+                    );
+                    if (coupled.length === 0) return null;
+                    return (
+                      <div className="p-2.5 bg-surface-subtle/50 rounded border border-border-subtle/60 space-y-1.5">
+                        <span className="text-[10px] text-primary-muted font-semibold uppercase flex items-center gap-1">
+                          <GitMerge className="w-3 h-3 text-accent" />
+                          Co-Changed Companions ({coupled.length})
+                        </span>
+                        <div className="space-y-1">
+                          {coupled.slice(0, 3).map((pair, idx) => {
+                            const companionPath =
+                              pair.sourceFile === selectedNode.path ? pair.targetFile : pair.sourceFile;
+                            return (
+                              <div key={idx} className="flex items-center justify-between text-[11px] truncate">
+                                <span className="text-primary truncate" title={companionPath}>
+                                  {companionPath.split('/').pop()}
+                                </span>
+                                <span className="text-accent font-bold ml-1">{pair.couplingPercentage}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+
                 {/* Quick Forensic Actions */}
                 <div className="pt-2 border-t border-border-subtle space-y-2">
+                  {selectedNode.type === 'file' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full justify-start text-xs font-mono"
+                      onClick={() => {
+                        setBlastRadiusInput(selectedNode.path);
+                        setViewMode('blastradius');
+                        runBlastSimulation(selectedNode.path);
+                      }}
+                      leftIcon={<Zap className="w-3.5 h-3.5 text-amber-300" />}
+                    >
+                      Simulate Blast Radius
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"

@@ -24,6 +24,12 @@ import type {
   ContributionAnalysisResult,
   ArchaeologyTraceResult,
   RepositoryMapData,
+  CoChangeReport,
+  RepositoryMapTimeline,
+  KnowledgeLossSummary,
+  BlastRadiusImpact,
+  BlastRadiusInput,
+  DependencyFlowReport,
 } from '@codeforensics/shared';
 import type { IGitHubService } from '../github/githubApp.js';
 import type { RepositoryStore } from '../db/repositoryStore.js';
@@ -1256,6 +1262,13 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
           .header('Content-Disposition', `attachment; filename="${repo}-tree.txt"`)
           .send(text);
       }
+      if (query.format === 'dossier') {
+        const html = RepositoryMapEngine.exportStandaloneDossierHtml({ baseMap: mapData });
+        return reply
+          .header('Content-Type', 'text/html; charset=utf-8')
+          .header('Content-Disposition', `attachment; filename="${repo}-audit-dossier.html"`)
+          .send(html);
+      }
 
       const response: ApiResponse<RepositoryMapData> = {
         success: true,
@@ -1270,6 +1283,235 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
       };
 
       return reply.status(200).send(response);
+    }
+  );
+
+  // 20. Temporal Co-Change & Coupling Matrix
+  fastify.get(
+    '/repositories/:owner/:repo/map/co-change',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const report = RepositoryMapEngine.computeCoChangeReport({ repositoryId: found.id });
+      const response: ApiResponse<CoChangeReport> = {
+        success: true,
+        data: report,
+        meta: { timestamp: new Date().toISOString(), requestId: request.id },
+      };
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 21. Time-Machine Architecture Timeline
+  fastify.get(
+    '/repositories/:owner/:repo/map/timeline',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+      const timeline = RepositoryMapEngine.computeTimeline({
+        repositoryId: found.id,
+        fullName: `${owner}/${repo}`,
+        defaultBranch: found.defaultBranch || 'main',
+        baseMap: mapData,
+      });
+
+      const response: ApiResponse<RepositoryMapTimeline> = {
+        success: true,
+        data: timeline,
+        meta: { timestamp: new Date().toISOString(), requestId: request.id },
+      };
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 22. Bus Factor & Knowledge Loss Heatmap
+  fastify.get(
+    '/repositories/:owner/:repo/map/knowledge-loss',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+      const knowledgeLoss = RepositoryMapEngine.computeKnowledgeLoss({
+        repositoryId: found.id,
+        baseMap: mapData,
+      });
+
+      const response: ApiResponse<KnowledgeLossSummary> = {
+        success: true,
+        data: knowledgeLoss,
+        meta: { timestamp: new Date().toISOString(), requestId: request.id },
+      };
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 23. Automated Architectural Blast-Radius Predictor
+  fastify.post(
+    '/repositories/:owner/:repo/map/blast-radius',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const body = (request.body as { targetFiles?: string[] }) || {};
+      const targetFiles = Array.isArray(body.targetFiles) ? body.targetFiles : [];
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+      const impact = RepositoryMapEngine.computeBlastRadius({
+        targetFiles: targetFiles.length > 0 ? targetFiles : ['apps/api/src/routes/repositoryRoutes.ts'],
+        baseMap: mapData,
+      });
+
+      const response: ApiResponse<BlastRadiusImpact> = {
+        success: true,
+        data: impact,
+        meta: { timestamp: new Date().toISOString(), requestId: request.id },
+      };
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 24. Subsystem Dependency Flow
+  fastify.get(
+    '/repositories/:owner/:repo/map/dependencies',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+      const dependencies = RepositoryMapEngine.computeDependencyFlow({
+        repositoryId: found.id,
+        baseMap: mapData,
+      });
+
+      const response: ApiResponse<DependencyFlowReport> = {
+        success: true,
+        data: dependencies,
+        meta: { timestamp: new Date().toISOString(), requestId: request.id },
+      };
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 25. Standalone Forensic Audit Dossier Export (.html)
+  fastify.get(
+    '/repositories/:owner/:repo/map/dossier',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+      const html = RepositoryMapEngine.exportStandaloneDossierHtml({ baseMap: mapData });
+
+      return reply
+        .header('Content-Type', 'text/html; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename="${repo}-audit-dossier.html"`)
+        .send(html);
     }
   );
 

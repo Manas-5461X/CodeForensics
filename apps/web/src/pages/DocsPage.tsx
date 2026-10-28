@@ -317,13 +317,35 @@ ChurnScore = Normalize(
           body: 'The Architecture Map compiles the repository directory hierarchy into an interactive vector flowchart rendered with Mermaid:\n\n• Folder Drill-Down: Click any directory node directly inside the flowchart to expand its child folders and files inline. Click again to collapse.\n• Smooth Pan & Damped Zoom: Pinch with two fingers on a trackpad or hold Ctrl and scroll with a mouse wheel. Smooth logarithmic damping prevents jarring zoom jumps.\n• Double-Click Zoom: Double-click any area to smoothly zoom into that exact location, or double-click when zoomed in to reset back to 100%.\n• Drag to Pan: Click and drag anywhere on the canvas to inspect large codebases without scrollbar boundaries.\n• Negative-Coordinate Protection: All scaled diagram nodes are bounded in positive layout space, ensuring the left half of wide diagrams is never cut off.',
         },
         {
-          heading: 'Multi-Format Architecture Export',
-          body: 'Investigators can export the repository map into three industry-standard documentation formats at any time:\n\n1. Markdown Report (.md): Complete documentation briefing with executive summary, subsystem table, and embedded Mermaid graph.\n2. Mermaid Architecture Diagram (.mmd): Ready-to-embed flowchart diagram compatible with GitHub, Notion, and Obsidian markdown renderers.\n3. ASCII Directory Tree (.txt): Clean formatted text tree with file sizes, counts, and churn badges.',
-          codeSnippet: `// API Endpoint to fetch architecture map data or export files directly:
+          heading: 'Multi-Format Architecture Export & Standalone Audit Dossier (.html)',
+          body: 'Investigators can export the repository map into industry-standard documentation formats, or generate a 100% self-contained Offline Forensic Audit Dossier:\n\n• Standalone Audit Dossier (.html): A single-file, air-gapped forensic audit pack with embedded SVG vector flowcharts, co-change matrices, bus factor registers, and issue verification cards. Contains zero external CDN or JavaScript dependencies.\n• Markdown Report (.md): Complete documentation briefing with executive summary, subsystem table, and embedded Mermaid graph.\n• Mermaid Architecture Diagram (.mmd): Ready-to-embed flowchart diagram compatible with GitHub, Notion, and Obsidian markdown renderers.\n• ASCII Directory Tree (.txt): Clean formatted text tree with file sizes, counts, and churn badges.',
+          codeSnippet: `// API Endpoints for Architecture Intelligence & Dossier Export:
 GET /api/v1/repositories/:owner/:repo/map
-GET /api/v1/repositories/:owner/:repo/map?format=markdown
-GET /api/v1/repositories/:owner/:repo/map?format=mermaid
-GET /api/v1/repositories/:owner/:repo/map?format=text`,
+GET /api/v1/repositories/:owner/:repo/map/dossier      # Standalone single-file HTML audit pack
+GET /api/v1/repositories/:owner/:repo/map/co-change    # Temporal co-change & coupling matrix
+GET /api/v1/repositories/:owner/:repo/map/timeline     # 4-era chronological milestones
+GET /api/v1/repositories/:owner/:repo/map/knowledge-loss # Bus factor & zombie hotspot register
+POST /api/v1/repositories/:owner/:repo/map/blast-radius # Blast radius ripple simulator`,
+        },
+        {
+          heading: '1. Temporal Co-Change & Coupling Matrix',
+          body: 'Temporal co-change detects files that frequently change together in the same PRs, even if they reside in completely different directory roots (e.g., modifying apps/api/auth.ts almost always requires editing apps/web/AuthContext.tsx).\n\n• Coupling Percentage: Calculated using Jaccard similarity across historical PR batches.\n• Boundary Violation Alerts: Flags cross-subsystem co-changes in crimson, revealing hidden architectural leaks and predicting files a developer might forget to update in a PR.\n• One-Click Simulation: Click "Simulate Blast" on any pair to predict downstream ripple effects.',
+        },
+        {
+          heading: '2. Time-Machine Architecture Timeline Scrubber',
+          body: 'The Time-Machine feature provides a temporal playback scrubber allowing users to scrub between chronological milestones (e.g., 6 Months Ago → 3 Months Ago → 1 Month Ago → Present Snapshot).\n\n• Codebase Evolution: Visualizes how the codebase grew in file count, directory depth, and subsystem count.\n• Hotspot Migration: Reveals exactly when stable files became volatile churn hotspots during major refactors or rapid feature expansion.\n• Auto Playback: Click "Play Timeline" to automatically scrub through milestones with 2.8s intervals.',
+        },
+        {
+          heading: '3. Bus Factor & Knowledge Loss Heatmap ("Zombie Hotspots")',
+          body: 'By cross-referencing Churn Hotspot velocity with Contribution Finder maintainer activity, CodeForensics highlights severe knowledge loss risks:\n\n• Zombie Hotspots: High-churn files (score ≥ 60) where 80%+ of original lines were authored by engineers who have left or have zero recent activity.\n• Single-Maintainer Dependencies: Critical files with a Bus Factor of 1 where institutional knowledge resides with a single person.\n• Actionable Diagnostics: Color-coded maintainer badges (ACTIVE in green, DORMANT in amber, DEPARTED in crimson) with targeted refactoring recommendations.',
+        },
+        {
+          heading: '4. Automated Architectural Blast-Radius Predictor',
+          body: 'An interactive simulator where an engineer inputs a proposed file or branch change, and CodeForensics calculates the ripple impacts before merging:\n\n• Blast Radius Hazard Score (0–100): Overall change hazard rating (CRITICAL, HIGH, MODERATE, LOW).\n• Downstream Coupled Files: Discovered through historical PR linkages and AST symbol imports.\n• Regression Test Suites at Risk: Identifies unit and integration tests that must pass to prevent regressions.\n• Boundary Crossing Warnings: Flags changes that breach subsystem boundaries.\n• Recommended Reviewers: Recommends domain maintainers to inspect the PR.',
+        },
+        {
+          heading: '5. Subsystem Import Dependency Flow Overlay',
+          body: 'In the Architecture flowchart, click the "Dependency Flow" toolbar button to overlay directional dependency arrows between subsystems based on static import/export analysis:\n\n• Directional Arrows: Renders dashed links showing import frequency between subsystems (e.g., apps/web → packages/shared).\n• Layer Boundary Compliance: Validates architectural layering, ensuring shared packages do not illegally import from application roots.',
         },
       ],
     },

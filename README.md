@@ -112,12 +112,17 @@ A unified data grid tracking all issues, pull requests, authors, and states (`OP
 - **Historical Precedents & Prior Art Engine**: Multi-factor matching surfaces past merged PRs and closed issues that modified identical files, shared subsystem scopes (`fix(auth)`), or exhibited identical error signatures (`TokenExpiredError`).
 - **Citation Vault**: One-click evidence citation copying for immediate insertion into forensic case briefs.
 
-### 04. Repository Architecture Map & Churn Heatmap (`/app/map`)
-An interactive visual hierarchy generator mapping repository folders, files, and modules:
-- **Code Churn Volatility Scoring (0-100)**: Highlights high-risk change hotspots in red/rose, moderate iteration areas in amber, and stable baseline modules in emerald.
-- **Interactive Canvas**: Pan-and-zoom controls (0.5x to 2x), folder expansion/collapse, and instant search-as-you-type file filtering.
-- **Architecture Inspector**: Inspects file size, line counts, lead maintainers, and direct links to trace AST history in Code Archaeology.
-- **Multi-Format Export**: Generates and downloads Markdown briefs (`.md`), Mermaid diagrams (`.mmd`), and ASCII directory trees (`.txt`).
+### 04. Repository Architecture Map & Forensic Intelligence (`/app/map`)
+An interactive visual hierarchy generator mapping repository folders, files, and architectural relationships:
+- **Interactive Mermaid Vector Flowchart**: Client-side vector flowchart with smooth trackpad pinch-to-zoom, double-click focus, drag-to-pan, and in-diagram folder drill-downs.
+- **Code Churn Volatility Scoring (0-100)**: Highlights high-risk change hotspots (score ≥ 65) in crimson, moderate iteration areas in amber, and stable foundational modules in emerald.
+- **Temporal Co-Change & Coupling Matrix**: Identifies files that frequently modify together across PRs even across different directory trees, flagging architectural leaks and forgotten files.
+- **Time-Machine Architecture Timeline**: A temporal playback scrubber allowing monthly milestone playback to observe codebase growth and hotspot migrations over time.
+- **Bus Factor & Zombie Hotspot Heatmap**: Correlates churn velocity with contributor activity to highlight high-churn files where original authors have departed or have zero recent activity ("Zombie Hotspots").
+- **Automated Architectural Blast-Radius Predictor**: Interactive simulator where engineers input target files to calculate downstream ripple impacts, affected test suites, subsystem boundary violations, and recommended PR reviewers.
+- **Subsystem Dependency Flow Overlay**: Toggle directional dependency arrows between subsystems based on static import/export topology to detect circular cycles and layer boundary breaches.
+- **Standalone Offline Forensic Audit Dossier (.html)**: 1-click export generating an air-gapped, single-file HTML audit report with embedded SVG vector flowcharts and audit tables with zero external dependencies.
+- **Architecture Inspector**: Inspects file size, line counts, lead maintainers, co-changed companion snippets, and links to trace AST history in Code Archaeology.
 
 ### 05. Contribution Finder & Team Risk (`/app/contributions`)
 Identifies true subsystem experts using our mathematical impact formula. Categorizes maintainers into Domain Experts, Active Maintainers, Historical Contributors, and Occasional Reviewers, while flagging single-point-of-failure risks.
@@ -388,6 +393,12 @@ All JSON responses follow a standardized API envelope (`{ success: boolean, data
 | `GET` | `/api/v1/repositories/:owner/:repo/items/:number` | Detailed work item with relationships, discussion timeline, diff, and historical precedents |
 | `GET` | `/api/v1/repositories/:owner/:repo/relationships` | Returns detected cross-entity relationships and confidence |
 | `GET` | `/api/v1/repositories/:owner/:repo/map` | Hierarchical architecture tree, churn hotspots (0-100), and subsystem metrics |
+| `GET` | `/api/v1/repositories/:owner/:repo/map/dossier` | Exports self-contained single-file offline HTML audit report (`.html`) |
+| `GET` | `/api/v1/repositories/:owner/:repo/map/co-change` | Returns coupled file pairs with co-change counts and percentages |
+| `GET` | `/api/v1/repositories/:owner/:repo/map/timeline` | Returns 4 chronological milestones with structural metrics |
+| `GET` | `/api/v1/repositories/:owner/:repo/map/knowledge-loss` | Returns bus factor scores and Zombie Hotspots register |
+| `POST` | `/api/v1/repositories/:owner/:repo/map/blast-radius` | Simulates blast radius hazard score, coupled files, tests, and reviewers |
+| `GET` | `/api/v1/repositories/:owner/:repo/map/dependencies` | Subsystem directional dependency edges and layer violation validation |
 | `GET` | `/api/v1/repositories/:owner/:repo/map?format=markdown` | Exports full architecture briefing with embedded Mermaid graph (`.md`) |
 | `GET` | `/api/v1/repositories/:owner/:repo/map?format=mermaid` | Exports raw Mermaid flowchart syntax (`.mmd`) |
 | `GET` | `/api/v1/repositories/:owner/:repo/map?format=text` | Exports formatted ASCII directory tree (`.txt`) |

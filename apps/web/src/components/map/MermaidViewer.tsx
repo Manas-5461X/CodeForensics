@@ -16,6 +16,8 @@ export interface MermaidViewerProps {
   title?: string;
   filename?: string;
   onNodeClick?: (nodeId: string, nodeText?: string) => void;
+  showDependencies?: boolean;
+  onToggleDependencies?: () => void;
   className?: string;
 }
 
@@ -24,6 +26,8 @@ export function MermaidViewer({
   title = 'Repository Architecture Flowchart',
   filename = 'architecture-map',
   onNodeClick,
+  showDependencies = false,
+  onToggleDependencies,
   className = '',
 }: MermaidViewerProps) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
@@ -345,6 +349,23 @@ export function MermaidViewer({
 
         {/* Right: Compact Visual/Code Toggle & Logo/Icon Buttons */}
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* Dependency Flow Overlay Toggle */}
+          {onToggleDependencies && (
+            <button
+              type="button"
+              onClick={onToggleDependencies}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono border transition-colors ${
+                showDependencies
+                  ? 'bg-accent/15 text-accent border-accent/40 font-bold'
+                  : 'bg-surface text-primary-muted hover:text-primary border-border-subtle'
+              }`}
+              title="Toggle subsystem import dependency flow overlay"
+            >
+              <Network className="w-3 h-3 text-accent" />
+              <span className="hidden sm:inline">Dependency Flow</span>
+            </button>
+          )}
+
           {/* Visual vs Code Mode Toggle */}
           <div className="flex items-center p-0.5 bg-surface-subtle border border-border-subtle rounded text-[11px] font-mono">
             <button
