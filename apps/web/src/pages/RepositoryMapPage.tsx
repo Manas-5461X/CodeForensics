@@ -11,10 +11,8 @@ import type {
   RepositoryMapData,
   RepositoryMapNode,
   CoChangeReport,
-  RepositoryMapTimeline,
-  KnowledgeLossSummary,
-  BlastRadiusImpact,
 } from '@codeforensics/shared';
+import { generateAuditDossierHtml } from '../utils/dossierGenerator.js';
 import {
   Network,
   ZoomIn,
@@ -38,17 +36,17 @@ import {
   HelpCircle,
   GitMerge,
   Clock,
-  Play,
-  Pause,
   AlertTriangle,
   ShieldAlert,
   Zap,
   ShieldCheck,
+  Activity,
+  BookOpen,
 } from 'lucide-react';
 
 export function RepositoryMapPage() {
   const { activeRepo } = useRepository();
-  const { get, post } = useApiClient();
+  const { get } = useApiClient();
   const navigate = useNavigate();
 
   const [mapData, setMapData] = useState<RepositoryMapData | null>(null);
@@ -59,7 +57,7 @@ export function RepositoryMapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubsystem, setSelectedSubsystem] = useState<string>('all');
   const [minChurn, setMinChurn] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'graph' | 'cochange' | 'timeline' | 'knowledge' | 'blastradius' | 'tree' | 'mermaid' | 'text'>('graph');
+  const [viewMode, setViewMode] = useState<'graph' | 'heatmap' | 'tree' | 'mermaid' | 'text'>('graph');
 
   // Zoom & Pan Canvas State
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -71,18 +69,47 @@ export function RepositoryMapPage() {
   // Advanced Forensic Intelligence State
   const [showDependencies, setShowDependencies] = useState<boolean>(false);
   const [coChangeReport, setCoChangeReport] = useState<CoChangeReport | null>(null);
-  const [coChangeFilter, setCoChangeFilter] = useState<'all' | 'cross' | 'high'>('all');
-  const [timelineData, setTimelineData] = useState<RepositoryMapTimeline | null>(null);
-  const [activeMilestoneId, setActiveMilestoneId] = useState<string>('milestone-now');
-  const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
-  const [knowledgeLossData, setKnowledgeLossData] = useState<KnowledgeLossSummary | null>(null);
-  const [knowledgeFilter, setKnowledgeFilter] = useState<'all' | 'critical' | 'zombie'>('all');
-  const [blastRadiusImpact, setBlastRadiusImpact] = useState<BlastRadiusImpact | null>(null);
-  const [blastRadiusInput, setBlastRadiusInput] = useState<string>('apps/api/src/routes/repositoryRoutes.ts');
-  const [isSimulatingBlast, setIsSimulatingBlast] = useState<boolean>(false);
 
   // Export Feedback
   const [copiedStatus, setCopiedStatus] = useState<string | null>(null);
+
+  // Flatten all file nodes from the tree for the Visual Churn Heatmap
+  const allFileNodes = useMemo(() => {
+    if (!mapData?.root) return [];
+    const files: RepositoryMapNode[] = [];
+    const traverse = (node: RepositoryMapNode) => {
+      if (node.type === 'file') {
+        files.push(node);
+      }
+      if (node.children) {
+        node.children.forEach(traverse);
+      }
+    };
+    traverse(mapData.root);
+    return files;
+  }, [mapData]);
+
+  // Filter and sort files for Visual Heatmap
+  const filteredHeatmapFiles = useMemo(() => {
+    return allFileNodes
+      .filter((file) => {
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          if (!file.name.toLowerCase().includes(q) && !file.path.toLowerCase().includes(q)) {
+            return false;
+          }
+        }
+        if (selectedSubsystem !== 'all') {
+          const fileSubsystem = file.path.split('/')[0];
+          if (fileSubsystem !== selectedSubsystem) return false;
+        }
+        if (minChurn > 0 && (file.churnScore ?? 0) < minChurn) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (b.churnScore ?? 0) - (a.churnScore ?? 0));
+  }, [allFileNodes, searchQuery, selectedSubsystem, minChurn]);
 
   // Fetch repository architecture map data
   useEffect(() => {
@@ -199,85 +226,34 @@ export function RepositoryMapPage() {
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.15) * 100) / 100));
   const handleResetZoom = () => setZoomLevel(1);
 
-  // Load Co-Change Report
-  const loadCoChange = () => {
-    if (!activeRepo) return;
+  // Pre-load Co-Change Report for Architecture Inspector companion display
+  useEffect(() => {
+    if (!activeRepo || coChangeReport) return;
     get<CoChangeReport>(
       `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/co-change`
     ).then((res) => {
       if (res.success && res.data) setCoChangeReport(res.data);
     });
-  };
+  }, [activeRepo?.owner, activeRepo?.name, get, coChangeReport]);
 
-  // Load Timeline
-  const loadTimeline = () => {
-    if (!activeRepo) return;
-    get<RepositoryMapTimeline>(
-      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/timeline`
-    ).then((res) => {
-      if (res.success && res.data) setTimelineData(res.data);
-    });
-  };
-
-  // Auto-play timeline milestones
-  useEffect(() => {
-    if (!isPlayingTimeline || !timelineData) return;
-    const interval = setInterval(() => {
-      const ids = timelineData.milestones.map((m) => m.id);
-      const currentIndex = ids.indexOf(activeMilestoneId);
-      const nextIndex = (currentIndex + 1) % ids.length;
-      setActiveMilestoneId(ids[nextIndex]);
-    }, 2800);
-    return () => clearInterval(interval);
-  }, [isPlayingTimeline, timelineData, activeMilestoneId]);
-
-  // Load Knowledge Loss
-  const loadKnowledgeLoss = () => {
-    if (!activeRepo) return;
-    get<KnowledgeLossSummary>(
-      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/knowledge-loss`
-    ).then((res) => {
-      if (res.success && res.data) setKnowledgeLossData(res.data);
-    });
-  };
-
-  // Run Blast Simulation
-  const runBlastSimulation = (targetPath?: string) => {
-    if (!activeRepo) return;
-    const path = targetPath || blastRadiusInput || 'apps/api/src/routes/repositoryRoutes.ts';
-    setIsSimulatingBlast(true);
-    post<BlastRadiusImpact>(
-      `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/blast-radius`,
-      { targetFiles: [path] }
-    )
-      .then((res) => {
-        if (res.success && res.data) {
-          setBlastRadiusImpact(res.data);
-        }
-      })
-      .finally(() => setIsSimulatingBlast(false));
-  };
-
-  // Auto-fetch data when switching view modes
-  useEffect(() => {
-    if (viewMode === 'cochange' && !coChangeReport) {
-      loadCoChange();
-    } else if (viewMode === 'timeline' && !timelineData) {
-      loadTimeline();
-    } else if (viewMode === 'knowledge' && !knowledgeLossData) {
-      loadKnowledgeLoss();
-    } else if (viewMode === 'blastradius' && !blastRadiusImpact) {
-      runBlastSimulation();
-    }
-  }, [viewMode, coChangeReport, timelineData, knowledgeLossData, blastRadiusImpact]);
-
-  // Download Standalone HTML Dossier
+  // Download Standalone HTML Dossier (offline, direct client-side blob generation)
   const handleDownloadDossier = () => {
-    if (!activeRepo) return;
-    const url = `/api/v1/repositories/${encodeURIComponent(activeRepo.owner)}/${encodeURIComponent(activeRepo.name)}/map/dossier`;
-    window.open(url, '_blank');
-    setCopiedStatus('Standalone Forensic Audit Dossier (.html) downloaded!');
-    setTimeout(() => setCopiedStatus(null), 3500);
+    if (!activeRepo || !mapData) return;
+    try {
+      const html = generateAuditDossierHtml({
+        repo: activeRepo,
+        mapData,
+        coChangeReport,
+        timelineData: null,
+        knowledgeLossData: null,
+        mermaidSvg: null,
+      });
+      downloadFile(html, `${activeRepo.name}-forensic-audit-dossier.html`, 'text/html');
+      setCopiedStatus('Standalone Forensic Audit Dossier (.html) downloaded!');
+      setTimeout(() => setCopiedStatus(null), 3500);
+    } catch (err) {
+      console.error('Failed to generate audit dossier:', err);
+    }
   };
 
   // Multi-format Downloads
@@ -688,6 +664,16 @@ export function RepositoryMapPage() {
           <p className="text-xs sm:text-sm text-primary-secondary mt-1 max-w-3xl">
             Interactive hierarchical representation of codebase subsystems, directory structures, and churn hotspot distributions.
           </p>
+          <div className="mt-2.5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowChurnGuide((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors shadow-xs"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <span>{showChurnGuide ? 'Hide Churn & Hotspot Guide' : 'What is Code Churn & Hotspot?'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Global Export & Action Controls */}
@@ -795,6 +781,48 @@ export function RepositoryMapPage() {
         </div>
       )}
 
+      {/* Dedicated Forensic Analysis Engines Nav Banner */}
+      <div className="p-3 bg-surface border border-border-subtle rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono">
+        <div className="flex items-center gap-2 text-primary font-semibold">
+          <Layers className="w-4 h-4 text-accent" />
+          <span>Dedicated Forensic Analysis Engines:</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/app/co-change')}
+            leftIcon={<GitMerge className="w-3.5 h-3.5 text-accent" />}
+          >
+            Co-Change Matrix
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/app/timeline')}
+            leftIcon={<Clock className="w-3.5 h-3.5 text-accent" />}
+          >
+            Time-Machine
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/app/bus-factor')}
+            leftIcon={<ShieldAlert className="w-3.5 h-3.5 text-rose-500" />}
+          >
+            Bus Factor
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/app/blast-radius')}
+            leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
+          >
+            Blast Radius
+          </Button>
+        </div>
+      </div>
+
       {/* Main Interactive Workbench Section */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left 3 Columns: Map Controls & Interactive Canvas */}
@@ -815,12 +843,11 @@ export function RepositoryMapPage() {
               </div>
 
               {/* View Switcher */}
-              {/* View Switcher */}
               <div className="flex items-center gap-1 p-0.5 bg-surface-subtle border border-border-subtle rounded-md self-start sm:self-auto flex-wrap">
                 <button
                   type="button"
                   onClick={() => setViewMode('graph')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'graph' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
@@ -829,48 +856,18 @@ export function RepositoryMapPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode('cochange')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'cochange' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
+                  onClick={() => setViewMode('heatmap')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                    viewMode === 'heatmap' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
-                  <GitMerge className="w-3.5 h-3.5 text-accent" />
-                  <span>Co-Change Matrix</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('timeline')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'timeline' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5 text-accent" />
-                  <span>Time-Machine</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('knowledge')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'knowledge' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
-                  }`}
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Bus Factor</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('blastradius')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
-                    viewMode === 'blastradius' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Blast Radius</span>
+                  <Flame className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Visual Churn Heatmap</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('tree')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'tree' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
@@ -880,7 +877,7 @@ export function RepositoryMapPage() {
                 <button
                   type="button"
                   onClick={() => setViewMode('text')}
-                  className={`flex items-center gap-1.5 px-2 py-1 text-xs font-mono font-medium rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors ${
                     viewMode === 'text' ? 'bg-surface text-primary shadow-xs font-bold' : 'text-primary-muted hover:text-primary'
                   }`}
                 >
@@ -1091,648 +1088,199 @@ export function RepositoryMapPage() {
                     onToggleDependencies={() => setShowDependencies((prev) => !prev)}
                   />
                 </div>
-              ) : viewMode === 'cochange' ? (
-                <div className="space-y-4 font-mono text-xs animate-in fade-in">
-                  {/* Summary Header */}
-                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              ) : viewMode === 'heatmap' ? (
+                <div className="space-y-6 font-mono text-xs animate-in fade-in">
+                  {/* Heatmap Control & Stat Banner */}
+                  <div className="p-3.5 bg-surface border border-border-subtle rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                     <div>
                       <div className="flex items-center gap-2">
-                        <GitMerge className="w-4 h-4 text-accent" />
-                        <h4 className="font-bold text-primary text-sm">Temporal Co-Change & Coupling Matrix</h4>
+                        <Flame className="w-4 h-4 text-rose-500" />
+                        <h4 className="font-bold text-primary text-sm">Visual Code Churn & Hotspot Heatmap</h4>
                       </div>
-                      <p className="text-[11px] text-primary-muted mt-0.5">
-                        Detects files that frequently change together across PRs, highlighting architectural leaks and hidden couplings.
+                      <p className="text-[11px] text-primary-secondary mt-0.5">
+                        Interactive file matrix color-coded by volatility score (0–100). Click any file tile to inspect forensic telemetry.
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => setCoChangeFilter('all')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          coChangeFilter === 'all'
-                            ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        All Pairs ({coChangeReport?.pairs?.length || 0})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoChangeFilter('cross')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          coChangeFilter === 'cross'
-                            ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        Cross-Subsystem ({coChangeReport?.crossSubsystemPairsCount || 0})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoChangeFilter('high')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          coChangeFilter === 'high'
-                            ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        Coupling ≥ 70%
-                      </button>
+                    <div className="flex items-center gap-3 text-xs font-mono shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                        <span className="text-primary font-semibold">
+                          {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 65).length} Hotspots
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                        <span className="text-primary font-semibold">
+                          {allFileNodes.filter((f) => (f.churnScore ?? 0) >= 40 && (f.churnScore ?? 0) < 65).length} Active
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                        <span className="text-primary font-semibold">
+                          {allFileNodes.filter((f) => (f.churnScore ?? 0) < 40).length} Stable
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Metric Cards */}
-                  {coChangeReport && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
-                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Total Coupled Pairs</div>
-                        <div className="text-lg font-bold text-primary mt-0.5">{coChangeReport.totalCoupledPairs}</div>
-                        <div className="text-[10px] text-primary-muted">Analyzed across historical PR batches</div>
-                      </div>
-                      <div className="p-3 bg-surface border border-rose-500/30 rounded-md">
-                        <div className="text-[10px] uppercase text-rose-500 font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-rose-500" />
-                          Cross-Subsystem Leaks
-                        </div>
-                        <div className="text-lg font-bold text-rose-500 mt-0.5">{coChangeReport.crossSubsystemPairsCount}</div>
-                        <div className="text-[10px] text-primary-muted">Pairs crossing root architectural layers</div>
-                      </div>
-                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
-                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Peak Coupling Strength</div>
-                        <div className="text-lg font-bold text-accent mt-0.5">
-                          {Math.max(...(coChangeReport.pairs?.map((p) => p.couplingPercentage) || [0]))}%
-                        </div>
-                        <div className="text-[10px] text-primary-muted">Highest co-occurrence probability</div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Heatmap Tiles Matrix */}
+                  {filteredHeatmapFiles.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                      {filteredHeatmapFiles.map((file) => {
+                        const churn = file.churnScore ?? 0;
+                        const isHot = churn >= 65;
+                        const isWarm = churn >= 40 && !isHot;
+                        const isSelected = selectedNode?.path === file.path;
 
-                  {/* Table of pairs */}
-                  <div className="border border-border-subtle rounded-md overflow-hidden bg-surface">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-surface-subtle border-b border-border-subtle text-primary-muted text-[10px] uppercase">
-                            <th className="py-2.5 px-3">Primary / Source File</th>
-                            <th className="py-2.5 px-3">Coupled Companion File</th>
-                            <th className="py-2.5 px-3">Coupling %</th>
-                            <th className="py-2.5 px-3">Shared PRs</th>
-                            <th className="py-2.5 px-3">Boundary Alert</th>
-                            <th className="py-2.5 px-3 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border-subtle/60">
-                          {coChangeReport?.pairs
-                            ?.filter((pair) => {
-                              if (coChangeFilter === 'cross') return pair.crossSubsystem;
-                              if (coChangeFilter === 'high') return pair.couplingPercentage >= 70;
-                              return true;
-                            })
-                            .map((pair, idx) => (
-                              <tr key={idx} className="hover:bg-surface-subtle/60 transition-colors">
-                                <td className="py-2.5 px-3 font-semibold text-primary max-w-[220px] truncate" title={pair.sourceFile}>
-                                  {pair.sourceFile}
-                                </td>
-                                <td className="py-2.5 px-3 text-primary-secondary max-w-[220px] truncate" title={pair.targetFile}>
-                                  {pair.targetFile}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-16 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full ${
-                                          pair.couplingPercentage >= 80
-                                            ? 'bg-rose-500'
-                                            : pair.couplingPercentage >= 65
-                                            ? 'bg-amber-500'
-                                            : 'bg-accent'
-                                        }`}
-                                        style={{ width: `${pair.couplingPercentage}%` }}
-                                      />
-                                    </div>
-                                    <span className="font-bold text-[11px] text-primary">{pair.couplingPercentage}%</span>
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3 text-primary-muted">{pair.coChangeCount} PRs</td>
-                                <td className="py-2.5 px-3">
-                                  {pair.crossSubsystem ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-rose-500/15 text-rose-500 border border-rose-500/30 font-semibold">
-                                      <AlertTriangle className="w-2.5 h-2.5" />
-                                      Cross-Subsystem Leak
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-primary-muted">
-                                      Intra-Module
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-3 text-right">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-[10px] py-0.5 px-2"
-                                    onClick={() => {
-                                      setBlastRadiusInput(pair.sourceFile);
-                                      setViewMode('blastradius');
-                                      runBlastSimulation(pair.sourceFile);
-                                    }}
-                                    leftIcon={<Zap className="w-3 h-3 text-amber-500" />}
-                                  >
-                                    Simulate Blast
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              ) : viewMode === 'timeline' ? (
-                <div className="space-y-4 font-mono text-xs animate-in fade-in">
-                  {/* Header */}
-                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <h4 className="font-bold text-primary text-sm">Time-Machine Architecture Timeline</h4>
-                      </div>
-                      <p className="text-[11px] text-primary-muted mt-0.5">
-                        Scrub between monthly architectural milestones to see how files and hotspots expanded over time.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={isPlayingTimeline ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => setIsPlayingTimeline((p) => !p)}
-                        leftIcon={
-                          isPlayingTimeline ? (
-                            <Pause className="w-3.5 h-3.5 text-amber-300" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5 text-emerald-500" />
-                          )
-                        }
-                      >
-                        {isPlayingTimeline ? 'Pause Playback' : 'Play Timeline'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Interactive Milestone Scrubber */}
-                  {timelineData && (
-                    <div className="p-4 bg-surface border border-border-subtle rounded-lg space-y-4">
-                      {/* Milestone Steps Bar */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {timelineData.milestones.map((milestone, idx) => {
-                          const isActive = milestone.id === activeMilestoneId;
-                          return (
-                            <button
-                              key={milestone.id}
-                              type="button"
-                              onClick={() => {
-                                setActiveMilestoneId(milestone.id);
-                                setIsPlayingTimeline(false);
-                              }}
-                              className={`p-3 rounded-md text-left transition-all border ${
-                                isActive
-                                  ? 'bg-accent/10 border-accent text-primary shadow-sm ring-1 ring-accent'
-                                  : 'bg-surface-subtle border-border-subtle text-primary-muted hover:text-primary hover:border-accent/40'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                                  Era {idx + 1}
-                                </span>
-                                <span className="text-[10px] text-primary-muted">{milestone.relativeTime}</span>
-                              </div>
-                              <div className="text-xs font-bold text-primary mt-1">{milestone.label}</div>
-                              <div className="text-[10px] text-primary-secondary mt-1 flex items-center justify-between">
-                                <span>{milestone.totalFiles} files</span>
-                                <span className="text-rose-500 font-semibold">{milestone.hotspotCount} hotspots</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Selected Milestone Active Era Context */}
-                      {(() => {
-                        const currentMilestone =
-                          timelineData.milestones.find((m) => m.id === activeMilestoneId) || timelineData.milestones[3];
                         return (
-                          <div className="p-4 bg-surface-subtle/60 rounded-md border border-border-subtle space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border-subtle">
-                              <div>
-                                <span className="text-[10px] uppercase font-bold text-accent">Milestone Snapshot Era</span>
-                                <h3 className="text-sm font-bold text-primary mt-0.5">
-                                  {currentMilestone.label} — {currentMilestone.relativeTime}
-                                </h3>
+                          <div
+                            key={file.path}
+                            onClick={() => setSelectedNode(file)}
+                            className={`p-3 rounded-lg border transition-all cursor-pointer relative group flex flex-col justify-between min-h-[92px] ${
+                              isSelected
+                                ? 'ring-2 ring-accent border-accent shadow-md'
+                                : ''
+                            } ${
+                              isHot
+                                ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-900/60 hover:border-rose-500 hover:shadow-md'
+                                : isWarm
+                                ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 hover:border-amber-500 hover:shadow-md'
+                                : 'bg-surface border-border-subtle hover:border-primary-muted hover:shadow-xs'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span
+                                  className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
+                                    isHot
+                                      ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'
+                                      : isWarm
+                                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+                                      : 'bg-surface-subtle text-primary-muted'
+                                  }`}
+                                >
+                                  {file.path.split('/')[0]}
+                                </span>
+
+                                <span
+                                  className={`inline-flex items-center gap-0.5 text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
+                                    isHot
+                                      ? 'bg-rose-600 text-white'
+                                      : isWarm
+                                      ? 'bg-amber-600 text-white'
+                                      : 'bg-slate-200 dark:bg-slate-800 text-primary-muted'
+                                  }`}
+                                >
+                                  {isHot && <Flame className="w-2.5 h-2.5 text-white inline shrink-0" />}
+                                  {churn}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-3 text-xs">
-                                <div>
-                                  <span className="text-[10px] text-primary-muted block">Files</span>
-                                  <span className="font-bold text-primary">{currentMilestone.totalFiles}</span>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-primary-muted block">Directories</span>
-                                  <span className="font-bold text-primary">{currentMilestone.totalDirectories}</span>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-rose-500 block">Churn Hotspots</span>
-                                  <span className="font-bold text-rose-500">{currentMilestone.hotspotCount}</span>
-                                </div>
+
+                              <div className="font-semibold text-xs text-primary truncate mt-1" title={file.name}>
+                                {file.name}
+                              </div>
+
+                              <div className="text-[10px] text-primary-muted truncate font-mono" title={file.path}>
+                                {file.path.split('/').slice(0, -1).join('/') || '/'}
                               </div>
                             </div>
 
-                            <p className="text-xs text-primary-secondary leading-relaxed">
-                              {currentMilestone.summaryText}
-                            </p>
-
-                            {/* Subsystems at this milestone */}
-                            <div className="space-y-1.5 pt-2">
-                              <span className="text-[10px] uppercase text-primary-muted font-semibold block">
-                                Subsystem Composition:
+                            <div className="flex items-center justify-between text-[10px] text-primary-muted pt-2 mt-2 border-t border-border-subtle/50">
+                              <span>{((file.size || 1024) / 1024).toFixed(1)} KB</span>
+                              <span className="truncate max-w-[80px]">
+                                {file.topMaintainer ? `@${file.topMaintainer}` : 'team'}
                               </span>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {currentMilestone.topSubsystems?.map((sub) => (
-                                  <div
-                                    key={sub.name}
-                                    className="p-2 bg-surface rounded border border-border-subtle flex items-center justify-between text-xs"
-                                  >
-                                    <span className="font-semibold text-primary truncate">{sub.name}</span>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <span className="text-[10px] text-primary-muted">{sub.fileCount}f</span>
-                                      <span
-                                        className={`text-[9px] px-1 rounded ${
-                                          sub.churnScore >= 60 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
-                                        }`}
-                                      >
-                                        {sub.churnScore}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
                             </div>
                           </div>
                         );
-                      })()}
+                      })}
                     </div>
-                  )}
-                </div>
-              ) : viewMode === 'knowledge' ? (
-                <div className="space-y-4 font-mono text-xs animate-in fade-in">
-                  {/* Header */}
-                  <div className="p-3 bg-surface border border-border-subtle rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <ShieldAlert className="w-4 h-4 text-rose-500" />
-                        <h4 className="font-bold text-primary text-sm">Bus Factor & Knowledge Loss Risk Heatmap</h4>
-                      </div>
-                      <p className="text-[11px] text-primary-muted mt-0.5">
-                        Correlates churn velocity with maintainer activity to uncover Zombie Hotspots and single points of failure.
+                  ) : (
+                    <div className="p-8 text-center border border-dashed border-border-subtle rounded-lg bg-surface-subtle/30 space-y-2">
+                      <Flame className="w-6 h-6 text-primary-muted mx-auto" />
+                      <p className="text-primary font-semibold text-xs">No files match the active churn filter</p>
+                      <p className="text-[11px] text-primary-muted">
+                        Try clearing your search query or reducing the Churn Hotspot filter to All (0+).
                       </p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => setKnowledgeFilter('all')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          knowledgeFilter === 'all'
-                            ? 'bg-accent/15 text-accent border border-accent/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        All Files ({knowledgeLossData?.riskItems?.length || 0})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setKnowledgeFilter('zombie')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          knowledgeFilter === 'zombie'
-                            ? 'bg-rose-500/15 text-rose-500 border border-rose-500/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        🧟 Zombie Hotspots ({knowledgeLossData?.zombieHotspotsCount || 0})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setKnowledgeFilter('critical')}
-                        className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
-                          knowledgeFilter === 'critical'
-                            ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
-                            : 'bg-surface-subtle text-primary-muted hover:text-primary border border-border-subtle'
-                        }`}
-                      >
-                        Critical & High Risk
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 4 KPI Cards */}
-                  {knowledgeLossData && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-surface border border-rose-500/30 rounded-md">
-                        <div className="text-[10px] uppercase text-rose-500 font-semibold flex items-center gap-1">
-                          <Flame className="w-3 h-3 text-rose-500" />
-                          Zombie Hotspots
-                        </div>
-                        <div className="text-xl font-bold text-rose-500 mt-1">{knowledgeLossData.zombieHotspotsCount}</div>
-                        <div className="text-[10px] text-primary-muted mt-0.5">High churn, inactive authors</div>
-                      </div>
-
-                      <div className="p-3 bg-surface border border-amber-500/30 rounded-md">
-                        <div className="text-[10px] uppercase text-amber-500 font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-amber-500" />
-                          Single-Maintainer
-                        </div>
-                        <div className="text-xl font-bold text-amber-500 mt-1">{knowledgeLossData.singleMaintainerFilesCount}</div>
-                        <div className="text-[10px] text-primary-muted mt-0.5">Bus Factor = 1 (critical files)</div>
-                      </div>
-
-                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
-                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Average Bus Factor</div>
-                        <div className="text-xl font-bold text-primary mt-1">{knowledgeLossData.averageBusFactor.toFixed(1)}</div>
-                        <div className="text-[10px] text-primary-muted mt-0.5">Maintainers per subsystem</div>
-                      </div>
-
-                      <div className="p-3 bg-surface border border-border-subtle rounded-md">
-                        <div className="text-[10px] uppercase text-primary-muted font-semibold">Analyzed Files</div>
-                        <div className="text-xl font-bold text-primary mt-1">{knowledgeLossData.totalAnalyzedFiles}</div>
-                        <div className="text-[10px] text-primary-muted mt-0.5">With author attribution</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Risk Register Table */}
-                  <div className="border border-border-subtle rounded-md overflow-hidden bg-surface">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-surface-subtle border-b border-border-subtle text-primary-muted text-[10px] uppercase">
-                            <th className="py-2.5 px-3">File Path</th>
-                            <th className="py-2.5 px-3">Risk Level</th>
-                            <th className="py-2.5 px-3">Churn</th>
-                            <th className="py-2.5 px-3">Primary Author</th>
-                            <th className="py-2.5 px-3">Author Status</th>
-                            <th className="py-2.5 px-3">Diagnostic Analysis</th>
-                            <th className="py-2.5 px-3 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border-subtle/60">
-                          {knowledgeLossData?.riskItems
-                            ?.filter((item) => {
-                              if (knowledgeFilter === 'zombie') return item.isZombieHotspot;
-                              if (knowledgeFilter === 'critical') return item.riskLevel === 'CRITICAL' || item.riskLevel === 'HIGH';
-                              return true;
-                            })
-                            .map((item, idx) => (
-                              <tr key={idx} className="hover:bg-surface-subtle/60 transition-colors">
-                                <td className="py-2.5 px-3 font-semibold text-primary max-w-[220px] truncate" title={item.path}>
-                                  {item.path}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                      item.riskLevel === 'CRITICAL'
-                                        ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
-                                        : item.riskLevel === 'HIGH'
-                                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-primary-muted'
-                                    }`}
-                                  >
-                                    {item.riskLevel}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`font-semibold ${
-                                      item.churnScore >= 65 ? 'text-rose-500' : item.churnScore >= 40 ? 'text-amber-500' : 'text-primary'
-                                    }`}
-                                  >
-                                    {item.churnScore}/100
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 text-primary-secondary">@{item.primaryMaintainer}</td>
-                                <td className="py-2.5 px-3">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                      item.maintainerStatus === 'DEPARTED'
-                                        ? 'bg-rose-500/15 text-rose-500'
-                                        : item.maintainerStatus === 'DORMANT'
-                                        ? 'bg-amber-500/15 text-amber-500'
-                                        : 'bg-emerald-500/15 text-emerald-500'
-                                    }`}
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                    {item.maintainerStatus}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 text-primary-secondary max-w-[280px] text-[11px] leading-tight">
-                                  {item.reason}
-                                </td>
-                                <td className="py-2.5 px-3 text-right">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-[10px] py-0.5 px-2"
-                                    onClick={() => navigate(`/app/archaeology?query=${encodeURIComponent(item.path)}`)}
-                                    leftIcon={<Code2 className="w-3 h-3 text-accent" />}
-                                  >
-                                    Trace
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              ) : viewMode === 'blastradius' ? (
-                <div className="space-y-4 font-mono text-xs animate-in fade-in">
-                  {/* Header */}
-                  <div className="p-3 bg-surface border border-border-subtle rounded-md">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-amber-500" />
-                      <h4 className="font-bold text-primary text-sm">Automated Architectural Blast-Radius Predictor</h4>
-                    </div>
-                    <p className="text-[11px] text-primary-muted mt-0.5">
-                      Calculates ripple effects, downstream coupled files, affected test suites, and recommended reviewers for proposed changes.
-                    </p>
-
-                    {/* Input Simulator Form */}
-                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={blastRadiusInput}
-                          onChange={(e) => setBlastRadiusInput(e.target.value)}
-                          placeholder="Enter target file path (e.g. apps/api/src/routes/repositoryRoutes.ts)..."
-                          className="w-full px-3 py-1.5 bg-canvas border border-border-subtle rounded text-xs font-mono text-primary placeholder:text-primary-muted focus:border-link focus:outline-none"
-                        />
-                      </div>
                       <Button
-                        variant="primary"
+                        variant="outline"
                         size="sm"
-                        onClick={() => runBlastSimulation()}
-                        disabled={isSimulatingBlast || !blastRadiusInput.trim()}
-                        leftIcon={<Zap className="w-3.5 h-3.5 text-amber-300" />}
+                        onClick={() => {
+                          setMinChurn(0);
+                          setSearchQuery('');
+                          setSelectedSubsystem('all');
+                        }}
                       >
-                        {isSimulatingBlast ? 'Calculating Ripple Impact...' : 'Simulate Blast Radius'}
+                        Reset Heatmap Filters
                       </Button>
                     </div>
+                  )}
 
-                    {/* Quick Select Hotspot Pills */}
-                    <div className="mt-2 flex items-center gap-1.5 flex-wrap text-[10px]">
-                      <span className="text-primary-muted uppercase font-semibold">Quick Simulate Hotspots:</span>
-                      {[
-                        'apps/api/src/routes/repositoryRoutes.ts',
-                        'apps/web/src/pages/RepositoryMapPage.tsx',
-                        'packages/shared/src/types/api.ts',
-                      ].map((samplePath) => (
-                        <button
-                          key={samplePath}
-                          type="button"
-                          onClick={() => {
-                            setBlastRadiusInput(samplePath);
-                            runBlastSimulation(samplePath);
-                          }}
-                          className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary-secondary hover:text-accent hover:border-accent/40"
-                        >
-                          {samplePath.split('/').pop()}
-                        </button>
-                      ))}
+                  {/* Comprehensive Forensic Heatmap Analysis & Remediation Guide (Downside) */}
+                  <div className="p-4 bg-surface border border-border-subtle rounded-lg shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 pb-2.5 border-b border-border-subtle">
+                      <BookOpen className="w-4 h-4 text-accent" />
+                      <h4 className="font-bold text-primary text-sm">Forensic Heatmap Analysis & Architectural Remediation Guide</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                      {/* Metric & Math */}
+                      <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                        <div className="font-bold text-primary flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-accent" />
+                          <span>1. Volatility Formulation</span>
+                        </div>
+                        <p className="text-[11px] text-primary-secondary leading-relaxed">
+                          Code Churn quantifies historical codebase mutation velocity rather than static lines of code. It integrates:
+                        </p>
+                        <div className="p-2 bg-canvas border border-border-subtle rounded text-[10px] space-y-1 font-mono text-primary-muted">
+                          <div><span className="text-accent font-bold">40%</span> • Commit frequency (touches per sprint)</div>
+                          <div><span className="text-amber-500 font-bold">35%</span> • Line turnover delta (added + deleted)</div>
+                          <div><span className="text-rose-500 font-bold">25%</span> • PR review velocity & review cycles</div>
+                        </div>
+                        <p className="text-[10px] text-primary-muted">
+                          Score is normalized (0–100) relative to the highest churn file in the repository.
+                        </p>
+                      </div>
+
+                      {/* Defect Pareto Law */}
+                      <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                        <div className="font-bold text-primary flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                          <span>2. Defect Clustering Law</span>
+                        </div>
+                        <p className="text-[11px] text-primary-secondary leading-relaxed">
+                          Empirical software engineering research (Nagappan & Ball / Microsoft Research, Adam Tornhill) confirms that <strong>60% to 80% of production regressions</strong> cluster in the top 20% highest-churn files.
+                        </p>
+                        <p className="text-[11px] text-primary-secondary leading-relaxed">
+                          High churn combined with high cyclomatic complexity creates "systemic bug magnets" that disrupt release stability.
+                        </p>
+                      </div>
+
+                      {/* Remediation Protocol */}
+                      <div className="p-3 bg-surface-subtle/40 rounded-md border border-border-subtle/70 space-y-2">
+                        <div className="font-bold text-primary flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>3. Remediation Protocols</span>
+                        </div>
+                        <ul className="text-[11px] text-primary-secondary space-y-1.5 list-disc pl-4 leading-relaxed">
+                          <li>
+                            <strong className="text-primary">Modular Deconstruction:</strong> Split high-churn God files into cohesive, single-responsibility domain modules.
+                          </li>
+                          <li>
+                            <strong className="text-primary">PR Review Guardrails:</strong> Require 2 senior approvals for modifications touching crimson files (≥65).
+                          </li>
+                          <li>
+                            <strong className="text-primary">Contract & Mutation Tests:</strong> Ensure 90%+ unit and integration test coverage around hotspots.
+                          </li>
+                          <li>
+                            <strong className="text-primary">Decouple Companion Files:</strong> Inspect the Co-Change Matrix to eliminate stealth coupling leaks.
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Simulation Results */}
-                  {blastRadiusImpact ? (
-                    <div className="space-y-4">
-                      {/* Risk Banner */}
-                      <div className="p-4 bg-surface border border-border-subtle rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                          <div className="text-[10px] uppercase text-primary-muted font-semibold">Predicted Blast Radius Score</div>
-                          <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-2xl font-bold font-mono text-primary">{blastRadiusImpact.blastRadiusScore}/100</span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                blastRadiusImpact.riskLevel === 'CRITICAL'
-                                  ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30'
-                                  : blastRadiusImpact.riskLevel === 'HIGH'
-                                  ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
-                                  : 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30'
-                              }`}
-                            >
-                              {blastRadiusImpact.riskLevel} HAZARD
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-primary-muted mt-1">
-                            Affects {blastRadiusImpact.affectedSubsystems?.length || 1} subsystems: {blastRadiusImpact.affectedSubsystems?.join(', ')}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-xs font-mono">
-                          <div className="text-right">
-                            <span className="text-[10px] text-primary-muted block">Coupled Files</span>
-                            <span className="font-bold text-primary">{blastRadiusImpact.coupledCompanions?.length || 0}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-primary-muted block">Tests at Risk</span>
-                            <span className="font-bold text-amber-500">{blastRadiusImpact.affectedTests?.length || 0}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Boundary Alert if any */}
-                      {blastRadiusImpact.architecturalBoundaryCrossings &&
-                        blastRadiusImpact.architecturalBoundaryCrossings.length > 0 && (
-                          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-md text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
-                            <span>
-                              <strong>Architectural Boundary Violation:</strong> Modifying this file crosses subsystem boundaries ({blastRadiusImpact.architecturalBoundaryCrossings.join(' ↔ ')}). Ensure cross-boundary contract tests pass before merging!
-                            </span>
-                          </div>
-                        )}
-
-                      {/* Grid: Coupled Companions & Tests at Risk */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Downstream Coupled Companions */}
-                        <div className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-2.5">
-                          <h5 className="font-bold text-primary text-xs flex items-center gap-1.5 uppercase tracking-wider">
-                            <GitMerge className="w-3.5 h-3.5 text-accent" />
-                            Coupled Companion Files ({blastRadiusImpact.coupledCompanions?.length || 0})
-                          </h5>
-                          <div className="space-y-2">
-                            {blastRadiusImpact.coupledCompanions?.map((comp, idx) => (
-                              <div
-                                key={idx}
-                                className="p-2 bg-surface-subtle rounded border border-border-subtle/80 flex items-center justify-between text-xs"
-                              >
-                                <div className="min-w-0 pr-2">
-                                  <div className="font-semibold text-primary truncate" title={comp.file}>
-                                    {comp.file}
-                                  </div>
-                                  <div className="text-[10px] text-primary-muted truncate">{comp.reason}</div>
-                                </div>
-                                <span className="font-bold text-accent shrink-0 text-xs">{comp.couplingPercentage}%</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Regression Test Suites at Risk */}
-                        <div className="p-3.5 bg-surface border border-border-subtle rounded-md space-y-2.5">
-                          <h5 className="font-bold text-primary text-xs flex items-center gap-1.5 uppercase tracking-wider">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                            Regression Test Suites ({blastRadiusImpact.affectedTests?.length || 0})
-                          </h5>
-                          <div className="space-y-2">
-                            {blastRadiusImpact.affectedTests?.map((testFile, idx) => (
-                              <div
-                                key={idx}
-                                className="p-2 bg-surface-subtle rounded border border-border-subtle/80 flex items-center justify-between text-xs"
-                              >
-                                <span className="font-mono text-primary truncate" title={testFile}>
-                                  {testFile}
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-semibold shrink-0">
-                                  REQUIRED
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Recommended PR Reviewers */}
-                      {blastRadiusImpact.recommendedReviewers && blastRadiusImpact.recommendedReviewers.length > 0 && (
-                        <div className="p-3 bg-surface border border-border-subtle rounded-md flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-accent" />
-                            <span className="font-bold text-primary">Recommended PR Reviewers:</span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {blastRadiusImpact.recommendedReviewers.map((rev) => (
-                              <span
-                                key={rev.name}
-                                title={rev.relevance}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary font-semibold text-xs"
-                              >
-                                @{rev.name}
-                                <span className="text-[10px] text-primary-muted font-normal">({rev.relevance})</span>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
                 </div>
               ) : viewMode === 'tree' ? (
                 <div className="space-y-3">
@@ -2005,9 +1553,7 @@ export function RepositoryMapPage() {
                       size="sm"
                       className="w-full justify-start text-xs font-mono"
                       onClick={() => {
-                        setBlastRadiusInput(selectedNode.path);
-                        setViewMode('blastradius');
-                        runBlastSimulation(selectedNode.path);
+                        navigate(`/app/blast-radius?target=${encodeURIComponent(selectedNode.path)}`);
                       }}
                       leftIcon={<Zap className="w-3.5 h-3.5 text-amber-300" />}
                     >

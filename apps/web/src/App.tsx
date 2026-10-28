@@ -10,6 +10,10 @@ import { LoginPage } from './pages/LoginPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { WorkflowPage } from './pages/WorkflowPage.js';
 import { RepositoryMapPage } from './pages/RepositoryMapPage.js';
+import { CoChangePage } from './pages/CoChangePage.js';
+import { TimelinePage } from './pages/TimelinePage.js';
+import { BusFactorPage } from './pages/BusFactorPage.js';
+import { BlastRadiusPage } from './pages/BlastRadiusPage.js';
 import { IssuesPage } from './pages/IssuesPage.js';
 import { ContributionsPage } from './pages/ContributionsPage.js';
 import { ArchaeologyPage } from './pages/ArchaeologyPage.js';
@@ -61,6 +65,10 @@ export function App({ initialUser, initialLoading }: AppProps = {}) {
                   <Route index element={<OverviewPage />} />
                   <Route path="workflow" element={<WorkflowPage />} />
                   <Route path="map" element={<RepositoryMapPage />} />
+                  <Route path="co-change" element={<CoChangePage />} />
+                  <Route path="timeline" element={<TimelinePage />} />
+                  <Route path="bus-factor" element={<BusFactorPage />} />
+                  <Route path="blast-radius" element={<BlastRadiusPage />} />
                   <Route path="issues" element={<IssuesPage />} />
                   <Route path="contributions" element={<ContributionsPage />} />
                   <Route path="archaeology" element={<ArchaeologyPage />} />

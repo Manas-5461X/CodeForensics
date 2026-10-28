@@ -2,7 +2,7 @@ import type { ApiResponse } from '@codeforensics/shared';
 import { useAuth } from '../context/AuthContext.js';
 import { useCallback } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export interface ApiClientOptions extends RequestInit {
   token?: string | null;

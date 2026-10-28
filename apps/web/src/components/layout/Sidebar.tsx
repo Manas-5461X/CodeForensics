@@ -12,6 +12,10 @@ import {
   X,
   FileText,
   Network,
+  GitMerge,
+  Clock,
+  ShieldAlert,
+  Zap,
 } from 'lucide-react';
 import { cn } from '../../utils/cn.js';
 import { useRepository } from '../../context/RepositoryContext.js';
@@ -39,6 +43,10 @@ export function Sidebar({
     { label: 'Workflow Guide', to: '/app/workflow', icon: Compass },
     { label: 'Overview', to: '/app', end: true, icon: LayoutDashboard },
     { label: 'Repository Map', to: '/app/map', icon: Network },
+    { label: 'Co-Change Matrix', to: '/app/co-change', icon: GitMerge },
+    { label: 'Time-Machine', to: '/app/timeline', icon: Clock },
+    { label: 'Bus Factor Risk', to: '/app/bus-factor', icon: ShieldAlert },
+    { label: 'Blast Radius', to: '/app/blast-radius', icon: Zap },
     { label: 'Issues & PRs', to: '/app/issues', icon: GitPullRequest },
     { label: 'Contribution Finder', to: '/app/contributions', icon: Sparkles },
     { label: 'Code Archaeology', to: '/app/archaeology', icon: GitBranch },
