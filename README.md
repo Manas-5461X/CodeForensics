@@ -492,6 +492,6 @@ For full deployment scripts and recipes, see [setup.md](setup.md).
 
 Watch the complete CodeForensics product demo showing multi-tier repository synchronization, AST Code Archaeology, issue/PR lineage tracing, contributor impact scoring, and the forensic investigations vault:
 
-- **Product Demo Video**: [Watch Demo on Google Drive](https://drive.google.com/file/d/1DemoVideoCodeForensicsDriveLink/view?usp=sharing)
-*(Replace with your public drive recording link or view via the live web platform)*
+- **Product Demo Video**: [Watch Demo on Google Drive](https://drive.google.com/drive/folders/1x_lT3jjLE0A8UWEtmDs0cvlbsKQgqd7e?usp=sharing)
+
 
