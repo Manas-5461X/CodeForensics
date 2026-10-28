@@ -14,6 +14,7 @@ export function AppShell() {
 
   const getPageTitle = (path: string): string => {
     if (path.includes('/workflow')) return 'Workbench Workflow Guide';
+    if (path.includes('/map')) return 'Repository Architecture Map';
     if (path.includes('/issues')) return 'Issue & PR Lineage';
     if (path.includes('/contributions')) return 'Contribution Finder';
     if (path.includes('/archaeology')) return 'Code Archaeology';

@@ -145,8 +145,8 @@ export function TopBar({
                 <span className="text-xs font-semibold text-primary group-hover:text-link transition-colors truncate max-w-[130px]">
                   {user.displayName || user.email?.split('@')[0]}
                 </span>
-                <span className="text-[10px] text-primary-muted font-mono truncate max-w-[130px]">
-                  Edit Profile
+                <span className="text-[10px] text-primary-muted font-mono truncate max-w-[130px]" title={user.email || undefined}>
+                  {user.email || 'Edit Profile'}
                 </span>
               </div>
             </button>

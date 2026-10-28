@@ -127,3 +127,27 @@ export interface ResolutionAssessment {
   coverageNotes: string[];
   linkedRelationships?: RelationshipInfo[];
 }
+
+export type PrecedentMatchReason =
+  | 'SHARED_FILES'
+  | 'SHARED_SYMBOL'
+  | 'SUBSYSTEM_SCOPE'
+  | 'ERROR_KEYWORD'
+  | 'SIMILAR_DESCRIPTION';
+
+export interface HistoricalPrecedent {
+  id: string;
+  targetNumber: number;
+  targetTitle: string;
+  targetType: 'ISSUE' | 'PULL_REQUEST';
+  state: 'open' | 'closed' | 'merged';
+  matchReason: PrecedentMatchReason;
+  matchDetail: string;
+  confidence: AssessmentConfidence;
+  subsystem?: string;
+  author?: string | null;
+  mergedAt?: string | null;
+  closedAt?: string | null;
+  createdAt: string;
+  sharedItems?: string[];
+}

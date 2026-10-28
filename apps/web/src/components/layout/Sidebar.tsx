@@ -11,6 +11,7 @@ import {
   ChevronDown,
   X,
   FileText,
+  Network,
 } from 'lucide-react';
 import { cn } from '../../utils/cn.js';
 import { useRepository } from '../../context/RepositoryContext.js';
@@ -37,6 +38,7 @@ export function Sidebar({
   const navItems = [
     { label: 'Workflow Guide', to: '/app/workflow', icon: Compass },
     { label: 'Overview', to: '/app', end: true, icon: LayoutDashboard },
+    { label: 'Repository Map', to: '/app/map', icon: Network },
     { label: 'Issues & PRs', to: '/app/issues', icon: GitPullRequest },
     { label: 'Contribution Finder', to: '/app/contributions', icon: Sparkles },
     { label: 'Code Archaeology', to: '/app/archaeology', icon: GitBranch },

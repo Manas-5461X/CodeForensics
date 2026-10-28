@@ -107,22 +107,32 @@ An interactive, 5-stage visual onboarding guide that walks new engineers through
 Global repository health dashboard displaying synchronized work items, causal relationship counts, sync progress metrics, and direct links into deep forensic views.
 
 ### 03. Issue & PR Lineage Explorer (`/app/issues`)
-A unified data grid tracking all issues, pull requests, authors, and states (`OPEN`, `CLOSED`, `MERGED`). Includes a slide-over detail drawer exposing the complete chronological thread, causal links (`ADDRESSES`, `SUPERSEDES`, `FIXED_BY`), and direct GitHub links.
+A unified data grid tracking all issues, pull requests, authors, and states (`OPEN`, `CLOSED`, `MERGED`). Includes a slide-over detail drawer exposing:
+- **Causal Relationships**: Explains why items are connected (`ADDRESSES`, `SUPERSEDES`, `FIXED_BY`) with explicit confidence ratings.
+- **Historical Precedents & Prior Art Engine**: Multi-factor matching surfaces past merged PRs and closed issues that modified identical files, shared subsystem scopes (`fix(auth)`), or exhibited identical error signatures (`TokenExpiredError`).
+- **Citation Vault**: One-click evidence citation copying for immediate insertion into forensic case briefs.
 
-### 04. Contribution Finder & Team Risk (`/app/contributions`)
+### 04. Repository Architecture Map & Churn Heatmap (`/app/map`)
+An interactive visual hierarchy generator mapping repository folders, files, and modules:
+- **Code Churn Volatility Scoring (0-100)**: Highlights high-risk change hotspots in red/rose, moderate iteration areas in amber, and stable baseline modules in emerald.
+- **Interactive Canvas**: Pan-and-zoom controls (0.5x to 2x), folder expansion/collapse, and instant search-as-you-type file filtering.
+- **Architecture Inspector**: Inspects file size, line counts, lead maintainers, and direct links to trace AST history in Code Archaeology.
+- **Multi-Format Export**: Generates and downloads Markdown briefs (`.md`), Mermaid diagrams (`.mmd`), and ASCII directory trees (`.txt`).
+
+### 05. Contribution Finder & Team Risk (`/app/contributions`)
 Identifies true subsystem experts using our mathematical impact formula. Categorizes maintainers into Domain Experts, Active Maintainers, Historical Contributors, and Occasional Reviewers, while flagging single-point-of-failure risks.
 
-### 05. Code Archaeology & AST Blast Radius (`/app/archaeology`)
+### 06. Code Archaeology & AST Blast Radius (`/app/archaeology`)
 Uses the official TypeScript AST Compiler in memory (`ts.createSourceFile`) to extract functions, classes, and React hooks with exact 1-indexed line spans. Pinpoints which commits and pull requests modified an exact symbol over the project's lifetime.
 
-### 06. Forensic Investigations & Evidence Vault (`/app/investigations`)
+### 07. Forensic Investigations & Evidence Vault (`/app/investigations`)
 A structured research workspace for diagnosing bugs, auditing pull requests, and benchmarking subsystems. Allows engineers to formulate testable hypotheses, log observations, attach immutable citations (commit SHAs, AST lines, PR links), and publish verified findings.
 
-### 07. User Profile & Account Settings (`/app/profile`)
+### 08. User Profile & Account Settings (`/app/profile`)
 Directly integrated in the TopBar and accessible via modal dialog: allows users to update their display name, change their password, view authentication provider credentials, and manage account sessions.
 
-### 08. In-App Technical Documentation (`/app/docs`)
-A comprehensive, 10-chapter developer reference covering architecture, REST API contracts, database schemas, scoring formulas, and troubleshooting procedures.
+### 09. In-App Technical Documentation (`/app/docs`)
+A comprehensive, 11-chapter developer reference covering architecture, REST API contracts, database schemas, scoring formulas, and troubleshooting procedures.
 
 ---
 
@@ -375,7 +385,12 @@ All JSON responses follow a standardized API envelope (`{ success: boolean, data
 | `GET` | `/api/v1/repositories` | Lists accessible repositories with sync statuses |
 | `POST` | `/api/v1/repositories/:owner/:repo/sync` | Triggers or reschedules background repository sync |
 | `GET` | `/api/v1/repositories/:owner/:repo/items` | Lists issues and PRs with filters (state, author, search) |
+| `GET` | `/api/v1/repositories/:owner/:repo/items/:number` | Detailed work item with relationships, discussion timeline, diff, and historical precedents |
 | `GET` | `/api/v1/repositories/:owner/:repo/relationships` | Returns detected cross-entity relationships and confidence |
+| `GET` | `/api/v1/repositories/:owner/:repo/map` | Hierarchical architecture tree, churn hotspots (0-100), and subsystem metrics |
+| `GET` | `/api/v1/repositories/:owner/:repo/map?format=markdown` | Exports full architecture briefing with embedded Mermaid graph (`.md`) |
+| `GET` | `/api/v1/repositories/:owner/:repo/map?format=mermaid` | Exports raw Mermaid flowchart syntax (`.mmd`) |
+| `GET` | `/api/v1/repositories/:owner/:repo/map?format=text` | Exports formatted ASCII directory tree (`.txt`) |
 | `GET` | `/api/v1/repositories/:owner/:repo/contributions` | Returns ranked contributors and single-point-of-failure risks |
 | `GET` | `/api/v1/repositories/:owner/:repo/archaeology/trace` | AST symbol catalog, line spans, and commit history |
 | `GET` | `/api/v1/investigations` | Lists saved investigations owned by caller |

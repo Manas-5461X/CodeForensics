@@ -16,6 +16,8 @@ import type {
   InvestigationRecord,
   CreateInvestigationInput,
   UpdateInvestigationInput,
+  HistoricalPrecedent,
+  RepositoryMapData,
 } from '@codeforensics/shared';
 import {
   RelationshipEngine,
@@ -24,6 +26,7 @@ import {
 } from '../intelligence/relationshipEngine.js';
 import { ContributionEngine } from '../intelligence/contributionEngine.js';
 import { ArchaeologyEngine, type RawCommitRecord } from '../intelligence/archaeologyEngine.js';
+import { RepositoryMapEngine } from '../intelligence/repositoryMapEngine.js';
 
 export interface UpsertIssueInput {
   githubIssueId: bigint | number;
@@ -157,6 +160,21 @@ export interface RepositoryStore {
       commits?: RawCommitRecord[];
     }
   ): Promise<ArchaeologyTraceResult>;
+
+  getHistoricalPrecedents(
+    repositoryId: string,
+    item: {
+      number: number;
+      title: string;
+      body: string | null;
+      type: 'issue' | 'pull_request';
+      labels?: string[];
+      changedFiles?: string[];
+    },
+    directNumbers?: number[]
+  ): Promise<HistoricalPrecedent[]>;
+
+  getRepositoryMap(repositoryId: string): Promise<RepositoryMapData>;
 
   listInvestigations(
     userId: string,
@@ -658,6 +676,16 @@ export class InMemoryRepositoryStore implements RepositoryStore {
         relationshipsCount: rels.length,
         relationships: rels,
         resolutionAssessment: null,
+        historicalPrecedents: await this.getHistoricalPrecedents(
+          repositoryId,
+          {
+            number: pr.number,
+            title: pr.title,
+            body: pr.body,
+            type: 'pull_request',
+          },
+          rels.map((r) => r.targetNumber || r.sourceNumber || 0).filter(Boolean)
+        ),
       };
     }
 
@@ -689,6 +717,17 @@ export class InMemoryRepositoryStore implements RepositoryStore {
         resolutionStatus: assessment?.status,
         relationships: rels,
         resolutionAssessment: assessment,
+        historicalPrecedents: await this.getHistoricalPrecedents(
+          repositoryId,
+          {
+            number: issue.number,
+            title: issue.title,
+            body: issue.body,
+            type: 'issue',
+            labels: labelsList,
+          },
+          rels.map((r) => r.targetNumber || r.sourceNumber || 0).filter(Boolean)
+        ),
       };
     }
 
@@ -832,6 +871,107 @@ export class InMemoryRepositoryStore implements RepositoryStore {
       sourceCode: options.sourceContent,
       pullRequests: prs,
       commitRecords: options.commits ?? [],
+    });
+  }
+
+  public async getHistoricalPrecedents(
+    repositoryId: string,
+    item: {
+      number: number;
+      title: string;
+      body: string | null;
+      type: 'issue' | 'pull_request';
+      labels?: string[];
+      changedFiles?: string[];
+    },
+    directNumbers?: number[]
+  ): Promise<HistoricalPrecedent[]> {
+    const rawIssues: RawIssueRecord[] = Array.from(this.issues.values())
+      .filter((i) => i.repositoryId === repositoryId)
+      .map((i) => ({
+        id: String(i.githubIssueId),
+        number: i.number,
+        title: i.title,
+        body: i.body,
+        state: i.state,
+        author: i.author,
+        labels: i.labels,
+        closedAt: i.closedAt,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt,
+      }));
+
+    const rawPRs: RawPullRequestRecord[] = Array.from(this.pullRequests.values())
+      .filter((p) => p.repositoryId === repositoryId)
+      .map((p) => ({
+        id: String(p.githubPrId),
+        number: p.number,
+        title: p.title,
+        body: p.body,
+        state: p.state,
+        isDraft: p.isDraft,
+        merged: p.merged,
+        mergedAt: p.mergedAt,
+        author: p.author,
+        baseRef: p.baseRef,
+        headRef: p.headRef,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+
+    return RelationshipEngine.detectHistoricalPrecedents(
+      item,
+      rawIssues,
+      rawPRs,
+      directNumbers || []
+    );
+  }
+
+  public async getRepositoryMap(repositoryId: string): Promise<RepositoryMapData> {
+    const repo = await this.findRepositoryById(repositoryId);
+    if (!repo) {
+      throw new Error(`Repository with ID ${repositoryId} not found`);
+    }
+
+    const rawIssues: RawIssueRecord[] = Array.from(this.issues.values())
+      .filter((i) => i.repositoryId === repositoryId)
+      .map((i) => ({
+        id: String(i.githubIssueId),
+        number: i.number,
+        title: i.title,
+        body: i.body,
+        state: i.state,
+        author: i.author,
+        labels: i.labels,
+        closedAt: i.closedAt,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt,
+      }));
+
+    const rawPRs: RawPullRequestRecord[] = Array.from(this.pullRequests.values())
+      .filter((p) => p.repositoryId === repositoryId)
+      .map((p) => ({
+        id: String(p.githubPrId),
+        number: p.number,
+        title: p.title,
+        body: p.body,
+        state: p.state,
+        isDraft: p.isDraft,
+        merged: p.merged,
+        mergedAt: p.mergedAt,
+        author: p.author,
+        baseRef: p.baseRef,
+        headRef: p.headRef,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+
+    return RepositoryMapEngine.generateMap({
+      repositoryId,
+      fullName: repo.fullName,
+      defaultBranch: repo.defaultBranch,
+      issues: rawIssues,
+      pullRequests: rawPRs,
     });
   }
 
@@ -1527,6 +1667,16 @@ export class PrismaRepositoryStore implements RepositoryStore {
         relationshipsCount: rels.length,
         relationships: rels,
         resolutionAssessment: null,
+        historicalPrecedents: await this.getHistoricalPrecedents(
+          repositoryId,
+          {
+            number: pr.number,
+            title: pr.title,
+            body: pr.body,
+            type: 'pull_request',
+          },
+          rels.map((r) => r.targetNumber || r.sourceNumber || 0).filter(Boolean)
+        ),
       };
     }
 
@@ -1562,6 +1712,17 @@ export class PrismaRepositoryStore implements RepositoryStore {
         resolutionStatus: assessment?.status,
         relationships: rels,
         resolutionAssessment: assessment,
+        historicalPrecedents: await this.getHistoricalPrecedents(
+          repositoryId,
+          {
+            number: issue.number,
+            title: issue.title,
+            body: issue.body,
+            type: 'issue',
+            labels: labelsList,
+          },
+          rels.map((r) => r.targetNumber || r.sourceNumber || 0).filter(Boolean)
+        ),
       };
     }
 
@@ -1777,6 +1938,111 @@ export class PrismaRepositoryStore implements RepositoryStore {
       sourceCode: options.sourceContent,
       pullRequests: prs,
       commitRecords: options.commits ?? [],
+    });
+  }
+
+  public async getHistoricalPrecedents(
+    repositoryId: string,
+    item: {
+      number: number;
+      title: string;
+      body: string | null;
+      type: 'issue' | 'pull_request';
+      labels?: string[];
+      changedFiles?: string[];
+    },
+    directNumbers?: number[]
+  ): Promise<HistoricalPrecedent[]> {
+    const prisma = getPrismaClient();
+    const [dbIssues, dbPRs] = await Promise.all([
+      prisma.issue.findMany({ where: { repositoryId } }),
+      prisma.pullRequest.findMany({ where: { repositoryId } }),
+    ]);
+
+    const issues: RawIssueRecord[] = dbIssues.map((i) => ({
+      id: i.githubIssueId.toString(),
+      number: i.number,
+      title: i.title,
+      body: i.body,
+      state: i.state,
+      author: i.author,
+      labels: i.labels,
+      closedAt: i.closedAt,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    }));
+
+    const prs: RawPullRequestRecord[] = dbPRs.map((p) => ({
+      id: p.githubPrId.toString(),
+      number: p.number,
+      title: p.title,
+      body: p.body,
+      state: p.state,
+      isDraft: p.isDraft,
+      merged: p.merged,
+      mergedAt: p.mergedAt,
+      author: p.author,
+      baseRef: p.baseRef,
+      headRef: p.headRef,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+
+    return RelationshipEngine.detectHistoricalPrecedents(
+      item,
+      issues,
+      prs,
+      directNumbers || []
+    );
+  }
+
+  public async getRepositoryMap(repositoryId: string): Promise<RepositoryMapData> {
+    const repo = await this.findRepositoryById(repositoryId);
+    if (!repo) {
+      throw new Error(`Repository with ID ${repositoryId} not found`);
+    }
+
+    const prisma = getPrismaClient();
+    const [dbIssues, dbPRs] = await Promise.all([
+      prisma.issue.findMany({ where: { repositoryId } }),
+      prisma.pullRequest.findMany({ where: { repositoryId } }),
+    ]);
+
+    const issues: RawIssueRecord[] = dbIssues.map((i) => ({
+      id: i.githubIssueId.toString(),
+      number: i.number,
+      title: i.title,
+      body: i.body,
+      state: i.state,
+      author: i.author,
+      labels: i.labels,
+      closedAt: i.closedAt,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    }));
+
+    const prs: RawPullRequestRecord[] = dbPRs.map((p) => ({
+      id: p.githubPrId.toString(),
+      number: p.number,
+      title: p.title,
+      body: p.body,
+      state: p.state,
+      isDraft: p.isDraft,
+      merged: p.merged,
+      mergedAt: p.mergedAt,
+      author: p.author,
+      baseRef: p.baseRef,
+      headRef: p.headRef,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+
+    return RepositoryMapEngine.generateMap({
+      repositoryId,
+      fullName: repo.fullName,
+      defaultBranch: repo.defaultBranch,
+      issues,
+      pullRequests: prs,
     });
   }
 

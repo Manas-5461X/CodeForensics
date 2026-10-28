@@ -24,6 +24,7 @@ import {
   Activity,
   UserCheck,
   FolderGit2,
+  Network,
 } from 'lucide-react';
 import { cn } from '../utils/cn.js';
 
@@ -265,6 +266,45 @@ FIXED_BY    # Confirmed resolution where a merged PR definitively closed an issu
             type: 'note',
             text: 'If an issue was closed without a linked pull request or closing commit, CodeForensics flags it as UNKNOWN CLOSURE rather than guessing resolution.',
           },
+        },
+        {
+          heading: 'Historical Precedents & Prior Art Engine',
+          body: 'Beyond direct closing links, CodeForensics analyzes historical changes to uncover prior art and past precedents. When evaluating an issue or PR, the engine performs multi-factor matching against historical repository records:\n\n• SHARED_FILES: Discovers merged PRs that touched the exact same file paths or modified overlapping symbols.\n• SUBSYSTEM_SCOPE: Identifies prior changes that targeted identical architectural boundaries (e.g., conventional commit tags like "fix(auth)" or "feat(server)").\n• ERROR_KEYWORD: Matches specific recurring error tokens, stack trace signatures, or failure codes (e.g., TokenExpiredError, ECONNRESET, hydration failures).\n• SIMILAR_DESCRIPTION: Surfaces prior closed issues with correlated symptoms.',
+          callout: {
+            type: 'tip',
+            text: 'Investigators can click "Copy Evidence Citation" on any historical precedent card to instantly reference the prior art in an active audit dossier.',
+          },
+        },
+      ],
+    },
+  },
+  {
+    id: 'repository-map',
+    title: 'Repository Architecture Map & Churn Heatmap',
+    category: 'Intelligence Engines',
+    icon: Network,
+    summary: 'Interactive hierarchical graph of codebase architecture, modules, and code churn hotspot distribution.',
+    readTime: '4 min read',
+    tags: ['Architecture Map', 'Tree View', 'Churn Heatmap', 'Mermaid Export', 'Codebase Navigation'],
+    content: {
+      lead: 'The Repository Architecture Map visualizes the complete structural hierarchy of a repository, calculates code churn volatility (0-100) per file and directory, and exports multi-format diagrams.',
+      sections: [
+        {
+          heading: 'Code Churn Hotspot Score (0-100)',
+          body: 'Every file and folder is evaluated using a normalized code churn metric based on pull request modification frequency, issue associations, and commit volatility:\n\n• High Churn Hotspot (>= 65): Highlighted in rose/red with a flame badge. Signifies frequently changed, volatile code requiring extra testing and caution during refactoring.\n• Moderate Churn (40 - 64): Highlighted in amber. Indicates active development areas with regular iterations.\n• Stable Code (< 40): Highlighted in emerald or neutral slate. Represents mature, stable library modules, foundational types, or baseline configurations.',
+        },
+        {
+          heading: 'Interactive Zoom, Pan & Subsystem Navigation',
+          body: 'The map interface features interactive zoom controls (+ / - / Reset), search-as-you-type file filtering, folder expansion toggles, and subsystem isolation filters (e.g., isolating apps/api vs. packages/shared). Clicking any node displays the Architecture Inspector card with lead maintainers and direct archaeology trace actions.',
+        },
+        {
+          heading: 'Multi-Format Architecture Export',
+          body: 'Investigators can export the repository map into three industry-standard documentation formats at any time:\n\n1. Markdown Report (.md): Complete documentation briefing with executive summary, subsystem table, and embedded Mermaid graph.\n2. Mermaid Architecture Diagram (.mmd): Ready-to-embed flowchart diagram compatible with GitHub, Notion, and Obsidian markdown renderers.\n3. ASCII Directory Tree (.txt): Clean formatted text tree with file sizes, counts, and churn badges.',
+          codeSnippet: `// API Endpoint to fetch architecture map data or export files directly:
+GET /api/v1/repositories/:owner/:repo/map
+GET /api/v1/repositories/:owner/:repo/map?format=markdown
+GET /api/v1/repositories/:owner/:repo/map?format=mermaid
+GET /api/v1/repositories/:owner/:repo/map?format=text`,
         },
       ],
     },

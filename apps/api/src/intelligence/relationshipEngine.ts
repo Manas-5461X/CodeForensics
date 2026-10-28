@@ -8,6 +8,8 @@ import type {
   RelationshipEvidence,
   ResolutionAssessment,
   ResolutionStatus,
+  HistoricalPrecedent,
+  PrecedentMatchReason,
 } from '@codeforensics/shared';
 
 export interface RawIssueRecord {
@@ -491,5 +493,204 @@ export class RelationshipEngine {
       coverageNotes: limitations,
       linkedRelationships: [],
     };
+  }
+
+  /**
+   * Discovers historical precedents and past similar changes:
+   * Identifies prior pull requests or issues that modified the same files,
+   * targeted the same subsystem scope tag, or matched recurring error signatures.
+   */
+  public static detectHistoricalPrecedents(
+    currentItem: {
+      number: number;
+      title: string;
+      body: string | null;
+      type: 'issue' | 'pull_request';
+      labels?: string[];
+      changedFiles?: string[];
+    },
+    issues: RawIssueRecord[],
+    pullRequests: RawPullRequestRecord[],
+    directRelationshipTargetNumbers: number[] = []
+  ): HistoricalPrecedent[] {
+    const directSet = new Set<number>(directRelationshipTargetNumbers);
+    directSet.add(currentItem.number);
+
+    // 1. Extract subsystem scope from title or labels
+    const scopeMatch = currentItem.title.match(/(?:fix|feat|chore|refactor|perf|test|docs|build|ci)\(([^)]+)\):/i)
+      || currentItem.title.match(/^\[([^\]]+)\]/i);
+    const extractedScope = scopeMatch ? scopeMatch[1].trim().toLowerCase() : null;
+
+    // 2. Extract error signatures / failure keywords from title and body
+    const textCorpus = `${currentItem.title} ${currentItem.body || ''}`;
+    const errorPattern = /\b([A-Za-z]+Error|[A-Z_]{5,}|ECONNRESET|ETIMEDOUT|SIGTERM|deadlock|hydration|unauthorized|cors|memory\s*leak)\b/gi;
+    const rawErrorTokens = Array.from(new Set(textCorpus.match(errorPattern) || [])).map((t) => t.trim());
+    // Filter out common false positives
+    const errorTokens = rawErrorTokens.filter(
+      (t) => !['GITHUB', 'HTTP', 'HTTPS', 'README', 'PULL_REQUEST', 'ISSUE'].includes(t.toUpperCase())
+    );
+
+    // 3. Extract target file paths
+    const filePathPattern = /\b(?:[\w.-]+\/)+[\w.-]+\.(?:ts|tsx|js|jsx|json|sql|py|go|rs|md)\b/gi;
+    const bodyFiles = Array.from(new Set(textCorpus.match(filePathPattern) || []));
+    const targetFiles = new Set<string>([
+      ...(currentItem.changedFiles || []),
+      ...bodyFiles,
+    ]);
+
+    const precedents: HistoricalPrecedent[] = [];
+    const seenNumbers = new Set<number>();
+
+    // Helper to evaluate a candidate
+    const evaluateCandidate = (
+      number: number,
+      title: string,
+      body: string | null,
+      type: 'ISSUE' | 'PULL_REQUEST',
+      state: 'open' | 'closed' | 'merged',
+      author?: string | null,
+      mergedAt?: Date | string | null,
+      closedAt?: Date | string | null,
+      createdAt?: Date | string,
+      candidateLabels?: string[]
+    ) => {
+      if (directSet.has(number) || seenNumbers.has(number)) {
+        return;
+      }
+
+      const candidateText = `${title} ${body || ''}`;
+      const candidateFiles = Array.from(new Set(candidateText.match(filePathPattern) || []));
+
+      // A. Check shared files
+      const sharedFiles: string[] = [];
+      for (const f of targetFiles) {
+        if (candidateText.includes(f) || candidateFiles.includes(f)) {
+          sharedFiles.push(f);
+        }
+      }
+
+      if (sharedFiles.length > 0) {
+        seenNumbers.add(number);
+        precedents.push({
+          id: `prec-file-${number}`,
+          targetNumber: number,
+          targetTitle: title,
+          targetType: type,
+          state,
+          matchReason: 'SHARED_FILES',
+          matchDetail: `Historical change touched ${sharedFiles.length} overlapping file(s): ${sharedFiles.slice(0, 3).join(', ')}${sharedFiles.length > 3 ? '...' : ''}`,
+          confidence: 'HIGH',
+          subsystem: extractedScope || undefined,
+          author: author || null,
+          mergedAt: mergedAt ? new Date(mergedAt).toISOString() : null,
+          closedAt: closedAt ? new Date(closedAt).toISOString() : null,
+          createdAt: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString(),
+          sharedItems: sharedFiles,
+        });
+        return;
+      }
+
+      // B. Check shared error tokens
+      if (errorTokens.length > 0) {
+        const matchedToken = errorTokens.find((tok) =>
+          new RegExp(`\\b${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(candidateText)
+        );
+        if (matchedToken) {
+          seenNumbers.add(number);
+          precedents.push({
+            id: `prec-err-${number}`,
+            targetNumber: number,
+            targetTitle: title,
+            targetType: type,
+            state,
+            matchReason: 'ERROR_KEYWORD',
+            matchDetail: `Matched identical failure signature '${matchedToken}' in historical records`,
+            confidence: 'MEDIUM',
+            subsystem: extractedScope || undefined,
+            author: author || null,
+            mergedAt: mergedAt ? new Date(mergedAt).toISOString() : null,
+            closedAt: closedAt ? new Date(closedAt).toISOString() : null,
+            createdAt: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString(),
+            sharedItems: [matchedToken],
+          });
+          return;
+        }
+      }
+
+      // C. Check shared subsystem scope
+      if (extractedScope) {
+        const candidateScopeMatch = title.match(/(?:fix|feat|chore|refactor|perf|test|docs|build|ci)\(([^)]+)\):/i)
+          || title.match(/^\[([^\]]+)\]/i);
+        const candidateScope = candidateScopeMatch ? candidateScopeMatch[1].trim().toLowerCase() : null;
+        const matchesScope = candidateScope === extractedScope
+          || candidateLabels?.some((l) => l.toLowerCase().includes(extractedScope));
+
+        if (matchesScope) {
+          seenNumbers.add(number);
+          precedents.push({
+            id: `prec-scope-${number}`,
+            targetNumber: number,
+            targetTitle: title,
+            targetType: type,
+            state,
+            matchReason: 'SUBSYSTEM_SCOPE',
+            matchDetail: `Shared historical subsystem scope '(${extractedScope})' with identical architectural boundary`,
+            confidence: 'MEDIUM',
+            subsystem: extractedScope,
+            author: author || null,
+            mergedAt: mergedAt ? new Date(mergedAt).toISOString() : null,
+            closedAt: closedAt ? new Date(closedAt).toISOString() : null,
+            createdAt: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString(),
+            sharedItems: [extractedScope],
+          });
+        }
+      }
+    };
+
+    // Evaluate pull requests (historical changes)
+    for (const pr of pullRequests) {
+      const isMerged = Boolean(pr.merged || pr.mergedAt !== null || pr.state.toLowerCase() === 'merged');
+      const state = isMerged ? 'merged' : pr.state.toLowerCase() === 'open' ? 'open' : 'closed';
+      evaluateCandidate(
+        pr.number,
+        pr.title,
+        pr.body,
+        'PULL_REQUEST',
+        state,
+        pr.author,
+        pr.mergedAt,
+        null,
+        pr.createdAt
+      );
+    }
+
+    // Evaluate issues (historical problem reports)
+    for (const issue of issues) {
+      const labels = Array.isArray(issue.labels)
+        ? (issue.labels as any[]).map((l) => (typeof l === 'string' ? l : l.name || String(l)))
+        : [];
+      evaluateCandidate(
+        issue.number,
+        issue.title,
+        issue.body,
+        'ISSUE',
+        issue.state.toLowerCase() === 'open' ? 'open' : 'closed',
+        issue.author,
+        null,
+        issue.closedAt,
+        issue.createdAt,
+        labels
+      );
+    }
+
+    // Sort: HIGH confidence first, then latest createdAt / mergedAt
+    precedents.sort((a, b) => {
+      const confRank = { HIGH: 2, MEDIUM: 1, LOW: 0, NOT_ASSESSED: -1 };
+      const diff = confRank[a.confidence] - confRank[b.confidence];
+      if (diff !== 0) return -diff;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return precedents.slice(0, 8);
   }
 }

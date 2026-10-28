@@ -23,10 +23,12 @@ import type {
   ResolutionAssessment,
   ContributionAnalysisResult,
   ArchaeologyTraceResult,
+  RepositoryMapData,
 } from '@codeforensics/shared';
 import type { IGitHubService } from '../github/githubApp.js';
 import type { RepositoryStore } from '../db/repositoryStore.js';
 import { formatRepositoryInfo } from '../db/repositoryStore.js';
+import { RepositoryMapEngine } from '../intelligence/repositoryMapEngine.js';
 import type { Queue } from 'bullmq';
 import type { RepositorySyncJobData } from '../types/syncJob.js';
 import { runInProcessSync } from '../sync/inProcessSync.js';
@@ -1206,7 +1208,72 @@ export const repositoryRoutes: FastifyPluginAsync<RepositoryRoutesOptions> = asy
     }
   );
 
-  // 19. GitHub App Webhook endpoint with HMAC-SHA256 signature verification
+  // 19. Repository Architecture Map & Churn Heatmap
+  fastify.get(
+    '/repositories/:owner/:repo/map',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const paramsResult = RepositoryParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'Invalid repository parameters' },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const { owner, repo } = paramsResult.data;
+      const found = await repositoryStore.findRepository(owner, repo);
+      if (!found) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: `Repository ${owner}/${repo} not found.` },
+          meta: { timestamp: new Date().toISOString(), requestId: request.id },
+        });
+      }
+
+      const mapData = await repositoryStore.getRepositoryMap(found.id);
+
+      const query = request.query as { format?: string };
+      if (query.format === 'markdown') {
+        const md = RepositoryMapEngine.exportMarkdown(mapData);
+        return reply
+          .header('Content-Type', 'text/markdown; charset=utf-8')
+          .header('Content-Disposition', `attachment; filename="${repo}-architecture-map.md"`)
+          .send(md);
+      }
+      if (query.format === 'mermaid') {
+        const mermaid = RepositoryMapEngine.exportMermaid(mapData);
+        return reply
+          .header('Content-Type', 'text/plain; charset=utf-8')
+          .header('Content-Disposition', `attachment; filename="${repo}-architecture.mmd"`)
+          .send(mermaid);
+      }
+      if (query.format === 'text') {
+        const text = RepositoryMapEngine.exportTextTree(mapData);
+        return reply
+          .header('Content-Type', 'text/plain; charset=utf-8')
+          .header('Content-Disposition', `attachment; filename="${repo}-tree.txt"`)
+          .send(text);
+      }
+
+      const response: ApiResponse<RepositoryMapData> = {
+        success: true,
+        data: mapData,
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: request.id,
+          coverage: {
+            isComplete: !found.syncState || found.syncState.status === 'COMPLETED',
+          },
+        },
+      };
+
+      return reply.status(200).send(response);
+    }
+  );
+
+  // 20. GitHub App Webhook endpoint with HMAC-SHA256 signature verification
   fastify.post('/github/webhook', async (request, reply) => {
     const signature = request.headers['x-hub-signature-256'] as string | undefined;
 

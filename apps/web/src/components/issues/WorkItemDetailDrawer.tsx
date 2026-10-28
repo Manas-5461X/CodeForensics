@@ -25,6 +25,11 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
+  History,
+  Files,
+  Layers,
+  AlertOctagon,
+  BookmarkPlus,
 } from 'lucide-react';
 
 export interface WorkItemDetailDrawerProps {
@@ -48,6 +53,7 @@ export function WorkItemDetailDrawer({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'relationships' | 'timeline' | 'diff'>('overview');
   const [expandedRelId, setExpandedRelId] = useState<string | null>(null);
+  const [copiedPrecedentId, setCopiedPrecedentId] = useState<string | null>(null);
 
   // Close on Escape key press
   useEffect(() => {
@@ -716,6 +722,148 @@ export function WorkItemDetailDrawer({
                           </p>
                           <p className="text-[11px] text-primary-muted max-w-sm mx-auto font-mono pt-1">
                             Conservative Rule: CodeForensics strictly requires verified textual directives. Shared keywords or title similarities alone never establish relationships.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 2: HISTORICAL PRECEDENTS & PRIOR ART */}
+                    <div className="space-y-3 pt-5 border-t border-border-subtle">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs font-semibold text-primary uppercase tracking-wider font-mono flex items-center gap-1.5">
+                            <History className="w-3.5 h-3.5 text-accent" />
+                            Historical Precedents & Prior Art ({item.historicalPrecedents?.length || 0})
+                          </h3>
+                        </div>
+                        <span className="text-[11px] font-mono text-primary-muted">
+                          Multi-Factor Match
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-primary-secondary leading-relaxed">
+                        Past merged changes and closed issues that touched overlapping files, shared subsystem scopes, or matched recurring error signatures.
+                      </p>
+
+                      {item.historicalPrecedents && item.historicalPrecedents.length > 0 ? (
+                        <div className="space-y-3">
+                          {item.historicalPrecedents.map((prec) => {
+                            const isPR = prec.targetType === 'PULL_REQUEST';
+                            const isMerged = prec.state === 'merged';
+                            const isClosed = prec.state === 'closed';
+
+                            return (
+                              <div
+                                key={prec.id}
+                                className="p-4 bg-surface border border-border-subtle rounded-md shadow-xs space-y-3 hover:border-border-strong transition-colors"
+                              >
+                                <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => onSelectItem && onSelectItem(prec.targetNumber)}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-primary font-semibold hover:border-link hover:text-link transition-colors"
+                                      title={prec.targetTitle}
+                                    >
+                                      {isPR ? <GitPullRequest className="w-3 h-3 text-purple-600" /> : <CircleDot className="w-3 h-3 text-emerald-600" />}
+                                      {isPR ? 'PR' : 'Issue'} #{prec.targetNumber}
+                                    </button>
+
+                                    {/* Match Reason Tag */}
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                                      prec.matchReason === 'SHARED_FILES'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : prec.matchReason === 'ERROR_KEYWORD'
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : prec.matchReason === 'SUBSYSTEM_SCOPE'
+                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                        : 'bg-slate-100 text-slate-700 border-slate-300'
+                                    }`}>
+                                      {prec.matchReason === 'SHARED_FILES' && <Files className="w-3 h-3 text-blue-600" />}
+                                      {prec.matchReason === 'ERROR_KEYWORD' && <AlertOctagon className="w-3 h-3 text-rose-600" />}
+                                      {prec.matchReason === 'SUBSYSTEM_SCOPE' && <Layers className="w-3 h-3 text-purple-600" />}
+                                      {prec.matchReason.replace('_', ' ')}
+                                    </span>
+
+                                    {/* State Badge */}
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium ${
+                                      isMerged
+                                        ? 'bg-purple-100/70 text-purple-800'
+                                        : isClosed
+                                        ? 'bg-slate-100 text-slate-700'
+                                        : 'bg-emerald-100/70 text-emerald-800'
+                                    }`}>
+                                      {prec.state}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                                      prec.confidence === 'HIGH'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    }`}>
+                                      {prec.confidence} CONFIDENCE
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Target Title */}
+                                <div className="text-xs font-semibold text-primary font-sans">
+                                  {prec.targetTitle}
+                                </div>
+
+                                {/* Match detail narrative */}
+                                <p className="text-xs text-primary-secondary leading-relaxed font-sans">
+                                  {prec.matchDetail}
+                                </p>
+
+                                {/* Shared Items Pills */}
+                                {prec.sharedItems && prec.sharedItems.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {prec.sharedItems.map((itemStr, sIdx) => (
+                                      <span
+                                        key={sIdx}
+                                        className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-subtle text-primary border border-border-subtle"
+                                      >
+                                        {itemStr}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Footer metadata & Attach action */}
+                                <div className="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-[11px] text-primary-muted font-mono flex-wrap gap-2">
+                                  <span>
+                                    {prec.author ? `by @${prec.author}` : 'Anonymous'} • {prec.mergedAt ? `Merged ${new Date(prec.mergedAt).toLocaleDateString()}` : `Created ${new Date(prec.createdAt).toLocaleDateString()}`}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const text = `Historical Precedent [${prec.targetType} #${prec.targetNumber}: ${prec.targetTitle}] - ${prec.matchDetail}`;
+                                      navigator.clipboard?.writeText(text);
+                                      setCopiedPrecedentId(prec.id);
+                                      setTimeout(() => setCopiedPrecedentId(null), 2500);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[11px] text-link hover:underline font-mono"
+                                  >
+                                    <BookmarkPlus className="w-3 h-3" />
+                                    <span>{copiedPrecedentId === prec.id ? 'Copied Evidence Citation!' : 'Copy Evidence Citation'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center border border-dashed border-border-subtle rounded-md bg-surface-subtle/20 space-y-1.5">
+                          <History className="w-4 h-4 text-primary-muted mx-auto" />
+                          <div className="text-xs font-mono text-primary font-medium">
+                            No Historical Precedents Discovered
+                          </div>
+                          <p className="text-[11px] text-primary-secondary max-w-sm mx-auto">
+                            No earlier pull requests or issues modified identical files or shared this subsystem's conventional scope prefix.
                           </p>
                         </div>
                       )}

@@ -1,8 +1,9 @@
-/**
- * Standard API Request and Response Envelope Types
- */
-
-import type { RelationshipInfo, ResolutionAssessment, ResolutionStatus } from './evidence.js';
+import type {
+  RelationshipInfo,
+  ResolutionAssessment,
+  ResolutionStatus,
+  HistoricalPrecedent,
+} from './evidence.js';
 
 export interface ApiError {
   code: string;
@@ -192,6 +193,44 @@ export interface WorkItemDetail extends WorkItemSummary {
   diffSummary?: DiffSummary | null;
   relationships?: RelationshipInfo[];
   resolutionAssessment?: ResolutionAssessment | null;
+  historicalPrecedents?: HistoricalPrecedent[];
+}
+
+export interface RepositoryMapNode {
+  id: string;
+  name: string;
+  path: string;
+  type: 'directory' | 'file';
+  size?: number;
+  fileCount?: number;
+  churnScore: number; // 0-100 Hotspot churn score based on commit & PR activity
+  topMaintainer?: string;
+  subsystem?: string;
+  extension?: string;
+  children?: RepositoryMapNode[];
+}
+
+export interface RepositoryMapSubsystemSummary {
+  name: string;
+  path: string;
+  fileCount: number;
+  churnScore: number;
+  topMaintainer?: string;
+}
+
+export interface RepositoryMapData {
+  repositoryId: string;
+  fullName: string;
+  defaultBranch: string;
+  analyzedAt: string;
+  root: RepositoryMapNode;
+  summary: {
+    totalFiles: number;
+    totalDirectories: number;
+    hotspotCount: number;
+    topSubsystems: RepositoryMapSubsystemSummary[];
+    topMaintainers: { name: string; commitCount: number }[];
+  };
 }
 
 export interface WorkItemFilters {
