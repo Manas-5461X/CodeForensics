@@ -160,7 +160,7 @@ export function LoginPage() {
           <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 backdrop-blur-md space-y-2.5 shadow-lg">
             <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800/80 pb-1.5">
               <span>Evidentiary Classification Engine</span>
-              <span className="text-[#38bdf8]">Zero Hallucinations</span>
+              <span className="text-[#38bdf8]">Deterministic Evidence</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">

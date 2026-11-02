@@ -80,10 +80,18 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       <section className="relative min-h-[100dvh] w-full flex flex-col justify-center overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-16 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
         {/* Celestial Wireframe Terrain with Radial Cyan Coordinate Dots Matrix */}
-        <div className="absolute inset-0 z-0 bg-[#030712] overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-0 z-0 bg-[#030712] overflow-hidden pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle at 75% 30%, rgba(56, 189, 248, 0.12) 0%, rgba(3, 7, 18, 0.95) 70%, #030712 100%)',
+          }}
+        >
           <img
             src="/hero-wireframe.jpg"
             alt="CodeForensics Celestial Wireframe Terrain"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover object-[center_top] opacity-95 filter contrast-[1.12] brightness-105"
           />
           {/* Multi-layered directional dark gradient overlays preserving full circle and mountain glow */}
@@ -147,17 +155,11 @@ export function LandingPage() {
               className="inline-flex items-center justify-center gap-2 px-4 py-3.5 text-slate-400 hover:text-white font-mono text-xs transition-colors"
             >
               <Search className="w-3.5 h-3.5 text-[#00f0ff]" />
-              <span>Inspect Benchmark Case (#28941)</span>
+              <span>Inspect React Case Study (#28941)</span>
             </a>
           </div>
 
-          {/* Engine Status Line */}
-          <div className="mt-6 sm:mt-8 flex items-center gap-2.5 text-xs font-mono text-slate-300">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]" />
-            <span>Forensic intelligence engine live in active benchmark</span>
-            <span className="text-slate-600 hidden sm:inline">•</span>
-            <span className="text-slate-400 hidden sm:inline">Zero AI hallucinations</span>
-          </div>
+
         </div>
       </section>
 
@@ -171,7 +173,7 @@ export function LandingPage() {
             {/* Left Column: Lead */}
             <div className="space-y-6">
               <p className="text-[11px] font-mono uppercase tracking-widest text-[#0284c7] font-semibold">
-                For Maintainers & Contributors <span>•</span> In Active Benchmark
+                For Maintainers & Engineering Teams
               </p>
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#0f172a] leading-[1.02]">
                 A clearer way to understand{' '}
@@ -182,12 +184,7 @@ export function LandingPage() {
                 CodeForensics normalizes raw repository history into an inspectable, evidence-backed graph where every claim carries its supporting diffs, AST citations, and confidence metrics.
               </p>
 
-              <div className="pt-4 flex items-center gap-3">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#0284c7] shadow-[0_0_6px_#0284c7]" />
-                <span className="text-xs font-mono text-slate-600 uppercase tracking-wide">
-                  Resolution intelligence live in testing
-                </span>
-              </div>
+
 
               <div className="pt-2">
                 <Link
@@ -357,7 +354,7 @@ export function LandingPage() {
               <div className="flex items-center justify-between pb-4 border-b border-[#38bdf8]/20 text-[10px] font-mono">
                 <span className="text-[#38bdf8] uppercase tracking-wider">FORENSIC CHECK ENGINE</span>
                 <span className="px-2 py-0.5 border border-[#38bdf8]/60 text-white rounded bg-[#38bdf8]/10 font-bold">
-                  TESTING
+                  VERIFIED
                 </span>
               </div>
 
@@ -390,7 +387,7 @@ export function LandingPage() {
               </div>
 
               <div className="pt-4 flex items-center justify-between text-[10px] font-mono text-slate-400">
-                <span>CodeForensics / pilot build</span>
+                <span>CodeForensics / Evidence Graph</span>
                 <span className="text-[#38bdf8] text-base leading-none">→</span>
               </div>
             </article>
@@ -406,8 +403,7 @@ export function LandingPage() {
               <em className="font-editorial italic font-normal text-[#7dd3fc]">The engineer decides.</em>
             </h2>
             <p className="text-slate-300 text-base sm:text-lg leading-relaxed pt-2 max-w-xl">
-              CodeForensics is engineered to surface patterns, contradictory diffs, and missing test coverage.
-              It does not manufacture synthetic hallucinations, nor does it replace professional engineering judgement, code review, or maintainer responsibility.
+              CodeForensics surfaces verified evidence directly from repository Git trees and PR diffs. It never guesses or speculates, keeping engineering judgment firmly in the hands of maintainers.
             </p>
 
             <div className="pt-4 flex items-center gap-6">

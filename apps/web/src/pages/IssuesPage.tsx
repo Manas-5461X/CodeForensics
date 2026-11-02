@@ -160,8 +160,10 @@ export function IssuesPage() {
     );
   }
 
-  // State 2: Active repo is not yet synchronized (only when syncState is loaded and strictly IDLE with 0 records)
-  const isUnsynced = syncState !== null && syncState.status === 'IDLE' && (syncState.recordsImported ?? 0) === 0;
+  // State 2: Active repo is not yet synchronized (when sync state is missing or IDLE with 0 records)
+  const isUnsynced =
+    !isLoadingRepos &&
+    (!syncState || (syncState.status === 'IDLE' && (syncState.recordsImported ?? 0) === 0));
 
   return (
     <div className="space-y-6">
