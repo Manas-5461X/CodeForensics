@@ -794,31 +794,17 @@ export function LandingPage() {
               CF
             </div>
             <span className="font-bold text-white text-sm">CodeForensics</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400 text-xs">Evidence-backed repository intelligence workbench</span>
           </div>
 
-          <div className="flex items-center gap-6 font-mono text-[11px] flex-wrap">
+          <div className="flex items-center gap-4 sm:gap-6 font-mono text-[11px] flex-wrap justify-center sm:justify-end">
             <Link to="/docs" className="text-[#38bdf8] hover:text-white transition-colors">
               Documentation & Guides
             </Link>
             <Link to="/app" className="hover:text-white transition-colors">
               Workbench
             </Link>
-            <Link to="/app/map" className="hover:text-white transition-colors">
-              Architecture Map
-            </Link>
-            <Link to="/app/analysis" className="hover:text-white transition-colors">
-              Forensic Analysis
-            </Link>
-            <Link to="/app/issues" className="hover:text-white transition-colors">
-              Issues & PRs
-            </Link>
-            <Link to="/app/contributions" className="hover:text-white transition-colors">
-              Contributions
-            </Link>
-            <Link to="/app/investigations" className="hover:text-white transition-colors">
-              Investigations
+            <Link to="/app/workflow" className="hover:text-white transition-colors">
+              Workflow Guide
             </Link>
           </div>
         </div>
