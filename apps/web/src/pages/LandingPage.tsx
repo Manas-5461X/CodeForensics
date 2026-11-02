@@ -59,7 +59,7 @@ export function LandingPage() {
             href="https://github.com/Manas-5461X/CodeForensics"
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-mono text-slate-300 hover:text-white border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-colors"
           >
             <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
             <span>GitHub</span>
@@ -113,11 +113,11 @@ export function LandingPage() {
         {/* Hero Copy Container */}
         <div className="relative z-10 w-full max-w-6xl mx-auto my-auto">
           {/* Small Monospace Eyebrow */}
-          <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded bg-[#06152d]/80 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.2)] text-[11px] font-mono text-slate-300 uppercase tracking-widest mb-4 sm:mb-5 backdrop-blur-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]" />
-            <span>FOR MAINTAINERS & CONTRIBUTORS</span>
+<div className="inline-flex items-center gap-1.5 sm:gap-2 px-2 py-0.5 sm:px-3 sm:py-1 rounded bg-[#06152d]/80 border border-[#00f0ff]/40 shadow-[0_0_10px_rgba(0,240,255,0.15)] text-[9px] xs:text-[10px] sm:text-[11px] font-mono text-slate-300 uppercase tracking-wider sm:tracking-widest mb-3 sm:mb-5 backdrop-blur-xs max-w-full">
+            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-[#00f0ff] shrink-0" />
+            <span className="truncate">FOR MAINTAINERS & CONTRIBUTORS</span>
             <span className="text-slate-500">•</span>
-            <span className="text-[#00f0ff] font-bold">EVIDENCE GRAPH</span>
+            <span className="text-[#00f0ff] font-bold shrink-0">EVIDENCE GRAPH</span>
           </div>
 
           {/* Oversized Editorial Typography */}
@@ -135,26 +135,26 @@ export function LandingPage() {
           </p>
 
           {/* CTA Action Row */}
-          <div className="mt-5 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 flex-wrap">
+<div className="mt-4 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3.5 flex-wrap">
             <Link
               to="/app"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3.5 bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)] font-mono font-semibold text-[11px] sm:text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-6 sm:py-3.5 bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_16px_rgba(0,240,255,0.35)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)] font-mono font-semibold text-[11px] sm:text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5"
             >
               <span>Launch Interactive Workbench</span>
               <span className="text-xs sm:text-sm">↗</span>
             </Link>
             <Link
               to="/docs"
-              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:px-5 sm:py-3.5 bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)] font-mono text-[11px] sm:text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-5 sm:py-3.5 bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border border-[#00f0ff]/40 shadow-[0_0_10px_rgba(0,240,255,0.12)] font-mono text-[10px] sm:text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5"
             >
-              <BookOpen className="w-3.5 h-3.5 text-[#00f0ff]" />
+              <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#00f0ff]" />
               <span>System Documentation</span>
             </Link>
             <a
               href="#case-study"
-              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-3.5 text-slate-400 hover:text-white font-mono text-[10px] sm:text-xs transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-4 sm:py-3.5 text-slate-400 hover:text-white font-mono text-[10px] sm:text-xs transition-colors"
             >
-              <Search className="w-3.5 h-3.5 text-[#00f0ff]" />
+              <Search className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#00f0ff]" />
               <span>Inspect React Case Study (#28941)</span>
             </a>
           </div>

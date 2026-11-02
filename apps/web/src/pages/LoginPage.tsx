@@ -14,7 +14,7 @@ import {
   EyeOff,
   GitCommit,
   GitPullRequest,
-  Check,
+
 } from 'lucide-react';
 
 export function LoginPage() {
@@ -224,7 +224,7 @@ export function LoginPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* RIGHT COLUMN: Authentication Console Form (Mobile & Desktop)          */}
       {/* ---------------------------------------------------------------------- */}
-      <div className="w-full lg:w-1/2 xl:w-[50%] min-h-[100dvh] lg:h-full flex flex-col justify-between p-4 sm:p-5 lg:p-6 xl:p-8 bg-[#030712] relative overflow-y-auto lg:overflow-hidden">
+      <div className="w-full lg:w-1/2 xl:w-[50%] min-h-[100dvh] lg:h-full flex flex-col justify-between p-4 sm:p-6 lg:p-8 bg-[#030712] relative overflow-y-auto">
         {/* Top Row: Navigation and Mobile Brand */}
         <div className="flex items-center justify-between w-full max-w-sm sm:max-w-md mx-auto mb-2 shrink-0">
           {/* Mobile Brand (hidden on desktop) */}
@@ -250,10 +250,10 @@ export function LoginPage() {
           </Link>
         </div>
 
-        {/* Main Authentication Box */}
-        <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto py-3 space-y-2.5 shrink-0">
+        {/* Main Authentication Card */}
+        <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto p-5 sm:p-7 bg-[#0b1220]/90 border border-slate-800 rounded-xl shadow-2xl space-y-3.5 shrink-0">
           {/* Precision Mode Toggle Switcher */}
-          <div className="grid grid-cols-2 p-0.5 bg-slate-900/90 border border-slate-800 rounded-lg text-xs font-mono">
+          <div className="grid grid-cols-2 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg text-xs font-medium">
             <button
               type="button"
               onClick={() => {
@@ -263,7 +263,7 @@ export function LoginPage() {
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all text-xs ${
                 mode === 'signin'
-                  ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-sm'
+                  ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -280,7 +280,7 @@ export function LoginPage() {
               }}
               className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all text-xs ${
                 mode === 'signup'
-                  ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-sm'
+                  ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-xs'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -290,15 +290,14 @@ export function LoginPage() {
           </div>
 
           {/* Header Typography */}
-          <div className="space-y-0.5">
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-              <Shield className="w-3 h-3 text-[#38bdf8]" />
-              <span>Account Access</span>
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#38bdf8] font-medium">
+              Account Access
             </div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white leading-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
               {mode === 'signin' ? 'Sign in to Workbench' : 'Create Maintainer Account'}
             </h1>
-            <p className="text-[11px] sm:text-xs text-slate-400 font-light">
+            <p className="text-xs text-slate-400 font-light leading-relaxed">
               {mode === 'signin'
                 ? 'Sign in to access saved repository investigations and evidence dossiers.'
                 : 'Create an account to track repositories and save investigations.'}
@@ -341,10 +340,10 @@ export function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
             <div>
               <label
-                className="block text-[10px] font-mono text-slate-300 mb-0.5 uppercase tracking-wider"
+                className="block text-[11px] font-mono text-slate-300 mb-1"
                 htmlFor="auth-email"
               >
                 Email Address
@@ -357,14 +356,14 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="maintainer@domain.org"
-                className="w-full h-9 bg-slate-950/80 border border-slate-700/80 rounded px-3 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#38bdf8] focus:ring-1 focus:ring-[#38bdf8] transition-colors font-mono"
+                className="w-full h-9 sm:h-10 bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#38bdf8] focus:ring-1 focus:ring-[#38bdf8] transition-colors font-mono"
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-0.5">
+              <div className="flex items-center justify-between mb-1">
                 <label
-                  className="block text-[10px] font-mono text-slate-300 uppercase tracking-wider"
+                  className="block text-[11px] font-mono text-slate-300"
                   htmlFor="auth-password"
                 >
                   Password
@@ -385,14 +384,14 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full h-9 bg-slate-950/80 border border-slate-700/80 rounded pl-3 pr-9 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#38bdf8] focus:ring-1 focus:ring-[#38bdf8] transition-colors font-mono"
+                  className="w-full h-9 sm:h-10 bg-slate-950/90 border border-slate-700/80 rounded-lg pl-3 pr-9 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#38bdf8] focus:ring-1 focus:ring-[#38bdf8] transition-colors font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#38bdf8]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 transition-colors rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#38bdf8]"
                 >
                   {showPassword ? (
                     <EyeOff className="w-3.5 h-3.5" />
@@ -406,7 +405,7 @@ export function LoginPage() {
             <Button
               type="submit"
               variant="primary"
-              className="w-full h-9 justify-center bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono text-xs uppercase tracking-wider font-bold rounded shadow-[0_0_12px_rgba(56,189,248,0.25)] hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all active:scale-[0.99] mt-1"
+              className="w-full h-9 sm:h-10 justify-center bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono text-xs uppercase tracking-wider font-bold rounded-lg shadow-sm transition-all active:scale-[0.99] mt-1"
               isLoading={isSubmitting}
               leftIcon={mode === 'signin' ? <LogIn className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
             >
@@ -436,20 +435,20 @@ export function LoginPage() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-800" />
             </div>
-            <div className="relative flex justify-center text-[9px] font-mono uppercase tracking-widest">
-              <span className="bg-[#030712] px-2.5 text-slate-500">
+            <div className="relative flex justify-center text-[10px] font-mono uppercase tracking-wider">
+              <span className="bg-[#0b1220] px-3 text-slate-500">
                 Or authenticate via provider
               </span>
             </div>
           </div>
 
           {/* OAuth Buttons Grid */}
-          <div className="grid grid-cols-2 gap-2 pt-0.5">
+          <div className="grid grid-cols-2 gap-2.5 pt-0.5">
             <button
               type="button"
               disabled={isSubmitting}
               onClick={() => handleOAuth(signInWithGithub)}
-              className="flex items-center justify-center gap-2 h-9 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded text-xs font-mono text-slate-200 hover:text-white transition-all active:scale-[0.99] disabled:opacity-50"
+              className="flex items-center justify-center gap-2 h-9 sm:h-10 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 rounded-lg text-xs font-mono text-slate-200 hover:text-white transition-all active:scale-[0.99] disabled:opacity-50"
             >
               <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
               <span>GitHub</span>
@@ -459,26 +458,12 @@ export function LoginPage() {
               type="button"
               disabled={isSubmitting}
               onClick={() => handleOAuth(signInWithGoogle)}
-              className="flex items-center justify-center gap-2 h-9 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded text-xs font-mono text-slate-200 hover:text-white transition-all active:scale-[0.99] disabled:opacity-50"
+              className="flex items-center justify-center gap-2 h-9 sm:h-10 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 rounded-lg text-xs font-mono text-slate-200 hover:text-white transition-all active:scale-[0.99] disabled:opacity-50"
             >
               <span className="font-bold text-xs text-[#38bdf8]">G</span>
               <span>Google</span>
             </button>
           </div>
-
-          {/* Security Notice */}
-          <div className="pt-2 border-t border-slate-800/80 text-[10px] font-mono text-slate-500 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <Check className="w-3 h-3 text-[#10b981]" />
-              <span>Secure Authentication</span>
-            </div>
-            <span className="text-[9px] text-slate-500">Firebase & GitHub OAuth</span>
-          </div>
-        </div>
-
-        {/* Bottom Footer Note */}
-        <div className="w-full max-w-sm sm:max-w-md mx-auto pt-2 text-center text-[10px] font-mono text-slate-500 shrink-0">
-          CodeForensics • Repository Forensics Platform
         </div>
       </div>
     </div>
