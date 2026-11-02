@@ -21,7 +21,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 1. Global Navigation Bar (CAPEX-style glass overlay)                  */}
       {/* ---------------------------------------------------------------------- */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-[#0b1120]/90 border-white/10 backdrop-blur-md border-b px-3 sm:px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between transition-all">
+      <header className="fixed top-0 inset-x-0 z-50 bg-[#0b1120]/90 border-white/10 backdrop-blur-md border-b px-3 sm:px-6 lg:px-12 h-14 sm:h-20 flex items-center justify-between transition-all">
         <Link to="/" className="flex items-center gap-2.5 sm:gap-3.5 group shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#1e293b] border-[#38bdf8]/40 text-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.2)] border flex items-center justify-center font-mono font-bold text-xs sm:text-sm tracking-tight transition-colors">
             CF
@@ -66,7 +66,7 @@ export function LandingPage() {
           </a>
           <Link
             to="/app"
-            className="inline-flex items-center gap-1.5 sm:gap-2 border border-[#38bdf8]/60 bg-[#38bdf8]/10 hover:bg-[#38bdf8] hover:text-[#0b1120] text-slate-100 font-mono text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded transition-all duration-200 group"
+            className="inline-flex items-center gap-1.5 sm:gap-2 border border-[#38bdf8]/60 bg-[#38bdf8]/10 hover:bg-[#38bdf8] hover:text-[#0b1120] text-slate-100 font-mono text-[11px] sm:text-xs px-2.5 sm:px-3.5 py-1 sm:py-2 rounded transition-all duration-200 group"
           >
             <span className="hidden xs:inline">Open Workbench</span>
             <span className="xs:hidden">Workbench</span>
@@ -78,7 +78,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 2. Hero Section (Celestial Wireframe Moon with Coordinate Dots Matrix) */}
       {/* ---------------------------------------------------------------------- */}
-      <section className="relative min-h-[100dvh] w-full flex flex-col justify-center overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-16 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
+      <section className="relative min-h-[100dvh] w-full flex flex-col justify-center overflow-hidden pt-20 pb-10 sm:pt-28 sm:pb-16 px-4 sm:px-12 lg:px-20 border-b border-slate-800">
         {/* Celestial Wireframe Terrain with Radial Cyan Coordinate Dots Matrix */}
         <div
           className="absolute inset-0 z-0 bg-[#030712] overflow-hidden pointer-events-none"
@@ -121,7 +121,7 @@ export function LandingPage() {
           </div>
 
           {/* Oversized Editorial Typography */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.0] max-w-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
+          <h1 className="text-2xl xs:text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.12] sm:leading-[1.0] max-w-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
             Stop guessing why code was written.{' '}
             <span className="block font-editorial italic font-normal text-[#38bdf8] drop-shadow-[0_0_24px_rgba(56,189,248,0.7)] tracking-tight mt-1 sm:mt-2">
               Inspect the evidence.
@@ -129,30 +129,30 @@ export function LandingPage() {
           </h1>
 
           {/* Value Proposition Tagline */}
-          <p className="mt-4 sm:mt-5 text-sm sm:text-base lg:text-lg text-slate-200 max-w-2xl leading-relaxed font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
+          <p className="mt-3 sm:mt-5 text-xs xs:text-sm sm:text-base lg:text-lg text-slate-200 max-w-2xl leading-relaxed font-light drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]">
             CodeForensics connects GitHub issues, pull requests, review discussions, and commit diffs into an inspectable evidence graph.
             Distinguish observed provider facts from heuristic inferences, with visible uncertainty and traceable provenance.
           </p>
 
           {/* CTA Action Row */}
-          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 flex-wrap">
+          <div className="mt-5 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 flex-wrap">
             <Link
               to="/app"
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)] font-mono font-semibold text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3.5 bg-[#00f0ff] text-[#030712] hover:bg-[#38bdf8] shadow-[0_0_24px_rgba(0,240,255,0.45)] hover:shadow-[0_0_36px_rgba(0,240,255,0.7)] font-mono font-semibold text-[11px] sm:text-xs uppercase tracking-wider rounded transition-all duration-200 hover:-translate-y-0.5"
             >
               <span>Launch Interactive Workbench</span>
-              <span className="text-sm">↗</span>
+              <span className="text-xs sm:text-sm">↗</span>
             </Link>
             <Link
               to="/docs"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)] font-mono text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 sm:px-5 sm:py-3.5 bg-[#06152d]/70 hover:bg-[#0c224a]/80 text-slate-200 border border-[#00f0ff]/40 shadow-[0_0_12px_rgba(0,240,255,0.15)] font-mono text-[11px] sm:text-xs rounded transition-all backdrop-blur-xs hover:-translate-y-0.5"
             >
               <BookOpen className="w-3.5 h-3.5 text-[#00f0ff]" />
               <span>System Documentation</span>
             </Link>
             <a
               href="#case-study"
-              className="inline-flex items-center justify-center gap-2 px-4 py-3.5 text-slate-400 hover:text-white font-mono text-xs transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-3.5 text-slate-400 hover:text-white font-mono text-[10px] sm:text-xs transition-colors"
             >
               <Search className="w-3.5 h-3.5 text-[#00f0ff]" />
               <span>Inspect React Case Study (#28941)</span>
@@ -166,7 +166,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 3. Paired Overview Section (Light Paper-like Section)                  */}
       {/* ---------------------------------------------------------------------- */}
-      <section className="bg-[#f8fafc] text-[#0f172a] py-20 sm:py-28 px-6 sm:px-12 lg:px-20 border-b border-slate-300">
+      <section className="bg-[#f8fafc] text-[#0f172a] py-14 sm:py-24 px-4 sm:px-12 lg:px-20 border-b border-slate-300">
         <div className="max-w-6xl mx-auto">
           {/* 2-Column Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
@@ -175,7 +175,7 @@ export function LandingPage() {
               <p className="text-[11px] font-mono uppercase tracking-widest text-[#0284c7] font-semibold">
                 For Maintainers & Engineering Teams
               </p>
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#0f172a] leading-[1.02]">
+              <h2 className="text-2xl xs:text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#0f172a] leading-[1.08] sm:leading-[1.02]">
                 A clearer way to understand{' '}
                 <em className="font-editorial italic font-normal text-[#1e293b]">repository history.</em>
               </h2>
@@ -189,7 +189,7 @@ export function LandingPage() {
               <div className="pt-2">
                 <Link
                   to="/app"
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-mono text-xs uppercase tracking-wider rounded transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-mono text-[11px] sm:text-xs uppercase tracking-wider rounded transition-colors"
                 >
                   <span>Open Interactive Workbench</span>
                   <span className="text-[#38bdf8]">↗</span>
@@ -248,7 +248,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 4. The Workflow Section (Light Paper Precise Grid)                     */}
       {/* ---------------------------------------------------------------------- */}
-      <section id="how-it-works" className="bg-[#f8fafc] text-[#0f172a] py-20 sm:py-28 px-6 sm:px-12 lg:px-20 border-b border-slate-300">
+      <section id="how-it-works" className="bg-[#f8fafc] text-[#0f172a] py-14 sm:py-24 px-4 sm:px-12 lg:px-20 border-b border-slate-300">
         <div className="max-w-6xl mx-auto">
           {/* Section Heading */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end mb-16">
@@ -343,7 +343,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 5. Principle Section (Deep Slate Blue, Tilted Engine Card)             */}
       {/* ---------------------------------------------------------------------- */}
-      <section id="principles" className="bg-[#1e293b] text-white py-24 sm:py-32 px-6 sm:px-12 lg:px-20 border-b border-slate-700">
+      <section id="principles" className="bg-[#1e293b] text-white py-14 sm:py-28 px-4 sm:px-12 lg:px-20 border-b border-slate-700">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left Column: Tilted Engine Status Card */}
           <div className="lg:col-span-5 flex justify-center lg:justify-start">
@@ -398,7 +398,7 @@ export function LandingPage() {
             <p className="text-[11px] font-mono uppercase tracking-widest text-[#38bdf8] font-semibold">
               The Responsibility Statement
             </p>
-            <h2 className="text-4xl sm:text-6xl font-bold tracking-tight text-white leading-[0.98]">
+            <h2 className="text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-[1.08] sm:leading-[0.98]">
               The tool flags. <br />
               <em className="font-editorial italic font-normal text-[#7dd3fc]">The engineer decides.</em>
             </h2>
@@ -423,7 +423,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 6. Interactive Case Study Benchmark (Deep Charcoal / Slate)           */}
       {/* ---------------------------------------------------------------------- */}
-      <section id="case-study" className="bg-[#0b1120] text-slate-100 py-24 sm:py-32 px-6 sm:px-12 lg:px-20 border-b border-slate-800">
+      <section id="case-study" className="bg-[#0b1120] text-slate-100 py-14 sm:py-28 px-4 sm:px-12 lg:px-20 border-b border-slate-800">
         <div className="max-w-6xl mx-auto">
           {/* Header & Tabs */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
@@ -431,7 +431,7 @@ export function LandingPage() {
               <div className="text-[11px] font-mono text-[#38bdf8] font-semibold tracking-widest uppercase mb-2">
                 Case Study • Live Forensic Inspection
               </div>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight">
+              <h2 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight">
                 A closed issue is not a fixed issue.
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
@@ -443,7 +443,7 @@ export function LandingPage() {
             <div className="flex items-center gap-1.5 bg-[#1e293b] p-1.5 border border-slate-700 rounded-md self-start lg:self-auto">
               <button
                 onClick={() => setActiveTab('lineage')}
-                className={`px-3.5 py-2 text-xs font-mono rounded transition-all ${
+                className={`px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-xs font-mono rounded transition-all ${
                   activeTab === 'lineage'
                     ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -453,7 +453,7 @@ export function LandingPage() {
               </button>
               <button
                 onClick={() => setActiveTab('assessment')}
-                className={`px-3.5 py-2 text-xs font-mono rounded transition-all ${
+                className={`px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-xs font-mono rounded transition-all ${
                   activeTab === 'assessment'
                     ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -463,7 +463,7 @@ export function LandingPage() {
               </button>
               <button
                 onClick={() => setActiveTab('code')}
-                className={`px-3.5 py-2 text-xs font-mono rounded transition-all ${
+                className={`px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-xs font-mono rounded transition-all ${
                   activeTab === 'code'
                     ? 'bg-[#38bdf8] text-[#0b1120] font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -623,7 +623,7 @@ export function LandingPage() {
               </span>
               <Link
                 to="/app/issues"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono font-bold text-xs uppercase tracking-wider rounded transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded transition-colors"
               >
                 <span>Explore in Workbench</span>
                 <span>↗</span>
@@ -679,7 +679,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 7. Evidentiary Rules (Light Paper Rhythm)                              */}
       {/* ---------------------------------------------------------------------- */}
-      <section id="rules" className="bg-[#f8fafc] text-[#0f172a] py-24 sm:py-32 px-6 sm:px-12 lg:px-20 border-b border-slate-300">
+      <section id="rules" className="bg-[#f8fafc] text-[#0f172a] py-14 sm:py-28 px-4 sm:px-12 lg:px-20 border-b border-slate-300">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-3xl mb-16">
             <p className="text-[11px] font-mono uppercase tracking-widest text-[#0284c7] font-semibold mb-3">
@@ -761,8 +761,8 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 8. Final Call to Action (Deep Slate Blue)                              */}
       {/* ---------------------------------------------------------------------- */}
-      <section className="bg-[#0b1120] py-24 sm:py-32 px-6 sm:px-12 lg:px-20 border-b border-slate-800 text-center">
-        <div className="max-w-4xl mx-auto p-10 sm:p-16 bg-[#1e293b]/50 border border-slate-700 rounded-2xl shadow-2xl space-y-6">
+      <section className="bg-[#0b1120] py-14 sm:py-28 px-4 sm:px-12 lg:px-20 border-b border-slate-800 text-center">
+        <div className="max-w-4xl mx-auto p-6 sm:p-14 bg-[#1e293b]/50 border border-slate-700 rounded-2xl shadow-2xl space-y-4 sm:space-y-6">
           <p className="text-xs font-mono uppercase tracking-widest text-[#38bdf8]">
             Evidence-Backed Workbench
           </p>
@@ -775,7 +775,7 @@ export function LandingPage() {
           <div className="pt-4">
             <Link
               to="/app"
-              className="inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono font-bold text-xs uppercase tracking-wider rounded transition-all duration-200 shadow-[0_0_24px_rgba(56,189,248,0.3)] hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:px-8 sm:py-4 bg-[#38bdf8] text-[#0b1120] hover:bg-[#7dd3fc] font-mono font-bold text-[11px] sm:text-xs uppercase tracking-wider rounded transition-all duration-200 shadow-[0_0_24px_rgba(56,189,248,0.3)] hover:-translate-y-0.5"
             >
               <span>Launch CodeForensics Workbench</span>
               <span className="text-sm">↗</span>
@@ -787,7 +787,7 @@ export function LandingPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 9. Minimal Technical Footer                                            */}
       {/* ---------------------------------------------------------------------- */}
-      <footer className="bg-[#0b1120] px-6 sm:px-12 lg:px-20 py-12 text-xs text-slate-400">
+      <footer className="bg-[#0b1120] px-4 sm:px-12 lg:px-20 py-8 sm:py-12 text-xs text-slate-400">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 rounded bg-[#1e293b] border border-[#38bdf8]/40 flex items-center justify-center text-[#38bdf8] font-mono font-bold text-xs">

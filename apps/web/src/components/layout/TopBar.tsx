@@ -124,7 +124,7 @@ export function TopBar({
               }`}
             />
           }
-          className="px-2 sm:px-3 text-xs"
+          className="px-2 sm:px-3 text-[11px] sm:text-xs"
         >
           <span className="hidden xs:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
         </Button>
@@ -156,7 +156,7 @@ export function TopBar({
               onClick={() => signOut()}
               leftIcon={<LogOut className="w-3.5 h-3.5 text-primary-secondary" />}
               title="Sign Out"
-              className="px-2 sm:px-3 text-xs"
+              className="px-2 sm:px-3 text-[11px] sm:text-xs"
             >
               <span className="hidden sm:inline">Sign Out</span>
             </Button>
@@ -167,7 +167,7 @@ export function TopBar({
               size="sm"
               variant="outline"
               leftIcon={<UserCircle2 className="w-3.5 h-3.5 text-primary-secondary" />}
-              className="px-2.5 sm:px-3 text-xs"
+              className="px-2 sm:px-3 text-[11px] sm:text-xs"
             >
               <span>Sign In</span>
             </Button>
