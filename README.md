@@ -15,7 +15,7 @@
 [![BullMQ](https://img.shields.io/badge/BullMQ-5.39-E53E3E)](https://bullmq.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*Investigate unfamiliar codebases, debug silent regressions, trace causal PR links, uncover true domain experts, and preserve audit-ready evidence—with zero hallucinations.*
+*Investigate unfamiliar codebases, debug silent regressions, trace causal PR links, uncover true domain experts, and preserve audit-ready evidence with deterministic git provenance.*
 
 </div>
 

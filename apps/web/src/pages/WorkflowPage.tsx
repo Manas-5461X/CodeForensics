@@ -104,7 +104,7 @@ export function WorkflowPage() {
       details: [
         'Full Thread Inspection: Slide-over drawer exposes complete conversation timelines and resolution states.',
         'Resolution Verification: Distinguishes whether a bug was truly resolved, partially superseded, or closed as duplicate.',
-        'Evidentiary Confidence: Claims are tagged with HIGH, MEDIUM, or LOW confidence—never synthetic AI hallucinations.',
+        'Evidentiary Confidence: Claims are tagged with HIGH, MEDIUM, or LOW confidence, backed strictly by concrete git commits and AST diffs.',
       ],
       actionLink: '/app/issues',
       actionText: 'Explore Issues & PRs',

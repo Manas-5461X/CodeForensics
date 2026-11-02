@@ -80,7 +80,7 @@ export const DOC_CHAPTERS: DocChapter[] = [
         },
         {
           heading: 'Core Differentiators from Generic AI Assistants',
-          body: 'Unlike LLM code tools that hallucinate intent or fabricate nonexistent PR connections, CodeForensics demands verifiable citations. Every relationship link, contributor score, and revision milestone points to immutable cryptographic commit SHAs and verified GitHub events.',
+          body: 'Unlike generative AI tools that guess code history or synthesize nonexistent PR connections, CodeForensics demands verifiable citations. Every relationship link, contributor score, and revision milestone points to immutable cryptographic commit SHAs and verified GitHub events.',
         },
       ],
     },
